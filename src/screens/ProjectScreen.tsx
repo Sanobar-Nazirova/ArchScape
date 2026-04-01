@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, ChevronLeft, Play, Trash2, X, Layers } from 'lucide-react';
 import { useTourStore } from '../store/useTourStore';
+import ThemeToggle from '../components/ThemeToggle';
 import type { Tour } from '../types';
 
 /* ─── New Tour Modal ────────────────────────────────────────────────────── */
@@ -149,7 +150,7 @@ export default function ProjectScreen() {
       {/* Nav */}
       <header
         className="flex-shrink-0 flex items-center justify-between px-8 h-16"
-        style={{ boxShadow: '0 4px 12px rgba(0,0,0,.4)' }}
+        style={{ boxShadow: '0 4px 14px var(--sh-d)' }}
       >
         <div className="flex items-center gap-4">
           <button
@@ -171,14 +172,17 @@ export default function ProjectScreen() {
           </div>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-nm-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 12px rgba(224,123,63,.35), -2px -2px 6px rgba(255,255,255,.05)' }}
-        >
-          <Plus size={15} />
-          New Tour
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-nm-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 12px rgba(224,123,63,.35)' }}
+          >
+            <Plus size={15} />
+            New Tour
+          </button>
+        </div>
       </header>
 
       {/* Content */}

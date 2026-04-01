@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Search, FolderPlus, X, Layers,
   ChevronDown, Pencil, Check,
-  Plus, Image, Music, Map,
+  Plus, Image, Music, Map, Upload,
 } from 'lucide-react';
+import { triggerUpload } from '../../utils/uploadTrigger';
 import { useTourStore } from '../../store/useTourStore';
 import SceneList from './SceneList';
 
@@ -59,7 +60,7 @@ export default function Sidebar() {
                 if (e.key === 'Escape') { setProjectDraft(projectName); setEditingProject(false); }
               }}
               className="flex-1 bg-transparent rounded-nm-sm px-2 py-0.5 text-xs text-nm-text outline-none font-semibold min-w-0"
-              style={{ boxShadow: 'inset 2px 2px 5px rgba(0,0,0,.55), inset -1px -1px 3px rgba(255,255,255,.03)' }}
+              style={{ boxShadow: 'inset 2px 2px 5px var(--sh-d-in), inset -1px -1px 3px var(--sh-l-in)' }}
             />
           ) : (
             <button
@@ -103,7 +104,7 @@ export default function Sidebar() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full bg-transparent rounded-nm-sm pl-8 pr-7 py-2 text-[11px] text-nm-text placeholder:text-nm-muted outline-none"
-            style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,.55), inset -2px -2px 4px rgba(255,255,255,.03)' }}
+            style={{ boxShadow: 'inset 2px 2px 6px var(--sh-d-in), inset -2px -2px 4px var(--sh-l-in)' }}
           />
           {searchQuery && (
             <button
@@ -139,7 +140,7 @@ export default function Sidebar() {
               <div className="fixed inset-0 z-10" onClick={() => setShowFolderMenu(false)} />
               <div
                 className="absolute right-0 top-full mt-1 z-20 rounded-nm-sm w-48 py-1.5 overflow-hidden"
-                style={{ background: 'var(--nm-base)', boxShadow: '8px 8px 20px rgba(0,0,0,.65), -4px -4px 12px rgba(255,255,255,.04)' }}
+                style={{ background: 'var(--nm-base)', boxShadow: '8px 8px 20px var(--sh-d), -4px -4px 12px var(--sh-l)' }}
               >
                 <div
                   className="px-3 py-1 text-[10px] text-nm-muted uppercase tracking-widest font-medium mb-1"
@@ -262,10 +263,10 @@ function EditToolBtn({
         active ? 'text-nm-accent' : 'text-nm-muted hover:text-nm-text',
       ].join(' ')}
       style={active ? {
-        boxShadow: 'inset 3px 3px 7px rgba(0,0,0,.55), inset -2px -2px 5px rgba(255,255,255,.04)',
+        boxShadow: 'inset 3px 3px 7px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in)',
         background: 'rgba(224,123,63,0.1)',
       } : {
-        boxShadow: '3px 3px 7px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)',
+        boxShadow: '3px 3px 7px var(--sh-d), -2px -2px 5px var(--sh-l)',
       }}
     >
       {icon}
@@ -276,17 +277,27 @@ function EditToolBtn({
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center">
+    <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center gap-3">
       <div
-        className="w-12 h-12 rounded-nm flex items-center justify-center mb-3"
-        style={{ boxShadow: '4px 4px 10px rgba(0,0,0,.5), -2px -2px 6px rgba(255,255,255,.04)' }}
+        className="w-12 h-12 rounded-nm flex items-center justify-center"
+        style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
       >
         <Layers size={20} className="text-nm-muted opacity-50" />
       </div>
-      <p className="text-xs text-nm-text font-medium mb-1">No scenes yet</p>
-      <p className="text-[11px] text-nm-muted leading-snug">
-        Click <span className="text-nm-accent font-medium">Upload</span> in the toolbar to import panoramas.
-      </p>
+      <div>
+        <p className="text-xs text-nm-text font-medium mb-1">No scenes yet</p>
+        <p className="text-[11px] text-nm-muted leading-snug">
+          Upload panoramas to get started.
+        </p>
+      </div>
+      <button
+        onClick={triggerUpload}
+        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-nm-sm mt-1"
+        style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 8px rgba(224,123,63,.4)' }}
+      >
+        <Upload size={12} />
+        Upload
+      </button>
     </div>
   );
 }

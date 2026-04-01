@@ -25,6 +25,7 @@ interface TourState {
   floorPlan: FloorPlan | null;
 
   // ── UI state ──────────────────────────────────────────────────────────────
+  theme: 'dark' | 'light';
   activeSceneId: string | null;
   selectedElementId: string | null;
   selectedElementType: SelectedElementType;
@@ -44,6 +45,7 @@ interface TourState {
   saveTour: (name?: string) => void;
   goBack: () => void;
   setPropsTab: (tab: 'scene' | 'hotspots' | 'media' | 'audio') => void;
+  toggleTheme: () => void;
 
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name: string) => void;
@@ -104,6 +106,11 @@ interface TourState {
 
 export const useTourStore = create<TourState>()((set, get) => ({
   // ── Initial state ─────────────────────────────────────────────────────────
+  theme: (() => {
+    const saved = (localStorage.getItem('sphera_theme') as 'dark' | 'light') ?? 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    return saved;
+  })(),
   currentScreen: 'home',
   currentProjectId: null,
   currentTourId: null,
@@ -226,6 +233,13 @@ export const useTourStore = create<TourState>()((set, get) => ({
   },
 
   setPropsTab: (tab) => set({ propsTab: tab }),
+
+  toggleTheme: () => set(s => {
+    const next = s.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('sphera_theme', next);
+    return { theme: next };
+  }),
 
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name) => set({ projectName: name }),
