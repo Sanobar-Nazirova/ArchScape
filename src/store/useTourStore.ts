@@ -38,10 +38,16 @@ interface TourState {
   updateSceneFormat: (sceneId: string, format: PanoramaFormat) => void;
 
   // ── Folder actions ────────────────────────────────────────────────────────
-  addFolder: (name: string) => void;
+  addFolder: (name: string, parentId?: string | null) => string;
   removeFolder: (id: string) => void;
   renameFolder: (id: string, name: string) => void;
   toggleFolder: (id: string) => void;
+  moveFolderTo: (folderId: string, newParentId: string | null) => void;
+
+  // ── Scene extras ──────────────────────────────────────────────────────────
+  duplicateScene: (sceneId: string) => string;
+  addSceneTag: (sceneId: string, tag: string) => void;
+  removeSceneTag: (sceneId: string, tag: string) => void;
 
   // ── Hotspot actions ───────────────────────────────────────────────────────
   addHotspot: (sceneId: string, yaw: number, pitch: number) => string;
@@ -164,22 +170,77 @@ export const useTourStore = create<TourState>()((set, get) => ({
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, format } : sc) })),
 
   // ── Folder actions ─────────────────────────────────────────────────────────
-  addFolder: (name) => {
-    const folder: Folder = { id: genId('folder'), name, isExpanded: true };
+  addFolder: (name, parentId = null) => {
+    const id = genId('folder');
+    const folder: Folder = { id, name, isExpanded: true, parentId };
     set((s) => ({ folders: [...s.folders, folder] }));
+    return id;
   },
 
-  removeFolder: (id) =>
-    set((s) => ({
-      folders: s.folders.filter(f => f.id !== id),
-      scenes: s.scenes.map(sc => sc.folderId === id ? { ...sc, folderId: null } : sc),
-    })),
+  removeFolder: (id) => {
+    // Collect all descendant folder IDs recursively
+    const collectDescendants = (fId: string, all: Folder[]): string[] => {
+      const children = all.filter(f => f.parentId === fId).map(f => f.id);
+      return [fId, ...children.flatMap(c => collectDescendants(c, all))];
+    };
+    set((s) => {
+      const toRemove = new Set(collectDescendants(id, s.folders));
+      return {
+        folders: s.folders.filter(f => !toRemove.has(f.id)),
+        scenes: s.scenes.map(sc => toRemove.has(sc.folderId ?? '') ? { ...sc, folderId: null } : sc),
+      };
+    });
+  },
 
   renameFolder: (id, name) =>
     set((s) => ({ folders: s.folders.map(f => f.id === id ? { ...f, name } : f) })),
 
   toggleFolder: (id) =>
     set((s) => ({ folders: s.folders.map(f => f.id === id ? { ...f, isExpanded: !f.isExpanded } : f) })),
+
+  moveFolderTo: (folderId, newParentId) =>
+    set((s) => ({ folders: s.folders.map(f => f.id === folderId ? { ...f, parentId: newParentId } : f) })),
+
+  // ── Scene extras ──────────────────────────────────────────────────────────
+  duplicateScene: (sceneId) => {
+    const state = get();
+    const orig = state.scenes.find(s => s.id === sceneId);
+    if (!orig) return '';
+    const newId = genId('scene');
+    const copy: Scene = {
+      ...orig,
+      id: newId,
+      name: `${orig.name} (copy)`,
+      hotspots: orig.hotspots.map(h => ({ ...h, id: genId('hs') })),
+      mediaPoints: orig.mediaPoints.map(m => ({ ...m, id: genId('mp') })),
+      audioSources: orig.audioSources.map(a => ({ ...a, id: genId('audio') })),
+    };
+    set((s) => {
+      const scenes = [...s.scenes];
+      const idx = scenes.findIndex(sc => sc.id === sceneId);
+      scenes.splice(idx + 1, 0, copy);
+      return { scenes, activeSceneId: newId };
+    });
+    return newId;
+  },
+
+  addSceneTag: (sceneId, tag) =>
+    set((s) => ({
+      scenes: s.scenes.map(sc =>
+        sc.id === sceneId
+          ? { ...sc, tags: [...new Set([...(sc.tags ?? []), tag])] }
+          : sc,
+      ),
+    })),
+
+  removeSceneTag: (sceneId, tag) =>
+    set((s) => ({
+      scenes: s.scenes.map(sc =>
+        sc.id === sceneId
+          ? { ...sc, tags: (sc.tags ?? []).filter(t => t !== tag) }
+          : sc,
+      ),
+    })),
 
   // ── Hotspot actions ────────────────────────────────────────────────────────
   addHotspot: (sceneId, yaw, pitch) => {

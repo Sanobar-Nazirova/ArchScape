@@ -515,113 +515,117 @@ export default function PanoramaViewer({
 
   const cursor = activeTool !== 'none' ? 'crosshair' : draggingRef.current ? 'grabbing' : 'grab';
 
-  // ─────────────────────────────────────────────────────────────────────
-  if (!scene) {
-    return (
-      <div className="w-full h-full bg-sphera-bg flex items-center justify-center">
-        <EmptyViewer />
-      </div>
-    );
-  }
-
+  // Always render the container so Three.js can initialize on mount.
+  // EmptyViewer is shown as an overlay when there is no active scene.
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-sphera-bg select-none"
-      style={{ cursor }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onWheel={handleWheel}
-      onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleMouseUp}
+      style={{ cursor: scene ? cursor : 'default' }}
+      onMouseDown={scene ? handleMouseDown : undefined}
+      onMouseMove={scene ? handleMouseMove : undefined}
+      onMouseUp={scene ? handleMouseUp : undefined}
+      onMouseLeave={scene ? handleMouseLeave : undefined}
+      onWheel={scene ? handleWheel : undefined}
+      onClick={scene ? handleClick : undefined}
+      onTouchStart={scene ? handleTouchStart : undefined}
+      onTouchMove={scene ? handleTouchMove : undefined}
+      onTouchEnd={scene ? handleMouseUp : undefined}
     >
-      {/* ── Three.js canvas rendered here ── */}
+      {/* ── Three.js canvas is appended here by the renderer ── */}
 
-      {/* ── Overlay: hotspots + media markers ── */}
-      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-        {projectedItems.map(item => {
-          if (!item.visible) return null;
-          return (
-            <div
-              key={item.id}
-              className="absolute pointer-events-auto"
-              style={{
-                left: item.x,
-                top:  item.y,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              {item.type === 'hotspot' ? (
-                <HotspotMarker
-                  hotspot={item.data as Hotspot}
-                  isSelected={selectedElementId === item.id}
-                  isPreview={isPreviewMode}
-                  onClick={() => {
-                    if (isPreviewMode) onHotspotClick(item.data as Hotspot);
-                    else onHotspotSelect(item.id);
+      {/* ── Empty state overlay ── */}
+      {!scene && (
+        <div className="absolute inset-0 z-20 bg-sphera-bg flex items-center justify-center pointer-events-none">
+          <EmptyViewer />
+        </div>
+      )}
+
+      {scene && (
+        <>
+          {/* ── Overlay: hotspots + media markers ── */}
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
+            {projectedItems.map(item => {
+              if (!item.visible) return null;
+              return (
+                <div
+                  key={item.id}
+                  className="absolute pointer-events-auto"
+                  style={{
+                    left: item.x,
+                    top:  item.y,
+                    transform: 'translate(-50%, -50%)',
                   }}
-                />
-              ) : (
-                <MediaMarker
-                  media={item.data as MediaPoint}
-                  isSelected={selectedElementId === item.id}
-                  onClick={() => {
-                    if (isPreviewMode) setActiveMedia(item.data as MediaPoint);
-                    else { onMediaSelect(item.id); setActiveMedia(item.data as MediaPoint); }
-                  }}
-                />
-              )}
+                >
+                  {item.type === 'hotspot' ? (
+                    <HotspotMarker
+                      hotspot={item.data as Hotspot}
+                      isSelected={selectedElementId === item.id}
+                      isPreview={isPreviewMode}
+                      onClick={() => {
+                        if (isPreviewMode) onHotspotClick(item.data as Hotspot);
+                        else onHotspotSelect(item.id);
+                      }}
+                    />
+                  ) : (
+                    <MediaMarker
+                      media={item.data as MediaPoint}
+                      isSelected={selectedElementId === item.id}
+                      onClick={() => {
+                        if (isPreviewMode) setActiveMedia(item.data as MediaPoint);
+                        else { onMediaSelect(item.id); setActiveMedia(item.data as MediaPoint); }
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Tool hint banner ── */}
+          {activeTool !== 'none' && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-black/70 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-full border border-white/10 pointer-events-none">
+              {activeTool === 'hotspot'
+                ? 'Click anywhere in the panorama to place a navigation hotspot'
+                : 'Click anywhere in the panorama to place a media information point'}
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* ── Tool hint banner ── */}
-      {activeTool !== 'none' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-black/70 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-full border border-white/10 pointer-events-none">
-          {activeTool === 'hotspot'
-            ? 'Click anywhere in the panorama to place a navigation hotspot'
-            : 'Click anywhere in the panorama to place a media information point'}
-        </div>
-      )}
+          {/* ── Scene label (editor mode) ── */}
+          {!isPreviewMode && (
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 pointer-events-none">
+              <div className={[
+                'w-2 h-2 rounded-full',
+                scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-sphera-accent',
+              ].join(' ')} />
+              <span className="text-white text-xs font-medium">{scene.name}</span>
+              <span className="text-white/40 text-[10px]">{scene.format.replace('equirectangular-', '').toUpperCase()}</span>
+            </div>
+          )}
 
-      {/* ── Scene label (editor mode) ── */}
-      {!isPreviewMode && (
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 pointer-events-none">
-          <div className={[
-            'w-2 h-2 rounded-full',
-            scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-sphera-accent',
-          ].join(' ')} />
-          <span className="text-white text-xs font-medium">{scene.name}</span>
-          <span className="text-white/40 text-[10px]">{scene.format.replace('equirectangular-', '').toUpperCase()}</span>
-        </div>
-      )}
+          {/* ── Zoom controls ── */}
+          <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} />
 
-      {/* ── Zoom controls ── */}
-      <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} />
+          {/* ── Video controls ── */}
+          {scene.mediaType === 'panorama-video' && (
+            <VideoControls videoEl={videoElRef.current} />
+          )}
 
-      {/* ── Video controls ── */}
-      {scene.mediaType === 'panorama-video' && (
-        <VideoControls videoEl={videoElRef.current} />
-      )}
+          {/* ── Media panel ── */}
+          {activeMedia && (
+            <MediaPanel media={activeMedia} onClose={() => setActiveMedia(null)} />
+          )}
 
-      {/* ── Media panel ── */}
-      {activeMedia && (
-        <MediaPanel media={activeMedia} onClose={() => setActiveMedia(null)} />
-      )}
-
-      {/* ── Floor plan minimap ── */}
-      {floorPlan && (
-        <FloorPlanMinimap
-          floorPlan={floorPlan}
-          currentSceneId={scene.id}
-          currentYaw={minimapYaw}
-          onSceneChange={setActiveScene}
-        />
+          {/* ── Floor plan minimap ── */}
+          {floorPlan && (
+            <FloorPlanMinimap
+              floorPlan={floorPlan}
+              currentSceneId={scene.id}
+              currentYaw={minimapYaw}
+              onSceneChange={setActiveScene}
+            />
+          )}
+        </>
       )}
     </div>
   );

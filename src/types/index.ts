@@ -55,12 +55,15 @@ export interface Scene {
   initialYaw: number;
   initialPitch: number;
   thumbnail?: string;
+  tags?: string[];
 }
 
 export interface Folder {
   id: string;
   name: string;
   isExpanded: boolean;
+  parentId?: string | null;
+  color?: string;
 }
 
 export interface FloorPlanMarker {
