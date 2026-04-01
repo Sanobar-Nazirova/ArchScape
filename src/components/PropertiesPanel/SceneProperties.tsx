@@ -28,7 +28,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
     <div className="space-y-5">
       {/* Thumbnail */}
       {scene.thumbnail && (
-        <div className="rounded-xl overflow-hidden border border-sphera-border">
+        <div className="rounded-xl overflow-hidden border border-nm-border">
           <img src={scene.thumbnail} alt="" className="w-full object-cover" style={{ height: 80 }} />
         </div>
       )}
@@ -55,7 +55,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
           ))}
         </select>
         {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
-          <p className="text-[10px] text-sphera-muted mt-1 leading-snug">
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">
             Stereo format detected — viewer will display the left eye channel.
           </p>
         )}
@@ -72,7 +72,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border ${
             scene.mediaType === 'panorama-video'
               ? 'bg-purple-500/20 border-purple-400/40 text-purple-300'
-              : 'bg-sphera-accent/15 border-sphera-accent/30 text-sphera-accent'
+              : 'bg-nm-accent/15 border-nm-accent/30 text-nm-accent'
           }`}>
             {scene.mediaType === 'panorama-video' ? '360° Video' : 'Panorama Image'}
           </span>
@@ -83,7 +83,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
       <Field label="Initial View Angle">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Yaw (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Yaw (°)</p>
             <input
               type="number"
               step="5"
@@ -93,7 +93,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
             />
           </div>
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Pitch (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Pitch (°)</p>
             <input
               type="number"
               step="5"
@@ -107,7 +107,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
         </div>
         <button
           onClick={handleSetCurrentView}
-          className="mt-2 flex items-center gap-1.5 text-xs text-sphera-muted hover:text-white transition-colors"
+          className="mt-2 flex items-center gap-1.5 text-xs text-nm-muted hover:text-white transition-colors"
         >
           <Camera size={12} />
           Set from current view
@@ -124,7 +124,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
       </Field>
 
       {/* Danger zone */}
-      <div className="pt-2 border-t border-sphera-border">
+      <div className="pt-2 border-t border-nm-border">
         <button
           onClick={() => {
             if (confirm(`Delete scene "${scene.name}"?`)) {
@@ -146,7 +146,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
+      <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
       {children}
     </div>
   );
@@ -154,9 +154,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-sphera-bg rounded-lg p-2 text-center">
+    <div className="bg-nm-base rounded-lg p-2 text-center">
       <p className="text-white font-semibold text-sm">{value}</p>
-      <p className="text-[10px] text-sphera-muted">{label}</p>
+      <p className="text-[10px] text-nm-muted">{label}</p>
     </div>
   );
 }

@@ -15,10 +15,10 @@ export default function AudioProperties({ sceneId }: AudioPropertiesProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium">Audio Sources</p>
+        <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium">Audio Sources</p>
         <button
           onClick={() => addAudioSource(sceneId)}
-          className="flex items-center gap-1 text-xs text-sphera-accent hover:text-sphera-accent-hover transition-colors"
+          className="flex items-center gap-1 text-xs text-nm-accent hover:text-nm-accent-hover transition-colors"
         >
           <Plus size={12} />
           Add
@@ -27,14 +27,14 @@ export default function AudioProperties({ sceneId }: AudioPropertiesProps) {
 
       {scene.audioSources.length === 0 ? (
         <div className="text-center py-8">
-          <Music size={28} className="text-sphera-border mx-auto mb-2" />
-          <p className="text-xs text-sphera-muted">No audio sources yet.</p>
-          <p className="text-[11px] text-sphera-border mt-1 leading-snug">
+          <Music size={28} className="text-nm-border mx-auto mb-2" />
+          <p className="text-xs text-nm-muted">No audio sources yet.</p>
+          <p className="text-[11px] text-nm-border mt-1 leading-snug">
             Add ambient sounds or spatial audio anchored to points in the scene.
           </p>
           <button
             onClick={() => addAudioSource(sceneId)}
-            className="mt-3 px-3 py-1.5 text-xs bg-sphera-accent/20 text-sphera-accent border border-sphera-accent/30 rounded-lg hover:bg-sphera-accent/30 transition-colors"
+            className="mt-3 px-3 py-1.5 text-xs bg-nm-accent/20 text-nm-accent border border-nm-accent/30 rounded-lg hover:bg-nm-accent/30 transition-colors"
           >
             Add Audio Source
           </button>
@@ -47,11 +47,11 @@ export default function AudioProperties({ sceneId }: AudioPropertiesProps) {
         </div>
       )}
 
-      <div className="border-t border-sphera-border pt-3">
-        <p className="text-[10px] text-sphera-border leading-snug">
-          <strong className="text-sphera-muted">Ambient</strong> audio plays globally throughout the scene.
+      <div className="border-t border-nm-border pt-3">
+        <p className="text-[10px] text-nm-border leading-snug">
+          <strong className="text-nm-muted">Ambient</strong> audio plays globally throughout the scene.
           <br />
-          <strong className="text-sphera-muted">Spatial</strong> audio is anchored to a point — volume changes based on viewer direction.
+          <strong className="text-nm-muted">Spatial</strong> audio is anchored to a point — volume changes based on viewer direction.
         </p>
       </div>
     </div>
@@ -80,7 +80,7 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
   };
 
   return (
-    <div className="bg-sphera-bg border border-sphera-border rounded-xl p-3 space-y-3">
+    <div className="bg-nm-base border border-nm-border rounded-xl p-3 space-y-3">
       {/* Label + type toggle */}
       <div className="flex items-center gap-2">
         <input
@@ -90,7 +90,7 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
           className="flex-1 input-base text-xs py-1"
           placeholder="Label"
         />
-        <div className="flex border border-sphera-border rounded-lg overflow-hidden flex-shrink-0">
+        <div className="flex border border-nm-border rounded-lg overflow-hidden flex-shrink-0">
           {(['ambient', 'spatial'] as AudioType[]).map(t => (
             <button
               key={t}
@@ -98,8 +98,8 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
               className={[
                 'px-2 py-1 text-[10px] capitalize transition-colors',
                 audio.type === t
-                  ? 'bg-sphera-accent text-white'
-                  : 'text-sphera-muted hover:text-white',
+                  ? 'bg-nm-accent text-white'
+                  : 'text-nm-muted hover:text-white',
               ].join(' ')}
             >
               {t === 'ambient' ? <Volume2 size={11} /> : <MapPin size={11} />}
@@ -108,7 +108,7 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
         </div>
       </div>
 
-      <div className="text-[10px] text-sphera-muted">
+      <div className="text-[10px] text-nm-muted">
         {audio.type === 'ambient' ? 'Ambient — plays globally' : 'Spatial — volume follows viewer direction'}
       </div>
 
@@ -127,19 +127,19 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
         <button
           onClick={togglePlay}
           disabled={!audio.src}
-          className="flex items-center gap-1 text-xs text-sphera-muted hover:text-white disabled:opacity-40 transition-colors"
+          className="flex items-center gap-1 text-xs text-nm-muted hover:text-white disabled:opacity-40 transition-colors"
         >
           {playing ? <Pause size={12} /> : <Play size={12} />}
           {playing ? 'Stop' : 'Preview'}
         </button>
 
         {/* Loop */}
-        <label className="flex items-center gap-1.5 text-xs text-sphera-muted cursor-pointer">
+        <label className="flex items-center gap-1.5 text-xs text-nm-muted cursor-pointer">
           <input
             type="checkbox"
             checked={audio.loop}
             onChange={e => update({ loop: e.target.checked })}
-            className="w-3 h-3 rounded accent-sphera-accent"
+            className="w-3 h-3 rounded accent-nm-accent"
           />
           Loop
         </label>
@@ -147,26 +147,26 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
         <div className="flex-1" />
 
         {/* Mute icon */}
-        {audio.volume === 0 ? <VolumeX size={12} className="text-sphera-muted" /> : <Volume2 size={12} className="text-sphera-muted" />}
+        {audio.volume === 0 ? <VolumeX size={12} className="text-nm-muted" /> : <Volume2 size={12} className="text-nm-muted" />}
       </div>
 
       {/* Volume */}
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-sphera-muted w-10">Volume</span>
+        <span className="text-[10px] text-nm-muted w-10">Volume</span>
         <input
           type="range" min={0} max={1} step={0.01}
           value={audio.volume}
           onChange={e => { update({ volume: Number(e.target.value) }); if (audioRef.current) audioRef.current.volume = Number(e.target.value); }}
           className="flex-1"
         />
-        <span className="text-[10px] text-sphera-muted w-8 text-right">{Math.round(audio.volume * 100)}%</span>
+        <span className="text-[10px] text-nm-muted w-8 text-right">{Math.round(audio.volume * 100)}%</span>
       </div>
 
       {/* Spatial position (only for spatial type) */}
       {audio.type === 'spatial' && (
-        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-sphera-border">
+        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-nm-border">
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Yaw (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Yaw (°)</p>
             <input
               type="number" step="5"
               value={Math.round((audio.yaw ?? 0) * 180 / Math.PI)}
@@ -175,7 +175,7 @@ function AudioSourceCard({ sceneId, audio }: { sceneId: string; audio: AudioSour
             />
           </div>
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Pitch (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Pitch (°)</p>
             <input
               type="number" step="5" min="-85" max="85"
               value={Math.round((audio.pitch ?? 0) * 180 / Math.PI)}

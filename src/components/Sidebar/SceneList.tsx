@@ -44,7 +44,7 @@ export default function SceneList({ searchQuery }: SceneListProps) {
         <SortableContext items={filteredScenes.map(s => s.id)} strategy={verticalListSortingStrategy}>
           <div className="px-2 space-y-0.5 pb-2">
             {filteredScenes.length === 0 ? (
-              <div className="py-6 text-center text-[11px] text-sphera-muted">
+              <div className="py-6 text-center text-[11px] text-nm-muted">
                 No scenes match "{searchQuery}"
               </div>
             ) : (

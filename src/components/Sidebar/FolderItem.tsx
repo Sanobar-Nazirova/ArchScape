@@ -10,7 +10,7 @@ import type { Folder, Scene } from '../../types';
 
 // Depth-based accent colors for visual hierarchy
 const DEPTH_COLORS = [
-  'text-sphera-accent',   // depth 0 – blue
+  'text-nm-accent',   // depth 0 – blue
   'text-purple-400',      // depth 1 – purple
   'text-teal-400',        // depth 2 – teal
   'text-amber-400',       // depth 3 – amber
@@ -102,7 +102,7 @@ export default function FolderNode({
       <div className="select-none">
         {/* Folder row */}
         <div
-          className="group flex items-center gap-1.5 py-1 pr-2 rounded-lg cursor-pointer hover:bg-sphera-hover transition-colors border border-transparent hover:border-white/5"
+          className="group flex items-center gap-1.5 py-1 pr-2 rounded-lg cursor-pointer hover:bg-nm-surface transition-colors border border-transparent hover:border-white/5"
           style={{ paddingLeft: `${8 + indentPx}px` }}
           onClick={() => !editing && toggleFolder(folder.id)}
           onContextMenu={handleContextMenu}
@@ -111,7 +111,7 @@ export default function FolderNode({
           <ChevronRight
             size={12}
             className={[
-              'flex-shrink-0 text-sphera-muted/60 transition-transform duration-150',
+              'flex-shrink-0 text-nm-muted/60 transition-transform duration-150',
               folder.isExpanded ? 'rotate-90' : '',
             ].join(' ')}
           />
@@ -135,11 +135,11 @@ export default function FolderNode({
                 e.stopPropagation();
               }}
               onClick={e => e.stopPropagation()}
-              className="flex-1 bg-sphera-surface border border-sphera-accent/50 rounded px-1.5 py-0.5 text-[11px] text-white outline-none"
+              className="flex-1 bg-nm-surface border border-nm-accent/50 rounded px-1.5 py-0.5 text-[11px] text-white outline-none"
             />
           ) : (
             <span
-              className="flex-1 text-[11px] text-sphera-text font-medium truncate"
+              className="flex-1 text-[11px] text-nm-text font-medium truncate"
               onDoubleClick={e => { e.stopPropagation(); setEditing(true); setDraft(folder.name); }}
               title={folder.name}
             >
@@ -149,7 +149,7 @@ export default function FolderNode({
 
           {/* Item count badge */}
           {totalItems > 0 && (
-            <span className="text-[9px] text-sphera-border bg-sphera-surface/80 px-1.5 py-0.5 rounded-full flex-shrink-0">
+            <span className="text-[9px] text-nm-border bg-nm-surface/80 px-1.5 py-0.5 rounded-full flex-shrink-0">
               {totalItems}
             </span>
           )}
@@ -159,14 +159,14 @@ export default function FolderNode({
             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity flex-shrink-0">
               <button
                 onClick={e => { e.stopPropagation(); addFolder('New Folder', folder.id); }}
-                className="p-0.5 rounded text-sphera-muted hover:text-white transition-colors"
+                className="p-0.5 rounded text-nm-muted hover:text-white transition-colors"
                 title="Add subfolder"
               >
                 <FolderPlus size={11} />
               </button>
               <button
                 onClick={e => { e.stopPropagation(); setEditing(true); setDraft(folder.name); }}
-                className="p-0.5 rounded text-sphera-muted hover:text-white transition-colors"
+                className="p-0.5 rounded text-nm-muted hover:text-white transition-colors"
                 title="Rename"
               >
                 <Pencil size={10} />
@@ -209,7 +209,7 @@ export default function FolderNode({
             {/* Empty folder hint */}
             {totalItems === 0 && (
               <div
-                className="py-1.5 text-[10px] text-sphera-border italic"
+                className="py-1.5 text-[10px] text-nm-border italic"
                 style={{ paddingLeft: `${24 + indentPx}px` }}
               >
                 Empty folder

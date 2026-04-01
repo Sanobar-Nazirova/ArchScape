@@ -21,7 +21,7 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
       {/* Destination */}
       <Field label="Destination Scene">
         {otherScenes.length === 0 ? (
-          <p className="text-xs text-sphera-muted italic">Add more scenes to create navigation.</p>
+          <p className="text-xs text-nm-muted italic">Add more scenes to create navigation.</p>
         ) : (
           <select
             value={hotspot.targetSceneId}
@@ -57,8 +57,8 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
               className={[
                 'px-3 py-1.5 rounded-lg text-xs border capitalize transition-all',
                 hotspot.iconStyle === style
-                  ? 'bg-sphera-accent/20 border-sphera-accent/50 text-sphera-accent'
-                  : 'bg-sphera-surface border-sphera-border text-sphera-muted hover:text-white hover:border-sphera-border',
+                  ? 'bg-nm-accent/20 border-nm-accent/50 text-nm-accent'
+                  : 'bg-nm-surface border-nm-border text-nm-muted hover:text-white hover:border-nm-border',
               ].join(' ')}
             >
               {style}
@@ -71,7 +71,7 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
       <Field label="Position in Scene">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Yaw (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Yaw (°)</p>
             <input
               type="number" step="1"
               value={Math.round(hotspot.yaw * 180 / Math.PI)}
@@ -80,7 +80,7 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
             />
           </div>
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Pitch (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Pitch (°)</p>
             <input
               type="number" step="1" min="-85" max="85"
               value={Math.round(hotspot.pitch * 180 / Math.PI)}
@@ -92,7 +92,7 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
       </Field>
 
       {/* Delete */}
-      <div className="pt-2 border-t border-sphera-border">
+      <div className="pt-2 border-t border-nm-border">
         <button
           onClick={() => removeHotspot(sceneId, hotspot.id)}
           className="flex items-center gap-2 text-xs text-red-400/70 hover:text-red-400 transition-colors"
@@ -108,7 +108,7 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
+      <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
       {children}
     </div>
   );

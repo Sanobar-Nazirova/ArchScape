@@ -19,10 +19,10 @@ export default function FloorPlanEditor() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium">Floor Plan Editor</p>
+        <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium">Floor Plan Editor</p>
         <button
           onClick={() => removeFloorPlan()}
-          className="text-sphera-muted hover:text-red-400 transition-colors"
+          className="text-nm-muted hover:text-red-400 transition-colors"
           title="Remove floor plan"
         >
           <Trash2 size={13} />
@@ -30,17 +30,17 @@ export default function FloorPlanEditor() {
       </div>
 
       {activeSceneId ? (
-        <p className="text-[11px] text-sphera-muted leading-snug">
+        <p className="text-[11px] text-nm-muted leading-snug">
           Click on the floor plan to place a marker for{' '}
           <span className="text-white">"{scenes.find(s => s.id === activeSceneId)?.name}"</span>.
         </p>
       ) : (
-        <p className="text-[11px] text-sphera-muted">Select a scene to place its marker.</p>
+        <p className="text-[11px] text-nm-muted">Select a scene to place its marker.</p>
       )}
 
       {/* Floor plan image with markers overlay */}
       <div
-        className="relative rounded-xl overflow-hidden border border-sphera-border cursor-crosshair"
+        className="relative rounded-xl overflow-hidden border border-nm-border cursor-crosshair"
         onClick={handleImageClick}
       >
         <img
@@ -65,7 +65,7 @@ export default function FloorPlanEditor() {
             >
               <MapPin
                 size={18}
-                className={isActive ? 'text-sphera-accent drop-shadow' : 'text-sphera-muted'}
+                className={isActive ? 'text-nm-accent drop-shadow' : 'text-nm-muted'}
                 fill={isActive ? '#4f7cff' : 'transparent'}
               />
             </div>
@@ -76,16 +76,16 @@ export default function FloorPlanEditor() {
       {/* Marker list */}
       {floorPlan.markers.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium">Placed Markers</p>
+          <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium">Placed Markers</p>
           {floorPlan.markers.map(m => {
             const sc = scenes.find(s => s.id === m.sceneId);
             return (
-              <div key={m.sceneId} className="flex items-center gap-2 px-2 py-1.5 bg-sphera-bg rounded-lg border border-sphera-border">
-                <MapPin size={11} className="text-sphera-accent flex-shrink-0" />
-                <span className="flex-1 text-xs text-sphera-text truncate">{sc?.name ?? m.sceneId}</span>
+              <div key={m.sceneId} className="flex items-center gap-2 px-2 py-1.5 bg-nm-base rounded-lg border border-nm-border">
+                <MapPin size={11} className="text-nm-accent flex-shrink-0" />
+                <span className="flex-1 text-xs text-nm-text truncate">{sc?.name ?? m.sceneId}</span>
                 <button
                   onClick={() => removeFloorPlanMarker(m.sceneId)}
-                  className="text-sphera-muted hover:text-red-400 transition-colors"
+                  className="text-nm-muted hover:text-red-400 transition-colors"
                 >
                   <X size={11} />
                 </button>

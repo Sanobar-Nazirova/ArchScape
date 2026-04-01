@@ -44,10 +44,10 @@ function HotspotMarker({
         'w-10 h-10 rounded-full flex items-center justify-center transition-all',
         'border-2 shadow-lg backdrop-blur-sm',
         isSelected
-          ? 'bg-sphera-accent border-white text-white scale-110 shadow-sphera-accent/40'
+          ? 'bg-nm-accent border-white text-white scale-110 shadow-nm-accent/40'
           : isPreview
-          ? 'bg-black/60 border-white/70 text-white hover:scale-110 hover:bg-sphera-accent hover:border-white hotspot-pulse'
-          : 'bg-black/50 border-sphera-accent/70 text-sphera-accent hover:scale-110 hover:bg-sphera-accent hover:text-white hotspot-pulse',
+          ? 'bg-black/60 border-white/70 text-white hover:scale-110 hover:bg-nm-accent hover:border-white hotspot-pulse'
+          : 'bg-black/50 border-nm-accent/70 text-nm-accent hover:scale-110 hover:bg-nm-accent hover:text-white hotspot-pulse',
       ].join(' ')}
       >
         {HOTSPOT_ICONS[hotspot.iconStyle]}
@@ -56,7 +56,7 @@ function HotspotMarker({
         <span className={[
           'text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border whitespace-nowrap',
           isSelected
-            ? 'bg-sphera-accent text-white border-white/30'
+            ? 'bg-nm-accent text-white border-white/30'
             : 'bg-black/60 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
         ].join(' ')}>
           {hotspot.label}
@@ -121,10 +121,10 @@ function VideoControls({ videoEl }: { videoEl: HTMLVideoElement | null }) {
   return (
     <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl px-2 py-1.5">
       <span className="text-[10px] text-white/50 mr-1">360° Video</span>
-      <button onClick={toggle} className="text-white hover:text-sphera-accent p-1 transition-colors" title={playing ? 'Pause' : 'Play'}>
+      <button onClick={toggle} className="text-white hover:text-nm-accent p-1 transition-colors" title={playing ? 'Pause' : 'Play'}>
         {playing ? <Pause size={13} /> : <Play size={13} />}
       </button>
-      <button onClick={toggleMute} className="text-white hover:text-sphera-accent p-1 transition-colors" title={muted ? 'Unmute' : 'Mute'}>
+      <button onClick={toggleMute} className="text-white hover:text-nm-accent p-1 transition-colors" title={muted ? 'Unmute' : 'Mute'}>
         <Volume2 size={13} className={muted ? 'opacity-40' : ''} />
       </button>
     </div>
@@ -135,10 +135,10 @@ function VideoControls({ videoEl }: { videoEl: HTMLVideoElement | null }) {
 function ZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut: () => void }) {
   return (
     <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
-      <button onClick={onZoomIn} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-sphera-accent hover:border-sphera-accent/40 transition-colors">
+      <button onClick={onZoomIn} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-nm-accent hover:border-nm-accent/40 transition-colors">
         <ZoomIn size={14} />
       </button>
-      <button onClick={onZoomOut} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-sphera-accent hover:border-sphera-accent/40 transition-colors">
+      <button onClick={onZoomOut} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-nm-accent hover:border-nm-accent/40 transition-colors">
         <ZoomOut size={14} />
       </button>
     </div>
@@ -617,7 +617,7 @@ export default function PanoramaViewer({
             <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 pointer-events-none">
               <div className={[
                 'w-2 h-2 rounded-full',
-                scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-sphera-accent',
+                scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-nm-accent',
               ].join(' ')} />
               <span className="text-white text-xs font-medium">{scene.name}</span>
               <span className="text-white/40 text-[10px]">{scene.format.replace('equirectangular-', '').toUpperCase()}</span>

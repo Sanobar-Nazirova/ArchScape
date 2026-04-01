@@ -108,7 +108,7 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
 
   // Scene type icon
   const TypeIcon = scene.mediaType === 'panorama-video' ? Video : ImageIcon;
-  const typeColor = scene.mediaType === 'panorama-video' ? 'text-purple-400' : 'text-sphera-muted';
+  const typeColor = scene.mediaType === 'panorama-video' ? 'text-purple-400' : 'text-nm-muted';
 
   return (
     <>
@@ -121,15 +121,15 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
           'group flex items-center gap-1.5 py-1 pr-2 rounded-lg cursor-pointer transition-all select-none',
           'border',
           isActive
-            ? 'bg-sphera-accent/15 border-sphera-accent/30 shadow-sm'
-            : 'hover:bg-sphera-hover border-transparent hover:border-white/5',
+            ? 'bg-nm-accent/15 border-nm-accent/30 shadow-sm'
+            : 'hover:bg-nm-surface border-transparent hover:border-white/5',
         ].join(' ')}
       >
         {/* Drag handle */}
         <span
           {...attributes}
           {...listeners}
-          className="text-sphera-border/50 hover:text-sphera-muted cursor-grab active:cursor-grabbing flex-shrink-0 -ml-0.5"
+          className="text-nm-border/50 hover:text-nm-muted cursor-grab active:cursor-grabbing flex-shrink-0 -ml-0.5"
           onClick={e => e.stopPropagation()}
         >
           <GripVertical size={11} />
@@ -139,11 +139,11 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
         <TypeIcon size={11} className={`flex-shrink-0 ${typeColor}`} />
 
         {/* Thumbnail */}
-        <div className="w-9 h-6 rounded overflow-hidden flex-shrink-0 bg-sphera-surface border border-white/5">
+        <div className="w-9 h-6 rounded overflow-hidden flex-shrink-0 bg-nm-surface border border-white/5">
           {scene.thumbnail ? (
             <img src={scene.thumbnail} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-sphera-surface" />
+            <div className="w-full h-full bg-nm-surface" />
           )}
         </div>
 
@@ -161,13 +161,13 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
                 e.stopPropagation();
               }}
               onClick={e => e.stopPropagation()}
-              className="w-full bg-sphera-surface border border-sphera-accent/50 rounded px-1.5 py-0.5 text-[11px] text-white outline-none"
+              className="w-full bg-nm-surface border border-nm-accent/50 rounded px-1.5 py-0.5 text-[11px] text-white outline-none"
             />
           ) : (
             <span
               className={[
                 'text-[11px] truncate block leading-tight',
-                isActive ? 'text-white font-medium' : 'text-sphera-text',
+                isActive ? 'text-white font-medium' : 'text-nm-text',
               ].join(' ')}
               onDoubleClick={e => { e.stopPropagation(); setEditing(true); setDraftName(scene.name); }}
               title={scene.name}
@@ -180,7 +180,7 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
           {!editing && (
             <div className="flex items-center gap-1 mt-0.5">
               {scene.hotspots.length > 0 && (
-                <span className="flex items-center gap-0.5 text-[9px] text-sphera-accent/70 leading-none">
+                <span className="flex items-center gap-0.5 text-[9px] text-nm-accent/70 leading-none">
                   <Navigation size={8} />
                   {scene.hotspots.length}
                 </span>
@@ -197,7 +197,7 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
                 </span>
               )}
               {(!scene.hotspots.length && !scene.mediaPoints.length && !scene.audioSources.length) && (
-                <span className="text-[9px] text-sphera-border leading-none">empty</span>
+                <span className="text-[9px] text-nm-border leading-none">empty</span>
               )}
             </div>
           )}
@@ -205,7 +205,7 @@ export default function SceneItem({ scene, isActive, depth = 0 }: SceneItemProps
 
         {/* Active indicator dot */}
         {isActive && (
-          <div className="w-1.5 h-1.5 rounded-full bg-sphera-accent flex-shrink-0" />
+          <div className="w-1.5 h-1.5 rounded-full bg-nm-accent flex-shrink-0" />
         )}
       </div>
 
