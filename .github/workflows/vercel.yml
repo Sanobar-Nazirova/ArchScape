@@ -3,6 +3,7 @@ name: Deploy Sphera to Vercel
 on:
   push:
     branches:
+      - main
       - claude/sphera-virtual-tour-TtJOk
   workflow_dispatch:
 
@@ -22,7 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
