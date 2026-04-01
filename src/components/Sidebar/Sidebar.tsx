@@ -2,18 +2,23 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Search, FolderPlus, X, Layers,
   ChevronDown, Pencil, Check,
+  Plus, Image, Music, Map,
 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import SceneList from './SceneList';
 
 export default function Sidebar() {
-  const { scenes, folders, projectName, setProjectName, addFolder } = useTourStore();
+  const {
+    scenes, folders, projectName, setProjectName, addFolder,
+    activeTool, setActiveTool, setFloorPlan,
+  } = useTourStore();
 
   const [searchQuery, setSearchQuery]       = useState('');
   const [editingProject, setEditingProject] = useState(false);
   const [projectDraft, setProjectDraft]     = useState(projectName);
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const projectInputRef = useRef<HTMLInputElement>(null);
+  const floorPlanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingProject && projectInputRef.current) {
@@ -31,12 +36,18 @@ export default function Sidebar() {
   const folderCount = folders.length;
 
   return (
-    <aside className="flex flex-col h-full bg-sphera-panel border-r border-sphera-border overflow-hidden">
+    <aside
+      className="flex flex-col h-full overflow-hidden"
+      style={{ background: 'var(--nm-base)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+    >
 
-      {/* ── Project header ── */}
-      <div className="flex-shrink-0 px-3 pt-3 pb-2 border-b border-sphera-border">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Layers size={12} className="text-sphera-accent flex-shrink-0" />
+      {/* ── Tour header ── */}
+      <div
+        className="flex-shrink-0 px-4 pt-4 pb-3"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <div className="flex items-center gap-2 mb-1.5">
+          <Layers size={12} className="text-nm-accent flex-shrink-0" />
           {editingProject ? (
             <input
               ref={projectInputRef}
@@ -47,11 +58,12 @@ export default function Sidebar() {
                 if (e.key === 'Enter') commitProjectRename();
                 if (e.key === 'Escape') { setProjectDraft(projectName); setEditingProject(false); }
               }}
-              className="flex-1 bg-sphera-surface border border-sphera-accent/50 rounded px-1.5 py-0.5 text-xs text-white outline-none font-semibold min-w-0"
+              className="flex-1 bg-transparent rounded-nm-sm px-2 py-0.5 text-xs text-nm-text outline-none font-semibold min-w-0"
+              style={{ boxShadow: 'inset 2px 2px 5px rgba(0,0,0,.55), inset -1px -1px 3px rgba(255,255,255,.03)' }}
             />
           ) : (
             <button
-              className="flex-1 text-left text-xs font-semibold text-white truncate hover:text-sphera-accent transition-colors group flex items-center gap-1 min-w-0"
+              className="flex-1 text-left text-xs font-semibold text-nm-text truncate hover:text-nm-accent transition-colors group flex items-center gap-1 min-w-0 font-syne"
               onDoubleClick={() => { setEditingProject(true); setProjectDraft(projectName); }}
               title={`${projectName} — double-click to rename`}
             >
@@ -60,18 +72,18 @@ export default function Sidebar() {
             </button>
           )}
           {editingProject && (
-            <button onClick={commitProjectRename} className="text-sphera-accent p-0.5 flex-shrink-0">
+            <button onClick={commitProjectRename} className="text-nm-accent p-0.5 flex-shrink-0">
               <Check size={11} />
             </button>
           )}
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-2 text-[10px] text-sphera-muted">
+        <div className="flex items-center gap-2 text-[10px] text-nm-muted">
           <span>{sceneCount} scene{sceneCount !== 1 ? 's' : ''}</span>
           {folderCount > 0 && (
             <>
-              <span className="text-sphera-border">·</span>
+              <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
               <span>{folderCount} folder{folderCount !== 1 ? 's' : ''}</span>
             </>
           )}
@@ -79,20 +91,24 @@ export default function Sidebar() {
       </div>
 
       {/* ── Search bar ── */}
-      <div className="flex-shrink-0 px-2.5 py-2 border-b border-sphera-border">
+      <div
+        className="flex-shrink-0 px-3 py-2.5"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
         <div className="relative flex items-center">
-          <Search size={11} className="absolute left-2.5 text-sphera-muted pointer-events-none" />
+          <Search size={11} className="absolute left-3 text-nm-muted pointer-events-none" />
           <input
             type="text"
             placeholder="Search scenes…"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-sphera-surface border border-sphera-border rounded-lg pl-7 pr-7 py-1.5 text-[11px] text-sphera-text placeholder-sphera-border outline-none focus:border-sphera-accent/50 transition-colors"
+            className="w-full bg-transparent rounded-nm-sm pl-8 pr-7 py-2 text-[11px] text-nm-text placeholder:text-nm-muted outline-none"
+            style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,.55), inset -2px -2px 4px rgba(255,255,255,.03)' }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 text-sphera-muted hover:text-white transition-colors"
+              className="absolute right-2.5 text-nm-muted hover:text-nm-text transition-colors"
             >
               <X size={11} />
             </button>
@@ -100,15 +116,18 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="flex-shrink-0 flex items-center justify-between px-2.5 py-1.5 border-b border-sphera-border">
-        <span className="text-[10px] text-sphera-muted uppercase tracking-wider font-medium">
-          {searchQuery ? 'Search results' : 'Project navigator'}
+      {/* ── Section label + add folder ── */}
+      <div
+        className="flex-shrink-0 flex items-center justify-between px-3 py-1.5"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <span className="text-[10px] text-nm-muted uppercase tracking-widest font-medium">
+          {searchQuery ? 'Results' : 'Scenes'}
         </span>
         <div className="relative">
           <button
             onClick={() => setShowFolderMenu(v => !v)}
-            className="flex items-center gap-0.5 text-sphera-muted hover:text-white transition-colors p-1 rounded hover:bg-sphera-hover"
+            className="flex items-center gap-0.5 text-nm-muted hover:text-nm-text transition-colors p-1 rounded"
             title="Add folder"
           >
             <FolderPlus size={13} />
@@ -118,8 +137,14 @@ export default function Sidebar() {
           {showFolderMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowFolderMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 z-20 bg-sphera-surface border border-sphera-border rounded-xl shadow-2xl w-48 py-1.5 overflow-hidden">
-                <div className="px-3 py-1 text-[10px] text-sphera-muted uppercase tracking-wider font-medium border-b border-sphera-border mb-1">
+              <div
+                className="absolute right-0 top-full mt-1 z-20 rounded-nm-sm w-48 py-1.5 overflow-hidden"
+                style={{ background: 'var(--nm-base)', boxShadow: '8px 8px 20px rgba(0,0,0,.65), -4px -4px 12px rgba(255,255,255,.04)' }}
+              >
+                <div
+                  className="px-3 py-1 text-[10px] text-nm-muted uppercase tracking-widest font-medium mb-1"
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                >
                   Add folder
                 </div>
                 {[
@@ -131,7 +156,7 @@ export default function Sidebar() {
                 ].map(({ label, emoji }) => (
                   <button
                     key={label}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-sphera-text hover:bg-sphera-hover hover:text-white transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-nm-muted hover:text-nm-text transition-colors"
                     onClick={() => { addFolder(label); setShowFolderMenu(false); }}
                   >
                     <span>{emoji}</span>
@@ -153,11 +178,67 @@ export default function Sidebar() {
         )}
       </div>
 
+      {/* ── Edit Tools section ── */}
+      <div
+        className="flex-shrink-0 px-3 py-3"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <div className="text-[10px] text-nm-muted uppercase tracking-widest font-medium mb-2">Edit Tools</div>
+        <div className="grid grid-cols-2 gap-2">
+          <EditToolBtn
+            icon={<Plus size={13} />}
+            label="Hotspot"
+            active={activeTool === 'hotspot'}
+            disabled={scenes.length < 2}
+            onClick={() => setActiveTool(activeTool === 'hotspot' ? 'none' : 'hotspot')}
+            title="Add navigation hotspot [H]"
+          />
+          <EditToolBtn
+            icon={<Image size={13} />}
+            label="Media"
+            active={activeTool === 'media'}
+            disabled={scenes.length === 0}
+            onClick={() => setActiveTool(activeTool === 'media' ? 'none' : 'media')}
+            title="Add media point [M]"
+          />
+          <EditToolBtn
+            icon={<Music size={13} />}
+            label="Audio"
+            active={activeTool === 'audio'}
+            disabled={scenes.length === 0}
+            onClick={() => setActiveTool(activeTool === 'audio' ? 'none' : 'audio')}
+            title="Scene audio"
+          />
+          <EditToolBtn
+            icon={<Map size={13} />}
+            label="Floor Plan"
+            active={false}
+            disabled={false}
+            onClick={() => floorPlanInputRef.current?.click()}
+            title="Upload floor plan"
+          />
+        </div>
+      </div>
+
+      {/* Hidden floor plan input */}
+      <input
+        ref={floorPlanInputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = () => setFloorPlan(reader.result as string);
+            reader.readAsDataURL(file);
+          }
+          e.target.value = '';
+        }}
+      />
+
       {/* ── Footer hint ── */}
       {(scenes.length > 0 || folders.length > 0) && (
-        <div className="flex-shrink-0 px-3 py-2 border-t border-sphera-border">
-          <p className="text-[9px] text-sphera-border leading-relaxed">
-            Double-click to rename · Right-click for options · Drag to reorder
+        <div className="flex-shrink-0 px-3 pb-2">
+          <p className="text-[9px] text-nm-muted leading-relaxed opacity-50">
+            Double-click to rename · Right-click for options
           </p>
         </div>
       )}
@@ -165,15 +246,46 @@ export default function Sidebar() {
   );
 }
 
+function EditToolBtn({
+  icon, label, active, disabled, onClick, title,
+}: {
+  icon: React.ReactNode; label: string; active: boolean;
+  disabled: boolean; onClick: () => void; title?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={[
+        'flex items-center gap-1.5 px-2.5 py-2 rounded-nm-sm text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed',
+        active ? 'text-nm-accent' : 'text-nm-muted hover:text-nm-text',
+      ].join(' ')}
+      style={active ? {
+        boxShadow: 'inset 3px 3px 7px rgba(0,0,0,.55), inset -2px -2px 5px rgba(255,255,255,.04)',
+        background: 'rgba(224,123,63,0.1)',
+      } : {
+        boxShadow: '3px 3px 7px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)',
+      }}
+    >
+      {icon}
+      <span className="font-medium">{label}</span>
+    </button>
+  );
+}
+
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center">
-      <div className="w-12 h-12 rounded-xl bg-sphera-surface border border-sphera-border flex items-center justify-center mb-3">
-        <Layers size={20} className="text-sphera-muted" />
+      <div
+        className="w-12 h-12 rounded-nm flex items-center justify-center mb-3"
+        style={{ boxShadow: '4px 4px 10px rgba(0,0,0,.5), -2px -2px 6px rgba(255,255,255,.04)' }}
+      >
+        <Layers size={20} className="text-nm-muted opacity-50" />
       </div>
-      <p className="text-xs text-sphera-text font-medium mb-1">No scenes yet</p>
-      <p className="text-[11px] text-sphera-muted leading-snug">
-        Click <span className="text-white font-medium">Upload Panoramas</span> in the toolbar to import images, videos, or fisheye photos.
+      <p className="text-xs text-nm-text font-medium mb-1">No scenes yet</p>
+      <p className="text-[11px] text-nm-muted leading-snug">
+        Click <span className="text-nm-accent font-medium">Upload</span> in the toolbar to import panoramas.
       </p>
     </div>
   );

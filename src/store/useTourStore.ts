@@ -4,12 +4,20 @@ import type {
   Hotspot, MediaPoint, AudioSource,
   ToolMode, SelectedElementType,
   PanoramaFormat, MediaType,
+  AppScreen, Project, Tour,
 } from '../types';
 
 let _idCounter = 0;
 const genId = (prefix = 'id') => `${prefix}_${++_idCounter}_${Math.random().toString(36).slice(2, 7)}`;
 
 interface TourState {
+  // ── Navigation ────────────────────────────────────────────────────────────
+  currentScreen: AppScreen;
+  currentProjectId: string | null;
+  currentTourId: string | null;
+  projects: Record<string, Project>;
+  propsTab: 'scene' | 'hotspots' | 'media' | 'audio';
+
   // ── Data ──────────────────────────────────────────────────────────────────
   projectName: string;
   scenes: Scene[];
@@ -25,6 +33,17 @@ interface TourState {
   publishUrl: string | null;
   showPublishModal: boolean;
   isFloorPlanEditing: boolean;
+
+  // ── Navigation actions ────────────────────────────────────────────────────
+  addProject: (name: string, desc?: string) => string;
+  deleteProject: (id: string) => void;
+  openProject: (id: string) => void;
+  addTour: (projectId: string, name: string, desc?: string) => string;
+  deleteTour: (projectId: string, tourId: string) => void;
+  openTour: (projectId: string, tourId: string) => void;
+  saveTour: (name?: string) => void;
+  goBack: () => void;
+  setPropsTab: (tab: 'scene' | 'hotspots' | 'media' | 'audio') => void;
 
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name: string) => void;
@@ -85,6 +104,14 @@ interface TourState {
 
 export const useTourStore = create<TourState>()((set, get) => ({
   // ── Initial state ─────────────────────────────────────────────────────────
+  currentScreen: 'home',
+  currentProjectId: null,
+  currentTourId: null,
+  projects: (() => {
+    try { return JSON.parse(localStorage.getItem('sphera_v2') || '{}'); } catch (_e) { return {}; }
+  })(),
+  propsTab: 'scene',
+
   projectName: 'Untitled Tour',
   scenes: [],
   folders: [],
@@ -97,6 +124,108 @@ export const useTourStore = create<TourState>()((set, get) => ({
   publishUrl: null,
   showPublishModal: false,
   isFloorPlanEditing: false,
+
+  // ── Navigation actions ────────────────────────────────────────────────────
+  addProject: (name, desc) => {
+    const id = genId('proj');
+    const project: Project = { id, name, desc, created: Date.now(), tours: {} };
+    set(s => {
+      const updated = { ...s.projects, [id]: project };
+      try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
+      return { projects: updated };
+    });
+    return id;
+  },
+
+  deleteProject: (id) => set(s => {
+    const { [id]: _removed, ...rest } = s.projects;
+    try { localStorage.setItem('sphera_v2', JSON.stringify(rest)); } catch (_e) {}
+    return { projects: rest };
+  }),
+
+  openProject: (id) => set({ currentScreen: 'project', currentProjectId: id }),
+
+  addTour: (projectId, name, desc) => {
+    const id = genId('tour');
+    const tour: Tour = { id, name, desc, created: Date.now(), scenes: [], folders: [] };
+    set(s => {
+      const updated = {
+        ...s.projects,
+        [projectId]: {
+          ...s.projects[projectId],
+          tours: { ...s.projects[projectId].tours, [id]: tour },
+        },
+      };
+      try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
+      return { projects: updated };
+    });
+    return id;
+  },
+
+  deleteTour: (projectId, tourId) => set(s => {
+    const { [tourId]: _removed, ...rest } = s.projects[projectId]?.tours ?? {};
+    const updated = {
+      ...s.projects,
+      [projectId]: { ...s.projects[projectId], tours: rest },
+    };
+    try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
+    return { projects: updated };
+  }),
+
+  openTour: (projectId, tourId) => {
+    const state = get();
+    const tour = state.projects[projectId]?.tours?.[tourId];
+    if (!tour) return;
+    set({
+      currentScreen: 'editor',
+      currentProjectId: projectId,
+      currentTourId: tourId,
+      projectName: tour.name,
+      scenes: tour.scenes ?? [],
+      folders: tour.folders ?? [],
+      activeSceneId: tour.scenes?.[0]?.id ?? null,
+      selectedElementId: null,
+      selectedElementType: null,
+      activeTool: 'none',
+      isPreviewMode: false,
+    });
+  },
+
+  saveTour: (name) => {
+    const state = get();
+    const { currentProjectId: pid, currentTourId: tid, scenes, folders, projects } = state;
+    if (!pid || !tid || !projects[pid]) return;
+    const existing = projects[pid].tours[tid];
+    if (!existing) return;
+    const thumbUrl = scenes[0]?.thumbnail;
+    const updated: Tour = {
+      ...existing,
+      name: name ?? existing.name,
+      updated: Date.now(),
+      scenes,
+      folders,
+      thumbUrl,
+    };
+    const newProjects = {
+      ...projects,
+      [pid]: {
+        ...projects[pid],
+        tours: { ...projects[pid].tours, [tid]: updated },
+      },
+    };
+    set({ projects: newProjects });
+    try { localStorage.setItem('sphera_v2', JSON.stringify(newProjects)); } catch (_e) {
+      console.warn('Storage full');
+    }
+  },
+
+  goBack: () => {
+    const { currentScreen } = get();
+    if (currentScreen === 'editor') set({ currentScreen: 'project', isPreviewMode: false });
+    else if (currentScreen === 'project') set({ currentScreen: 'home' });
+  },
+
+  setPropsTab: (tab) => set({ propsTab: tab }),
 
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name) => set({ projectName: name }),

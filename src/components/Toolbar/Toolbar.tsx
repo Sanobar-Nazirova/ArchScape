@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import {
   Upload, Plus, Image, Music, Map, Eye, Globe,
-  X, Layers, MonitorPlay, Play, Pause,
+  X, Layers, MonitorPlay, ChevronLeft, Save,
 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import { detectPanorama } from '../../utils/panoramaDetector';
@@ -182,6 +182,7 @@ export default function Toolbar() {
   const {
     scenes, activeTool, setActiveTool, isPreviewMode, togglePreviewMode,
     addScene, publish, projectName, setProjectName, setFloorPlan,
+    goBack, saveTour,
   } = useTourStore();
 
   const panoramaInputRef = useRef<HTMLInputElement>(null);
@@ -264,14 +265,18 @@ export default function Toolbar() {
 
   if (isPreviewMode) {
     return (
-      <div className="flex items-center justify-between px-4 h-12 bg-sphera-bg border-b border-sphera-border flex-shrink-0">
+      <div
+        className="flex items-center justify-between px-4 h-12 flex-shrink-0"
+        style={{ background: 'var(--nm-base)', boxShadow: '0 4px 10px rgba(0,0,0,.5)' }}
+      >
         <div className="flex items-center gap-2">
-          <MonitorPlay size={15} className="text-sphera-accent" />
-          <span className="text-sm text-sphera-muted font-medium">Preview Mode</span>
+          <MonitorPlay size={15} className="text-nm-accent" />
+          <span className="text-sm text-nm-muted font-medium">Preview Mode</span>
         </div>
         <button
           onClick={togglePreviewMode}
-          className="flex items-center gap-2 px-4 py-1.5 bg-sphera-surface border border-sphera-border rounded-xl text-sm text-white hover:border-sphera-accent transition-colors"
+          className="flex items-center gap-2 px-4 py-1.5 text-sm text-nm-text rounded-nm-sm transition-all hover:text-nm-accent"
+          style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)' }}
         >
           <X size={13} />
           Exit Preview
@@ -282,16 +287,30 @@ export default function Toolbar() {
 
   return (
     <>
-      <div className="flex items-center h-14 bg-sphera-bg border-b border-sphera-border px-3 gap-1 select-none flex-shrink-0">
-        {/* Brand */}
-        <div className="flex items-center gap-2 mr-3 pr-3 border-r border-sphera-border">
-          <div className="w-7 h-7 rounded-lg bg-sphera-accent flex items-center justify-center flex-shrink-0">
+      <div
+        className="flex items-center h-14 px-3 gap-1 select-none flex-shrink-0"
+        style={{ background: 'var(--nm-base)', boxShadow: '0 4px 12px rgba(0,0,0,.5)' }}
+      >
+        {/* Back + Brand */}
+        <div className="flex items-center gap-2 mr-3 pr-3" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+          <button
+            onClick={goBack}
+            className="flex items-center gap-1 text-nm-muted hover:text-nm-text transition-colors text-xs mr-1"
+            title="Back to tours"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 8px rgba(224,123,63,.4)' }}
+          >
             <Layers size={14} className="text-white" />
           </div>
           {editingName ? (
             <input
               autoFocus
-              className="text-white text-sm font-bold bg-transparent border-b border-sphera-accent outline-none w-28"
+              className="text-nm-text text-sm font-bold bg-transparent outline-none w-28"
+              style={{ borderBottom: '1px solid var(--nm-accent)' }}
               value={projectName}
               onChange={e => setProjectName(e.target.value)}
               onBlur={() => setEditingName(false)}
@@ -299,11 +318,11 @@ export default function Toolbar() {
             />
           ) : (
             <span
-              className="text-white text-sm font-bold cursor-pointer hover:text-sphera-accent transition-colors"
-              title="Double-click to rename project"
+              className="text-nm-text text-sm font-bold cursor-pointer hover:text-nm-accent transition-colors font-syne"
+              title="Double-click to rename"
               onDoubleClick={() => setEditingName(true)}
             >
-              Sphera
+              {projectName}
             </span>
           )}
         </div>
@@ -311,7 +330,7 @@ export default function Toolbar() {
         {/* Upload Panoramas */}
         <ToolBtn
           icon={<Upload size={14} />}
-          label="Upload Panoramas"
+          label="Upload"
           tooltip="Upload equirectangular images or 360° videos (fisheye auto-detected)"
           onClick={() => panoramaInputRef.current?.click()}
         />
@@ -320,7 +339,7 @@ export default function Toolbar() {
 
         <ToolBtn
           icon={<Plus size={14} />}
-          label="Add Hotspot"
+          label="Hotspot"
           tooltip="Click in viewer to place navigation hotspot  [H]"
           active={activeTool === 'hotspot'}
           onClick={() => setActiveTool('hotspot')}
@@ -328,7 +347,7 @@ export default function Toolbar() {
         />
         <ToolBtn
           icon={<Image size={14} />}
-          label="Add Media"
+          label="Media"
           tooltip="Click in viewer to place media info point  [M]"
           active={activeTool === 'media'}
           onClick={() => setActiveTool('media')}
@@ -336,7 +355,7 @@ export default function Toolbar() {
         />
         <ToolBtn
           icon={<Music size={14} />}
-          label="Add Audio"
+          label="Audio"
           tooltip="Configure ambient or spatial audio for this scene"
           active={activeTool === 'audio'}
           onClick={() => setActiveTool('audio')}
@@ -356,7 +375,7 @@ export default function Toolbar() {
         <div className="flex-1" />
 
         {scenes.length > 0 && (
-          <span className="text-xs text-sphera-border mr-2 hidden md:block">
+          <span className="text-xs text-nm-muted mr-2 hidden md:block">
             {scenes.length} scene{scenes.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -364,16 +383,28 @@ export default function Toolbar() {
         <button
           onClick={togglePreviewMode}
           disabled={scenes.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-sphera-text border border-sphera-border rounded-xl hover:border-sphera-accent hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm"
+          style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)' }}
         >
           <Eye size={13} />
           Preview
         </button>
 
         <button
+          onClick={() => saveTour()}
+          disabled={scenes.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm ml-1"
+          style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)' }}
+        >
+          <Save size={13} />
+          Save
+        </button>
+
+        <button
           onClick={publish}
           disabled={scenes.length === 0}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-sphera-accent hover:bg-sphera-accent-hover text-white rounded-xl font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-1"
+          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-nm-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all ml-1 hover:scale-[1.02] active:scale-[0.98]"
+          style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 10px rgba(224,123,63,.4), -1px -1px 4px rgba(255,255,255,.05)' }}
         >
           <Globe size={13} />
           Publish
@@ -412,7 +443,7 @@ export default function Toolbar() {
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 function Divider() {
-  return <div className="w-px h-6 bg-sphera-border mx-1 flex-shrink-0" />;
+  return <div className="w-px h-6 mx-1 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }} />;
 }
 
 interface ToolBtnProps {
@@ -427,12 +458,14 @@ function ToolBtn({ icon, label, tooltip, active, disabled, onClick }: ToolBtnPro
       disabled={disabled}
       title={tooltip}
       className={[
-        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all select-none flex-shrink-0',
-        active
-          ? 'bg-sphera-accent/20 text-sphera-accent border border-sphera-accent/50'
-          : 'text-sphera-text hover:bg-sphera-hover hover:text-white border border-transparent',
+        'flex items-center gap-1.5 px-2.5 py-1.5 rounded-nm-sm text-xs font-medium transition-all select-none flex-shrink-0',
+        active ? 'text-nm-accent' : 'text-nm-muted hover:text-nm-text',
         disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
       ].join(' ')}
+      style={active ? {
+        boxShadow: 'inset 3px 3px 7px rgba(0,0,0,.55), inset -2px -2px 5px rgba(255,255,255,.04)',
+        background: 'rgba(224,123,63,0.12)',
+      } : {}}
     >
       {icon}
       <span className="hidden lg:block">{label}</span>
