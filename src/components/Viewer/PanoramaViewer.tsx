@@ -407,13 +407,13 @@ export default function PanoramaViewer({
       }, { once: true });
       video.load();
     } else if (scene.imageUrl) {
-      const img = new Image();
+      const img = new window.Image() as HTMLImageElement;
       img.onload = () => {
         const texture = new THREE.Texture(img);
         texture.needsUpdate = true;
         applyTexture(texture);
       };
-      img.onerror = (err) => console.error('Image load error:', err);
+      img.onerror = (_err: unknown) => console.error('Image load error');
       img.src = scene.imageUrl;
     }
   }, [scene?.id, scene?.imageUrl, scene?.format, scene?.mediaType]);  // eslint-disable-line react-hooks/exhaustive-deps
