@@ -3,9 +3,8 @@ import type {
   Scene, Folder, FloorPlan, FloorPlanMarker,
   Hotspot, MediaPoint, AudioSource,
   ToolMode, SelectedElementType,
-  PanoramaFormat, MediaType, HotspotIconStyle,
+  PanoramaFormat, MediaType,
 } from '../types';
-import { generateMockPanorama, generateThumbnail } from '../utils/panoramaGenerator';
 
 let _idCounter = 0;
 const genId = (prefix = 'id') => `${prefix}_${++_idCounter}_${Math.random().toString(36).slice(2, 7)}`;
@@ -30,7 +29,6 @@ interface TourState {
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name: string) => void;
   addScene: (imageUrl: string, name: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string) => string;
-  addMockScenes: () => Promise<void>;
   removeScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   reorderScenes: (activeId: string, overId: string) => void;
@@ -114,57 +112,6 @@ export const useTourStore = create<TourState>()((set, get) => ({
       activeSceneId: s.activeSceneId ?? id,
     }));
     return id;
-  },
-
-  addMockScenes: async () => {
-    const names = ['Entrance Hall', 'Living Room', 'Rooftop Terrace'];
-    const ids: string[] = [];
-    for (let i = 0; i < names.length; i++) {
-      const imageUrl = generateMockPanorama(i);
-      const thumbnail = await generateThumbnail(imageUrl);
-      const id = genId('scene');
-      const scene: Scene = {
-        id, name: names[i], imageUrl,
-        mediaType: 'panorama-image',
-        format: 'equirectangular-mono',
-        folderId: null,
-        hotspots: [],
-        mediaPoints: [],
-        audioSources: [],
-        initialYaw: 0, initialPitch: 0,
-        thumbnail,
-      };
-      ids.push(id);
-      set((s) => ({
-        scenes: [...s.scenes, scene],
-        activeSceneId: s.activeSceneId ?? id,
-      }));
-    }
-
-    // Add a sample hotspot from scene 0 → scene 1
-    const [s0, s1] = ids;
-    if (s0 && s1) {
-      get().addHotspot(s0, 0.4, -0.1);
-      const { scenes } = get();
-      const scene0 = scenes.find(s => s.id === s0);
-      if (scene0 && scene0.hotspots[0]) {
-        get().updateHotspot(s0, scene0.hotspots[0].id, {
-          targetSceneId: s1,
-          label: names[1],
-          iconStyle: 'arrow' as HotspotIconStyle,
-        });
-      }
-      // Add sample media point to scene 1
-      get().addMediaPoint(s1, -0.6, 0.05);
-      const scene1 = get().scenes.find(s => s.id === s1);
-      if (scene1 && scene1.mediaPoints[0]) {
-        get().updateMediaPoint(s1, scene1.mediaPoints[0].id, {
-          title: 'Design Notes',
-          type: 'text',
-          content: 'This space features a 4.2m ceiling with exposed concrete beams and floor-to-ceiling glazing on the south facade.',
-        });
-      }
-    }
   },
 
   removeScene: (id) => {

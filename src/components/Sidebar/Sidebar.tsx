@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, FolderPlus, ChevronDown, Layers, Image, Video } from 'lucide-react';
+import { Plus, FolderPlus, ChevronDown, Layers, Image } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import SceneList from './SceneList';
 
 export default function Sidebar() {
-  const { scenes, addMockScenes, addFolder, projectName } = useTourStore();
+  const { scenes, addFolder } = useTourStore();
   const [showAddMenu, setShowAddMenu] = useState(false);
 
   return (
@@ -40,14 +40,6 @@ export default function Sidebar() {
                   <FolderPlus size={13} className="text-sphera-muted" />
                   Add Group / Folder
                 </button>
-                <div className="border-t border-sphera-border my-1" />
-                <button
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-sphera-text hover:bg-sphera-hover"
-                  onClick={() => { addMockScenes(); setShowAddMenu(false); }}
-                >
-                  <Image size={13} className="text-sphera-muted" />
-                  Add Demo Scenes
-                </button>
               </div>
             </>
           )}
@@ -57,7 +49,7 @@ export default function Sidebar() {
       {/* Scene list */}
       <div className="flex-1 overflow-y-auto pt-1.5">
         {scenes.length === 0 ? (
-          <EmptyState onAddDemo={() => addMockScenes()} />
+          <EmptyState />
         ) : (
           <SceneList />
         )}
@@ -75,22 +67,16 @@ export default function Sidebar() {
   );
 }
 
-function EmptyState({ onAddDemo }: { onAddDemo: () => void }) {
+function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center">
       <div className="w-12 h-12 rounded-xl bg-sphera-surface border border-sphera-border flex items-center justify-center mb-3">
         <Image size={20} className="text-sphera-muted" />
       </div>
       <p className="text-xs text-sphera-text font-medium mb-1">No scenes yet</p>
-      <p className="text-[11px] text-sphera-muted mb-4 leading-snug">
-        Upload panoramic images or videos using the toolbar, or add demo scenes to get started.
+      <p className="text-[11px] text-sphera-muted leading-snug">
+        Click <span className="text-white font-medium">Upload Panoramas</span> in the toolbar to add equirectangular images, 360° videos, or fisheye photos.
       </p>
-      <button
-        onClick={onAddDemo}
-        className="px-3 py-1.5 text-xs bg-sphera-accent/20 text-sphera-accent border border-sphera-accent/30 rounded-lg hover:bg-sphera-accent/30 transition-colors"
-      >
-        Add Demo Scenes
-      </button>
     </div>
   );
 }

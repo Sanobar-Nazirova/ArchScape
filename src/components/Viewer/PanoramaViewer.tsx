@@ -146,9 +146,8 @@ function ZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut
 
 /* ─── Empty state ─────────────────────────────────────────────────────── */
 function EmptyViewer() {
-  const { addMockScenes } = useTourStore();
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 text-center select-none">
+    <div className="flex flex-col items-center justify-center h-full gap-5 text-center select-none px-8">
       <div className="w-20 h-20 rounded-2xl bg-sphera-surface border border-sphera-border flex items-center justify-center">
         <svg viewBox="0 0 80 80" className="w-12 h-12 text-sphera-muted" fill="none">
           <circle cx="40" cy="40" r="30" stroke="currentColor" strokeWidth="2" />
@@ -156,18 +155,25 @@ function EmptyViewer() {
           <line x1="40" y1="10" x2="40" y2="70" stroke="currentColor" strokeWidth="2" />
         </svg>
       </div>
-      <div>
-        <p className="text-white font-semibold text-lg mb-1">Start Your Virtual Tour</p>
-        <p className="text-sphera-muted text-sm max-w-xs leading-relaxed">
-          Upload equirectangular panoramas or 360° videos from the toolbar above, or add demo scenes to explore the editor.
+      <div className="space-y-2">
+        <p className="text-white font-semibold text-lg">Start Your Virtual Tour</p>
+        <p className="text-sphera-muted text-sm max-w-sm leading-relaxed">
+          Click <span className="text-white font-medium">Upload Panoramas</span> in the toolbar to import your files.
         </p>
       </div>
-      <button
-        onClick={addMockScenes}
-        className="px-5 py-2.5 bg-sphera-accent hover:bg-sphera-accent-hover text-white text-sm rounded-xl font-medium transition-colors"
-      >
-        Add Demo Scenes
-      </button>
+      <div className="grid grid-cols-3 gap-3 text-center w-full max-w-sm">
+        {[
+          { label: 'Equirectangular', sub: 'JPG · PNG · WEBP', icon: '🌐' },
+          { label: '360° Video',      sub: 'MP4 · WEBM · MOV', icon: '🎬' },
+          { label: 'Fisheye',         sub: 'Auto-converted',    icon: '👁' },
+        ].map(({ label, sub, icon }) => (
+          <div key={label} className="bg-sphera-surface border border-sphera-border rounded-xl p-3">
+            <div className="text-2xl mb-1">{icon}</div>
+            <p className="text-xs text-sphera-text font-medium leading-tight">{label}</p>
+            <p className="text-[10px] text-sphera-muted mt-0.5">{sub}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
