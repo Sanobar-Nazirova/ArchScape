@@ -79,6 +79,27 @@ export interface FloorPlan {
 
 export type SelectedElementType = 'scene' | 'hotspot' | 'media' | 'audio' | null;
 
+export type AppScreen = 'home' | 'project' | 'editor';
+
+export interface Project {
+  id: string;
+  name: string;
+  desc?: string;
+  created: number;
+  tours: Record<string, Tour>;
+}
+
+export interface Tour {
+  id: string;
+  name: string;
+  desc?: string;
+  created: number;
+  updated?: number;
+  thumbUrl?: string;
+  scenes: Scene[];
+  folders: Folder[];
+}
+
 export interface FisheyeConfig {
   type: 'single' | 'dual-sbs' | 'dual-tb';
   fov: number;       // degrees (typically 180)

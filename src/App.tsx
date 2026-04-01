@@ -3,6 +3,8 @@ import Toolbar from './components/Toolbar/Toolbar';
 import Sidebar from './components/Sidebar/Sidebar';
 import PanoramaViewer from './components/Viewer/PanoramaViewer';
 import PropertiesPanel from './components/PropertiesPanel/PropertiesPanel';
+import HomeScreen from './screens/HomeScreen';
+import ProjectScreen from './screens/ProjectScreen';
 import { useTourStore } from './store/useTourStore';
 import type { Hotspot } from './types';
 import { ChevronLeft, ChevronRight, Maximize2, Eye } from 'lucide-react';
@@ -99,7 +101,12 @@ export default function App() {
     activeTool, setActiveTool,
     addHotspot, addMediaPoint,
     isPreviewMode,
+    currentScreen,
   } = useTourStore();
+
+  // Route to home/project screens
+  if (currentScreen === 'home') return <HomeScreen />;
+  if (currentScreen === 'project') return <ProjectScreen />;
 
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
 
@@ -152,7 +159,7 @@ export default function App() {
 
   /* ── Editor layout ── */
   return (
-    <div className="w-screen h-screen overflow-hidden flex flex-col bg-sphera-bg">
+    <div className="w-screen h-screen overflow-hidden flex flex-col" style={{ background: 'var(--nm-base)' }}>
       <Toolbar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left sidebar */}
