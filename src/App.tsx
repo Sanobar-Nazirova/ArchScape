@@ -156,7 +156,7 @@ export default function App() {
       <Toolbar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left sidebar */}
-        <div className="w-56 flex-shrink-0 overflow-hidden">
+        <div className="w-64 flex-shrink-0 overflow-hidden">
           <Sidebar />
         </div>
 
