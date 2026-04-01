@@ -49,7 +49,7 @@ interface TourState {
 
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name: string) => void;
-  addScene: (imageUrl: string, name: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string) => string;
+  addScene: (imageUrl: string, name: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string, aspectRatio?: number) => string;
   removeScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   reorderScenes: (activeId: string, overId: string) => void;
@@ -244,7 +244,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name) => set({ projectName: name }),
 
-  addScene: (imageUrl, name, format, mediaType, thumbnail) => {
+  addScene: (imageUrl, name, format, mediaType, thumbnail, aspectRatio) => {
     const id = genId('scene');
     const scene: Scene = {
       id, name, imageUrl, mediaType, format,
@@ -255,6 +255,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
       initialYaw: 0,
       initialPitch: 0,
       thumbnail,
+      aspectRatio,
     };
     set((s) => ({
       scenes: [...s.scenes, scene],

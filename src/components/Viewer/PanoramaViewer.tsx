@@ -10,10 +10,11 @@ import type {
   Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle, ProjectedItem,
 } from '../../types';
 import { triggerUpload } from '../../utils/uploadTrigger';
+import { formatShortLabel } from '../../utils/panoramaDetector';
 import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
-  Play, Pause, Volume2, ZoomIn, ZoomOut, Upload,
+  Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
 } from 'lucide-react';
 
 /* ─── HotspotIcon ─────────────────────────────────────────────────────── */
@@ -26,19 +27,21 @@ const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
 };
 
 function HotspotMarker({
-  hotspot, isSelected, isPreview, onClick,
+  hotspot, isSelected, isPreview, onClick, targetSceneName,
 }: {
   hotspot: Hotspot;
   isSelected: boolean;
   isPreview: boolean;
   onClick: () => void;
+  targetSceneName?: string;
 }) {
+  // Show tooltip: custom label > linked scene name > nothing
+  const tooltip = hotspot.label || targetSceneName;
+
   return (
     <button
       onClick={onClick}
-      className={[
-        'flex flex-col items-center gap-1 group focus:outline-none',
-      ].join(' ')}
+      className="flex flex-col items-center gap-1 group focus:outline-none"
     >
       <div className={[
         'w-10 h-10 rounded-full flex items-center justify-center transition-all',
@@ -52,14 +55,15 @@ function HotspotMarker({
       >
         {HOTSPOT_ICONS[hotspot.iconStyle]}
       </div>
-      {hotspot.label && (
+      {tooltip && (
         <span className={[
-          'text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border whitespace-nowrap',
+          'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
           isSelected
-            ? 'bg-nm-accent text-white border-white/30'
-            : 'bg-black/60 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
+            ? 'bg-nm-accent text-white border-white/30 opacity-100'
+            : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
         ].join(' ')}>
-          {hotspot.label}
+          {targetSceneName && !hotspot.label && <span className="mr-1 opacity-60">→</span>}
+          {tooltip}
         </span>
       )}
     </button>
@@ -216,7 +220,7 @@ export default function PanoramaViewer({
   scene, isPreviewMode, activeTool, selectedElementId,
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
 }: PanoramaViewerProps) {
-  const { floorPlan, setActiveScene } = useTourStore();
+  const { floorPlan, setActiveScene, scenes } = useTourStore();
 
   // ── Three.js refs ──────────────────────────────────────────────────────
   const containerRef  = useRef<HTMLDivElement>(null);
@@ -386,19 +390,63 @@ export default function PanoramaViewer({
     setActiveMedia(null);
 
     const applyTexture = (texture: THREE.Texture) => {
-      texture.colorSpace  = THREE.SRGBColorSpace;
-      texture.wrapS       = THREE.ClampToEdgeWrapping;
-      texture.wrapT       = THREE.ClampToEdgeWrapping;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
 
-      // Handle stereo formats by UV cropping
+      // ── Swap geometry based on panorama format ────────────────────────
+      const mesh = sphereRef.current!;
+      const oldGeo = mesh.geometry;
+      let newGeo: THREE.BufferGeometry;
+      const ar = scene.aspectRatio ?? 2;
+
+      switch (scene.format) {
+        case 'cylindrical': {
+          // Open cylinder — 360° horizontal, limited vertical based on AR
+          const height = Math.min(800, 500 / Math.max(ar, 0.5));
+          newGeo = new THREE.CylinderGeometry(500, 500, height, 64, 1, true);
+          // Cylinder UV wraps correctly with BackSide
+          break;
+        }
+        case 'partial':
+        case 'rectilinear': {
+          // Partial sphere — limit horizontal spread based on AR
+          // phiLength = horizontal FOV in radians (estimate from AR)
+          const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8; // ~150° or ~100°
+          const vFov = hFov / Math.max(ar, 0.1);
+          newGeo = new THREE.SphereGeometry(500, 48, 24,
+            -hFov / 2, hFov,                          // phi (horizontal)
+            Math.PI / 2 - vFov / 2, vFov              // theta (vertical)
+          );
+          break;
+        }
+        case 'vertical': {
+          // Tall narrow — partial sphere tilted
+          const vFov2 = Math.PI * 1.2; // ~216°
+          const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (scene.aspectRatio ?? 0.4));
+          newGeo = new THREE.SphereGeometry(500, 32, 48,
+            -hFov2 / 2, hFov2,
+            Math.PI / 2 - vFov2 / 2, vFov2
+          );
+          break;
+        }
+        default:
+          // equirectangular-mono/sbs/tb, fisheye-*, cubic, unknown → sphere
+          newGeo = new THREE.SphereGeometry(500, 64, 32);
+      }
+
+      if (oldGeo !== newGeo) {
+        oldGeo.dispose();
+        mesh.geometry = newGeo;
+      }
+
+      // ── UV adjustments for stereo formats ─────────────────────────────
       switch (scene.format) {
         case 'equirectangular-sbs':
-          // Left eye = left half
           texture.repeat.set(0.5, 1);
           texture.offset.set(0, 0);
           break;
         case 'equirectangular-tb':
-          // Left eye = top half (UV y=0.5 to 1.0)
           texture.repeat.set(1, 0.5);
           texture.offset.set(0, 0.5);
           break;
@@ -407,8 +455,13 @@ export default function PanoramaViewer({
           texture.offset.set(0, 0);
       }
 
-      textureRef.current   = texture;
-      mat.map              = texture;
+      // ── Flip sphere inside-out for BackSide rendering ──────────────────
+      mat.side = (scene.format === 'partial' || scene.format === 'rectilinear' || scene.format === 'vertical')
+        ? THREE.BackSide
+        : THREE.BackSide; // always BackSide — camera is inside
+
+      textureRef.current = texture;
+      mat.map = texture;
       mat.color.set(0xffffff);
       mat.needsUpdate      = true;
     };
@@ -583,6 +636,7 @@ export default function PanoramaViewer({
                       hotspot={item.data as Hotspot}
                       isSelected={selectedElementId === item.id}
                       isPreview={isPreviewMode}
+                      targetSceneName={scenes.find(s => s.id === (item.data as Hotspot).targetSceneId)?.name}
                       onClick={() => {
                         if (isPreviewMode) onHotspotClick(item.data as Hotspot);
                         else onHotspotSelect(item.id);
@@ -612,15 +666,26 @@ export default function PanoramaViewer({
             </div>
           )}
 
-          {/* ── Scene label (editor mode) ── */}
+          {/* ── Scene label + format badge (editor mode) ── */}
           {!isPreviewMode && (
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 pointer-events-none">
-              <div className={[
-                'w-2 h-2 rounded-full',
-                scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-nm-accent',
-              ].join(' ')} />
-              <span className="text-white text-xs font-medium">{scene.name}</span>
-              <span className="text-white/40 text-[10px]">{scene.format.replace('equirectangular-', '').toUpperCase()}</span>
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2 pointer-events-none">
+              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+                <div className={[
+                  'w-2 h-2 rounded-full flex-shrink-0',
+                  scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-nm-accent',
+                ].join(' ')} />
+                <span className="text-white text-xs font-medium">{scene.name}</span>
+                <span className="text-white/40 text-[10px] border-l border-white/10 pl-2">
+                  {formatShortLabel(scene.format)}
+                </span>
+              </div>
+              {/* Fisheye warning — not yet converted */}
+              {scene.format.startsWith('fisheye') && (
+                <div className="flex items-center gap-1.5 bg-yellow-500/90 backdrop-blur-sm px-2.5 py-1.5 rounded-xl pointer-events-auto">
+                  <AlertTriangle size={11} className="text-black" />
+                  <span className="text-black text-[10px] font-semibold">Fisheye — convert for best quality</span>
+                </div>
+              )}
             </div>
           )}
 

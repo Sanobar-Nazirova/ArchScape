@@ -1,10 +1,18 @@
 export type PanoramaFormat =
-  | 'equirectangular-mono'
-  | 'equirectangular-sbs'   // stereo side-by-side (4:1 total)
-  | 'equirectangular-tb'    // stereo top-bottom
-  | 'fisheye-single'        // single fisheye circle
-  | 'fisheye-dual-sbs'      // dual fisheye side-by-side (like Ricoh Theta)
-  | 'fisheye-dual-tb'       // dual fisheye top-bottom
+  // ── Equirectangular family ──────────────────────────────────────────────
+  | 'equirectangular-mono'   // 2:1  — full sphere (most common)
+  | 'equirectangular-sbs'   // 4:1  — stereo side-by-side
+  | 'equirectangular-tb'    // 1:1  — stereo top-bottom
+  // ── Fisheye family (need conversion before display) ─────────────────────
+  | 'fisheye-single'        // ~1:1 — one fisheye circle
+  | 'fisheye-dual-sbs'      // ~2:1 — two circles side-by-side (Theta, Insta360)
+  | 'fisheye-dual-tb'       // ~1:2 — two circles top-bottom
+  // ── Other panorama types ────────────────────────────────────────────────
+  | 'cylindrical'           // 360° H × limited V, very wide aspect ratio
+  | 'partial'               // < 360° H — wide-angle landscape shot
+  | 'rectilinear'           // < 120° FOV, straight lines, flat projection
+  | 'vertical'              // Vertical axis — tall buildings / waterfalls
+  | 'cubic'                 // 6-face cubemap
   | 'unknown';
 
 export type MediaType = 'panorama-image' | 'panorama-video';
@@ -54,6 +62,7 @@ export interface Scene {
   audioSources: AudioSource[];
   initialYaw: number;
   initialPitch: number;
+  aspectRatio?: number;      // original image width/height ratio
   thumbnail?: string;
   tags?: string[];
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trash2, RotateCcw, Camera } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
-import { ALL_FORMATS, formatLabel } from '../../utils/panoramaDetector';
+import { ALL_FORMATS, formatLabel, formatShortLabel } from '../../utils/panoramaDetector';
 import type { Scene } from '../../types';
 
 interface ScenePropertiesProps {
@@ -54,15 +54,21 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
             <option key={f} value={f}>{formatLabel(f)}</option>
           ))}
         </select>
-        {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
-          <p className="text-[10px] text-nm-muted mt-1 leading-snug">
-            Stereo format detected — viewer will display the left eye channel.
-          </p>
-        )}
         {scene.format.startsWith('fisheye') && (
-          <p className="text-[10px] text-yellow-400/70 mt-1 leading-snug">
-            Fisheye format — use the Convert tool in the toolbar to convert before import.
-          </p>
+          <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <span className="text-yellow-400 text-[10px] leading-snug">
+              ⚠ Fisheye images display best after conversion. Re-upload and choose "Convert &amp; Import" in the dialog.
+            </span>
+          </div>
+        )}
+        {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">Stereo — left eye shown.</p>
+        )}
+        {scene.format === 'cylindrical' && (
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">360° horizontal, limited vertical field of view.</p>
+        )}
+        {(scene.format === 'partial' || scene.format === 'rectilinear') && (
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">Wide-angle, less than 360° coverage.</p>
         )}
       </Field>
 

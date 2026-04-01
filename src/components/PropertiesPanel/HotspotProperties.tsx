@@ -19,32 +19,42 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
   return (
     <div className="space-y-5">
       {/* Destination */}
-      <Field label="Destination Scene">
+      <Field label="Link to Scene">
         {otherScenes.length === 0 ? (
-          <p className="text-xs text-nm-muted italic">Add more scenes to create navigation.</p>
+          <div className="px-3 py-2 rounded-lg bg-nm-surface/50 text-[11px] text-nm-muted">
+            Upload more scenes to enable navigation links.
+          </div>
         ) : (
-          <select
-            value={hotspot.targetSceneId}
-            onChange={e => update({ targetSceneId: e.target.value })}
-            className="input-base"
-          >
-            <option value="">— Select destination —</option>
-            {otherScenes.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          <>
+            <select
+              value={hotspot.targetSceneId}
+              onChange={e => update({ targetSceneId: e.target.value })}
+              className="input-base"
+            >
+              <option value="">— Select destination scene —</option>
+              {otherScenes.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {hotspot.targetSceneId && (
+              <p className="text-[10px] text-nm-accent mt-1">
+                → Hover tooltip will show "{otherScenes.find(s => s.id === hotspot.targetSceneId)?.name}"
+              </p>
+            )}
+          </>
         )}
       </Field>
 
-      {/* Label */}
-      <Field label="Hotspot Label">
+      {/* Label override */}
+      <Field label="Custom Tooltip Label">
         <input
           type="text"
           value={hotspot.label}
-          placeholder="e.g. Enter Kitchen"
+          placeholder="Leave blank to show scene name"
           onChange={e => update({ label: e.target.value })}
           className="input-base"
         />
+        <p className="text-[10px] text-nm-muted mt-1">Overrides the linked scene name on hover.</p>
       </Field>
 
       {/* Icon style */}

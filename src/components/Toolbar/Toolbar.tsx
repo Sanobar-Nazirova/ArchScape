@@ -255,7 +255,7 @@ export default function Toolbar() {
         setProcessingMsg(`Processing ${file.name}…`);
         const thumbnail = await generateThumbnail(imageUrl);
         const sceneName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-        addScene(imageUrl, sceneName, finalFormat, detection.mediaType, thumbnail);
+        addScene(imageUrl, sceneName, finalFormat, detection.mediaType, thumbnail, detection.aspectRatio);
       } catch (err) {
         console.error('Failed to process file:', err);
       }
