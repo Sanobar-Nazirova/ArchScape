@@ -16,15 +16,17 @@ export default {
           text: '#c8cce0',
           muted: '#6b7094',
         },
-        // New neumorphic design tokens
+        // New neumorphic design tokens — reference CSS variables so dark/light themes work
         nm: {
-          base: '#1e1e26',
-          text: '#e0ddd8',
-          muted: 'rgba(224,221,216,0.42)',
-          accent: '#e07b3f',
-          'accent-hover': '#c96928',
-          teal: '#3bbfb5',
-          danger: '#e05454',
+          base:         'var(--nm-base)',
+          surface:      'var(--nm-surface)',
+          text:         'var(--nm-text)',
+          muted:        'var(--nm-muted)',
+          accent:       'var(--nm-accent)',
+          'accent-hover': 'var(--nm-accent-hover)',
+          teal:         'var(--nm-teal)',
+          danger:       'var(--nm-danger)',
+          border:       'var(--nm-border)',
         },
       },
       fontFamily: {

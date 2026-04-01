@@ -9,10 +9,11 @@ import { useTourStore } from '../../store/useTourStore';
 import type {
   Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle, ProjectedItem,
 } from '../../types';
+import { triggerUpload } from '../../utils/uploadTrigger';
 import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
-  Play, Pause, Volume2, ZoomIn, ZoomOut,
+  Play, Pause, Volume2, ZoomIn, ZoomOut, Upload,
 } from 'lucide-react';
 
 /* ─── HotspotIcon ─────────────────────────────────────────────────────── */
@@ -147,30 +148,50 @@ function ZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut
 /* ─── Empty state ─────────────────────────────────────────────────────── */
 function EmptyViewer() {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-5 text-center select-none px-8">
-      <div className="w-20 h-20 rounded-2xl bg-sphera-surface border border-sphera-border flex items-center justify-center">
-        <svg viewBox="0 0 80 80" className="w-12 h-12 text-sphera-muted" fill="none">
-          <circle cx="40" cy="40" r="30" stroke="currentColor" strokeWidth="2" />
-          <ellipse cx="40" cy="40" rx="30" ry="14" stroke="currentColor" strokeWidth="2" />
-          <line x1="40" y1="10" x2="40" y2="70" stroke="currentColor" strokeWidth="2" />
+    <div className="flex flex-col items-center justify-center h-full gap-6 text-center select-none px-8">
+      {/* Globe icon */}
+      <div
+        className="w-24 h-24 rounded-nm flex items-center justify-center"
+        style={{ boxShadow: '8px 8px 18px var(--sh-d), -5px -5px 12px var(--sh-l)' }}
+      >
+        <svg viewBox="0 0 80 80" className="w-14 h-14 text-nm-accent opacity-60" fill="none">
+          <circle cx="40" cy="40" r="30" stroke="currentColor" strokeWidth="2.5" />
+          <ellipse cx="40" cy="40" rx="30" ry="14" stroke="currentColor" strokeWidth="2.5" />
+          <line x1="40" y1="10" x2="40" y2="70" stroke="currentColor" strokeWidth="2.5" />
         </svg>
       </div>
+
       <div className="space-y-2">
-        <p className="text-white font-semibold text-lg">Start Your Virtual Tour</p>
-        <p className="text-sphera-muted text-sm max-w-sm leading-relaxed">
-          Click <span className="text-white font-medium">Upload Panoramas</span> in the toolbar to import your files.
+        <p className="font-syne font-semibold text-lg text-nm-text">Add Your First Scene</p>
+        <p className="text-nm-muted text-sm max-w-xs leading-relaxed">
+          Upload panoramic images or 360° videos to start building your virtual tour.
         </p>
       </div>
+
+      {/* Upload CTA */}
+      <button
+        onClick={triggerUpload}
+        className="flex items-center gap-2.5 px-6 py-3 text-sm font-semibold text-white rounded-nm-sm transition-all hover:scale-[1.03] active:scale-[0.97]"
+        style={{ background: 'var(--nm-accent)', boxShadow: '5px 5px 14px rgba(224,123,63,.4), -2px -2px 6px rgba(255,255,255,.06)' }}
+      >
+        <Upload size={15} />
+        Upload Panoramas
+      </button>
+
       <div className="grid grid-cols-3 gap-3 text-center w-full max-w-sm">
         {[
           { label: 'Equirectangular', sub: 'JPG · PNG · WEBP', icon: '🌐' },
           { label: '360° Video',      sub: 'MP4 · WEBM · MOV', icon: '🎬' },
-          { label: 'Fisheye',         sub: 'Auto-converted',    icon: '👁' },
+          { label: 'Fisheye',         sub: 'Auto-detected',    icon: '👁' },
         ].map(({ label, sub, icon }) => (
-          <div key={label} className="bg-sphera-surface border border-sphera-border rounded-xl p-3">
+          <div
+            key={label}
+            className="rounded-nm-sm p-3"
+            style={{ boxShadow: 'inset 3px 3px 7px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in)' }}
+          >
             <div className="text-2xl mb-1">{icon}</div>
-            <p className="text-xs text-sphera-text font-medium leading-tight">{label}</p>
-            <p className="text-[10px] text-sphera-muted mt-0.5">{sub}</p>
+            <p className="text-xs text-nm-text font-medium leading-tight">{label}</p>
+            <p className="text-[10px] text-nm-muted mt-0.5">{sub}</p>
           </div>
         ))}
       </div>
@@ -520,8 +541,8 @@ export default function PanoramaViewer({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-sphera-bg select-none"
-      style={{ cursor: scene ? cursor : 'default' }}
+      className="relative w-full h-full overflow-hidden select-none"
+      style={{ background: 'var(--nm-base)', cursor: scene ? cursor : 'default' }}
       onMouseDown={scene ? handleMouseDown : undefined}
       onMouseMove={scene ? handleMouseMove : undefined}
       onMouseUp={scene ? handleMouseUp : undefined}
@@ -536,7 +557,7 @@ export default function PanoramaViewer({
 
       {/* ── Empty state overlay ── */}
       {!scene && (
-        <div className="absolute inset-0 z-20 bg-sphera-bg flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 z-20 flex items-center justify-center" style={{ background: 'var(--nm-base)', pointerEvents: 'auto' }}>
           <EmptyViewer />
         </div>
       )}

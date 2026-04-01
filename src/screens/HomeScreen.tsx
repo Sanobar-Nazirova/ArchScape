@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, FolderOpen, Trash2, X, Layers } from 'lucide-react';
 import { useTourStore } from '../store/useTourStore';
+import ThemeToggle from '../components/ThemeToggle';
 import type { Project } from '../types';
 
 /* ─── New Project Modal ─────────────────────────────────────────────────── */
@@ -145,26 +146,29 @@ export default function HomeScreen() {
       {/* Nav */}
       <header
         className="flex-shrink-0 flex items-center justify-between px-8 h-16"
-        style={{ boxShadow: '0 4px 12px rgba(0,0,0,.4)' }}
+        style={{ boxShadow: '0 4px 14px var(--sh-d)' }}
       >
         <div className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-nm-sm flex items-center justify-center"
-            style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 10px rgba(224,123,63,.4), -2px -2px 6px rgba(255,255,255,.06)' }}
+            style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 10px rgba(224,123,63,.4)' }}
           >
             <Layers size={17} className="text-white" />
           </div>
           <span className="font-syne text-lg font-bold text-nm-text">Sphera</span>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-nm-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 12px rgba(224,123,63,.35), -2px -2px 6px rgba(255,255,255,.05)' }}
-        >
-          <Plus size={15} />
-          New Project
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-nm-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 12px rgba(224,123,63,.35)' }}
+          >
+            <Plus size={15} />
+            New Project
+          </button>
+        </div>
       </header>
 
       {/* Content */}

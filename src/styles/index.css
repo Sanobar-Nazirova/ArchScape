@@ -2,25 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* ── Dark theme (default) ─────────────────────────────────────── */
+:root, [data-theme="dark"] {
   color-scheme: dark;
   --nm-base: #1e1e26;
+  --nm-surface: #25252f;
   --nm-text: #e0ddd8;
   --nm-muted: rgba(224,221,216,0.42);
+  --nm-border: rgba(255,255,255,0.07);
   --nm-accent: #e07b3f;
   --nm-accent-hover: #c96928;
   --nm-teal: #3bbfb5;
   --nm-danger: #e05454;
+  /* shadow tokens */
+  --sh-d: rgba(0,0,0,0.62);
+  --sh-l: rgba(255,255,255,0.05);
+  --sh-d-in: rgba(0,0,0,0.58);
+  --sh-l-in: rgba(255,255,255,0.04);
+  /* radii */
   --r: 18px;
   --r-sm: 11px;
   --r-lg: 26px;
 }
 
+/* ── Light theme ────────────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+  --nm-base: #eae8e4;
+  --nm-surface: #e0deda;
+  --nm-text: #2a2825;
+  --nm-muted: rgba(42,40,37,0.48);
+  --nm-border: rgba(0,0,0,0.08);
+  --nm-accent: #e07b3f;
+  --nm-accent-hover: #c96928;
+  --nm-teal: #2da89f;
+  --nm-danger: #cc3333;
+  /* shadow tokens — warm gray cast */
+  --sh-d: rgba(163,157,150,0.68);
+  --sh-l: rgba(255,255,255,0.90);
+  --sh-d-in: rgba(163,157,150,0.55);
+  --sh-l-in: rgba(255,255,255,0.85);
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #1e1e26;
-  color: #e0ddd8;
+  background: var(--nm-base);
+  color: var(--nm-text);
   font-weight: 400;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 /* Scrollbar styling */
@@ -29,14 +58,14 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e1e26;
+  background: var(--nm-base);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(224,221,216,0.15);
+  background: var(--nm-border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(224,221,216,0.25);
+  background: var(--nm-muted);
 }
 
 /* Three.js canvas */
@@ -120,122 +149,83 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 3px 3px 6px rgba(0,0,0,0.5), -1px -1px 4px rgba(255,255,255,0.05);
 }
 
+/* ── Neumorphic shadow helpers (theme-aware) ─────────────────────────── */
+.nm-up   { box-shadow:  6px  6px 14px var(--sh-d), -4px -4px 10px var(--sh-l); }
+.nm-up-lg{ box-shadow: 10px 10px 24px var(--sh-d), -6px -6px 16px var(--sh-l); }
+.nm-in   { box-shadow: inset  4px  4px 10px var(--sh-d-in), inset -3px -3px  8px var(--sh-l-in); }
+.nm-in-sm{ box-shadow: inset  2px  2px  6px var(--sh-d-in), inset -2px -2px  5px var(--sh-l-in); }
+.nm-flat { box-shadow:  2px  2px  6px var(--sh-d), -1px -1px 4px var(--sh-l); }
+
 /* ── Component utilities ─────────────────────────────────────────────── */
 @layer components {
   /* Legacy input for backward compat */
   .input-base {
-    @apply w-full rounded-[11px] px-3 py-2 text-sm outline-none placeholder-[rgba(224,221,216,0.3)];
-    background: #1e1e26;
-    color: #e0ddd8;
+    @apply w-full rounded-[11px] px-3 py-2 text-sm outline-none;
+    background: var(--nm-base);
+    color: var(--nm-text);
     border: none;
-    box-shadow: inset 2px 2px 6px rgba(0,0,0,.55), inset -2px -2px 5px rgba(255,255,255,.04);
+    box-shadow: inset 2px 2px 6px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in);
     transition: box-shadow 0.15s ease;
   }
+  .input-base::placeholder { color: var(--nm-muted); }
   .input-base:focus {
-    box-shadow: inset 4px 4px 10px rgba(0,0,0,.6), inset -3px -3px 8px rgba(255,255,255,.04), 0 0 0 2px rgba(224,123,63,0.35);
+    box-shadow: inset 4px 4px 10px var(--sh-d-in), inset -3px -3px 8px var(--sh-l-in), 0 0 0 2px rgba(224,123,63,0.35);
   }
 
   /* Neumorphic raised pill button */
   .nm-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-flex; align-items: center; justify-content: center;
     gap: 6px;
-    background: #1e1e26;
-    color: rgba(224,221,216,0.42);
-    border: none;
-    border-radius: 17px;
-    padding: 0 15px;
-    height: 34px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
+    background: var(--nm-base);
+    color: var(--nm-muted);
+    border: none; border-radius: 17px;
+    padding: 0 15px; height: 34px;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
     cursor: pointer;
-    box-shadow: 6px 6px 14px rgba(0,0,0,.6), -4px -4px 10px rgba(255,255,255,.04);
-    transition: all 0.15s ease;
-    white-space: nowrap;
+    box-shadow: 6px 6px 14px var(--sh-d), -4px -4px 10px var(--sh-l);
+    transition: all 0.15s ease; white-space: nowrap;
   }
-  .nm-btn:hover {
-    color: #e0ddd8;
-    box-shadow: 10px 10px 24px rgba(0,0,0,.65), -6px -6px 16px rgba(255,255,255,.05);
-  }
-  .nm-btn:active {
-    box-shadow: inset 2px 2px 6px rgba(0,0,0,.55), inset -2px -2px 5px rgba(255,255,255,.04);
-  }
-  .nm-btn:disabled {
-    opacity: 0.38;
-    cursor: not-allowed;
-  }
+  .nm-btn:hover  { color: var(--nm-text); box-shadow: 10px 10px 24px var(--sh-d), -6px -6px 16px var(--sh-l); }
+  .nm-btn:active { box-shadow: inset 2px 2px 6px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in); }
+  .nm-btn:disabled { opacity: 0.38; cursor: not-allowed; }
 
   /* Neumorphic accent button */
   .nm-btn-accent {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-flex; align-items: center; justify-content: center;
     gap: 6px;
-    background: #e07b3f;
-    color: white;
-    border: none;
-    border-radius: 17px;
-    padding: 0 15px;
-    height: 34px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
+    background: var(--nm-accent); color: white; border: none;
+    border-radius: 17px; padding: 0 15px; height: 34px;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
     cursor: pointer;
-    box-shadow: 4px 4px 10px rgba(0,0,0,.4), -2px -2px 6px rgba(255,255,255,.06), inset 0 1px 0 rgba(255,255,255,.2);
-    transition: all 0.15s ease;
-    white-space: nowrap;
+    box-shadow: 4px 4px 10px rgba(0,0,0,.3), -2px -2px 6px rgba(255,255,255,.08), inset 0 1px 0 rgba(255,255,255,.2);
+    transition: all 0.15s ease; white-space: nowrap;
   }
-  .nm-btn-accent:hover {
-    background: #c96928;
-  }
-  .nm-btn-accent:disabled {
-    opacity: 0.38;
-    cursor: not-allowed;
-  }
+  .nm-btn-accent:hover   { background: var(--nm-accent-hover); }
+  .nm-btn-accent:disabled{ opacity: 0.38; cursor: not-allowed; }
 
   /* Neumorphic inset input */
   .nm-input {
-    width: 100%;
-    background: #1e1e26;
-    color: #e0ddd8;
-    border: none;
-    border-radius: 9px;
-    padding: 8px 12px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 400;
-    box-shadow: inset 2px 2px 6px rgba(0,0,0,.55), inset -2px -2px 5px rgba(255,255,255,.04);
+    width: 100%; background: var(--nm-base); color: var(--nm-text);
+    border: none; border-radius: 9px; padding: 8px 12px;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 400;
+    box-shadow: inset 2px 2px 6px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in);
     transition: box-shadow 0.15s ease;
   }
-  .nm-input::placeholder {
-    color: rgba(224,221,216,0.3);
-  }
+  .nm-input::placeholder { color: var(--nm-muted); }
   .nm-input:focus {
-    box-shadow: inset 4px 4px 10px rgba(0,0,0,.6), inset -3px -3px 8px rgba(255,255,255,.04), 0 0 0 2px rgba(224,123,63,0.35);
+    box-shadow: inset 4px 4px 10px var(--sh-d-in), inset -3px -3px 8px var(--sh-l-in), 0 0 0 2px rgba(224,123,63,0.35);
   }
 
   /* Neumorphic raised card */
   .nm-card {
-    background: #1e1e26;
-    border-radius: 18px;
-    border: none;
-    box-shadow: 6px 6px 14px rgba(0,0,0,.6), -4px -4px 10px rgba(255,255,255,.04);
-  }
-
-  /* Neumorphic flat (subtle) */
-  .nm-flat {
-    background: #1e1e26;
-    border-radius: 11px;
-    box-shadow: 2px 2px 6px rgba(0,0,0,.45), -1px -1px 4px rgba(255,255,255,.03);
+    background: var(--nm-base); border-radius: 18px; border: none;
+    box-shadow: 6px 6px 14px var(--sh-d), -4px -4px 10px var(--sh-l);
   }
 
   /* Neumorphic inset panel */
   .nm-inset {
-    background: #1e1e26;
-    border-radius: 11px;
-    box-shadow: inset 4px 4px 10px rgba(0,0,0,.6), inset -3px -3px 8px rgba(255,255,255,.04);
+    background: var(--nm-base); border-radius: 11px; border: none;
+    box-shadow: inset 4px 4px 10px var(--sh-d-in), inset -3px -3px 8px var(--sh-l-in);
   }
 }
 

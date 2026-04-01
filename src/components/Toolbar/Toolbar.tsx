@@ -1,9 +1,11 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   Upload, Plus, Image, Music, Map, Eye, Globe,
   X, Layers, MonitorPlay, ChevronLeft, Save,
 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
+import ThemeToggle from '../ThemeToggle';
+import { registerUploadTrigger } from '../../utils/uploadTrigger';
 import { detectPanorama } from '../../utils/panoramaDetector';
 import { fisheyeToEquirectangular, fileToCanvas } from '../../utils/fisheyeConverter';
 import { generateThumbnail } from '../../utils/panoramaGenerator';
@@ -188,6 +190,11 @@ export default function Toolbar() {
   const panoramaInputRef = useRef<HTMLInputElement>(null);
   const floorPlanInputRef = useRef<HTMLInputElement>(null);
 
+  // Register global upload trigger so EmptyViewer / Sidebar can fire it
+  useEffect(() => {
+    registerUploadTrigger(() => panoramaInputRef.current?.click());
+  }, []);
+
   // Fisheye dialog state
   const fisheyeResolveRef = useRef<((cfg: FisheyeConfig | null) => void) | null>(null);
   const [fisheyeDialogData, setFisheyeDialogData] = useState<{
@@ -276,7 +283,7 @@ export default function Toolbar() {
         <button
           onClick={togglePreviewMode}
           className="flex items-center gap-2 px-4 py-1.5 text-sm text-nm-text rounded-nm-sm transition-all hover:text-nm-accent"
-          style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)' }}
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
         >
           <X size={13} />
           Exit Preview
@@ -289,7 +296,7 @@ export default function Toolbar() {
     <>
       <div
         className="flex items-center h-14 px-3 gap-1 select-none flex-shrink-0"
-        style={{ background: 'var(--nm-base)', boxShadow: '0 4px 12px rgba(0,0,0,.5)' }}
+        style={{ background: 'var(--nm-base)', boxShadow: '0 4px 14px var(--sh-d)' }}
       >
         {/* Back + Brand */}
         <div className="flex items-center gap-2 mr-3 pr-3" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
@@ -380,11 +387,13 @@ export default function Toolbar() {
           </span>
         )}
 
+        <ThemeToggle />
+
         <button
           onClick={togglePreviewMode}
           disabled={scenes.length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm"
-          style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)' }}
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
         >
           <Eye size={13} />
           Preview
@@ -394,7 +403,7 @@ export default function Toolbar() {
           onClick={() => saveTour()}
           disabled={scenes.length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm ml-1"
-          style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.04)' }}
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
         >
           <Save size={13} />
           Save
@@ -404,7 +413,7 @@ export default function Toolbar() {
           onClick={publish}
           disabled={scenes.length === 0}
           className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-nm-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all ml-1 hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 10px rgba(224,123,63,.4), -1px -1px 4px rgba(255,255,255,.05)' }}
+          style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 10px rgba(224,123,63,.45)' }}
         >
           <Globe size={13} />
           Publish
