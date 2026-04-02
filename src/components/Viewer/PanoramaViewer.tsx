@@ -321,7 +321,7 @@ export default function PanoramaViewer({
       const sc = sceneRef.current;
       const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
       if (sc) {
-        for (const hs of sc.hotspots) {
+        for (const hs of (sc.hotspots ?? [])) {
           const el = hotspotContainersRef.current.get(hs.id);
           if (!el) continue;
           // use dragging override position if active
@@ -336,7 +336,7 @@ export default function PanoramaViewer({
           el.style.opacity = visible ? '1' : '0';
           el.style.pointerEvents = visible ? 'auto' : 'none';
         }
-        for (const mp of sc.mediaPoints) {
+        for (const mp of (sc.mediaPoints ?? [])) {
           const el = mediaContainersRef.current.get(mp.id);
           if (!el) continue;
           const wp = yawPitchToWorld(mp.yaw, mp.pitch);
@@ -678,7 +678,7 @@ export default function PanoramaViewer({
         <>
           {/* Hotspots overlay — positions updated imperatively every frame */}
           <div className="absolute inset-0 overflow-visible" style={{ zIndex: 5, pointerEvents: 'none' }}>
-            {scene.hotspots.map(hs => (
+            {(scene.hotspots ?? []).map(hs => (
               <div
                 key={hs.id}
                 ref={el => {
@@ -701,7 +701,7 @@ export default function PanoramaViewer({
                 </div>
               </div>
             ))}
-            {scene.mediaPoints.map(mp => (
+            {(scene.mediaPoints ?? []).map(mp => (
               <div
                 key={mp.id}
                 ref={el => {

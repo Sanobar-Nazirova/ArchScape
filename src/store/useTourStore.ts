@@ -183,14 +183,22 @@ export const useTourStore = create<TourState>()((set, get) => ({
     const state = get();
     const tour = state.projects[projectId]?.tours?.[tourId];
     if (!tour) return;
+    // Normalize scenes loaded from storage — ensure required arrays always exist
+    const scenes = (tour.scenes ?? []).map(s => ({
+      ...s,
+      hotspots:     s.hotspots     ?? [],
+      mediaPoints:  s.mediaPoints  ?? [],
+      audioSources: s.audioSources ?? [],
+      tags:         s.tags         ?? [],
+    }));
     set({
       currentScreen: 'editor',
       currentProjectId: projectId,
       currentTourId: tourId,
       projectName: tour.name,
-      scenes: tour.scenes ?? [],
+      scenes,
       folders: tour.folders ?? [],
-      activeSceneId: tour.scenes?.[0]?.id ?? null,
+      activeSceneId: scenes[0]?.id ?? null,
       selectedElementId: null,
       selectedElementType: null,
       activeTool: 'none',
