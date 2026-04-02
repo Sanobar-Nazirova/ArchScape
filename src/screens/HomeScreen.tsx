@@ -149,13 +149,12 @@ export default function HomeScreen() {
         style={{ boxShadow: '0 4px 14px var(--sh-d)' }}
       >
         <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-nm-sm flex items-center justify-center"
-            style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 10px rgba(224,123,63,.4)' }}
+          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
+            style={{ boxShadow: '4px 4px 10px rgba(0,0,0,.45), -2px -2px 6px rgba(255,255,255,.06)' }}
           >
-            <Layers size={17} className="text-white" />
+            <img src="/logo.svg" alt="ArchScape" className="w-full h-full object-cover" />
           </div>
-          <span className="font-syne text-lg font-bold text-nm-text">Sphera</span>
+          <span className="font-syne text-lg font-bold text-nm-text">ArchScape</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -186,11 +185,10 @@ export default function HomeScreen() {
               className="flex flex-col items-center justify-center py-20 rounded-nm"
               style={{ boxShadow: 'inset 4px 4px 12px rgba(0,0,0,.5), inset -3px -3px 8px rgba(255,255,255,.03)' }}
             >
-              <div
-                className="w-16 h-16 rounded-nm flex items-center justify-center mb-4"
+              <div className="w-20 h-20 rounded-full overflow-hidden mb-4"
                 style={{ boxShadow: '6px 6px 14px rgba(0,0,0,.6), -4px -4px 10px rgba(255,255,255,.04)' }}
               >
-                <Layers size={28} className="text-nm-accent opacity-50" />
+                <img src="/logo.svg" alt="ArchScape" className="w-full h-full object-cover opacity-60" />
               </div>
               <h3 className="font-syne font-semibold text-nm-text mb-2">No projects yet</h3>
               <p className="text-sm text-nm-muted mb-5">Create your first virtual tour project to get started.</p>

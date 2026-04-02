@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <!-- Neumorphic raised shadow on outer circle -->
+    <filter id="nm-outer" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur"/>
+      <feOffset in="blur" dx="-6" dy="-6" result="up-blur"/>
+      <feOffset in="blur" dx="7" dy="7"  result="dn-blur"/>
+      <feFlood flood-color="#ffffff" flood-opacity="1"   result="white"/>
+      <feFlood flood-color="#a8adc4" flood-opacity="0.7" result="dark"/>
+      <feComposite in="white" in2="up-blur" operator="in" result="hi"/>
+      <feComposite in="dark"  in2="dn-blur" operator="in" result="sh"/>
+      <feMerge>
+        <feMergeNode in="sh"/>
+        <feMergeNode in="hi"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft glow / inner shadow on the inner disc -->
+    <filter id="inner-depth" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="blur"/>
+      <feOffset in="blur" dx="3" dy="3" result="sh-dn"/>
+      <feOffset in="blur" dx="-3" dy="-3" result="sh-up"/>
+      <feFlood flood-color="#8090c0" flood-opacity="0.35" result="c-dark"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.60" result="c-white"/>
+      <feComposite in="c-dark"  in2="sh-dn" operator="in" result="shadow"/>
+      <feComposite in="c-white" in2="sh-up" operator="in" result="hilight"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="hilight"/>
+      </feMerge>
+    </filter>
+
+    <!-- Sphere 3-D gradient: bright highlight top-left → deep violet bottom-right -->
+    <radialGradient id="sph-grad" cx="34%" cy="27%" r="72%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#eaf2ff"/>
+      <stop offset="22%"  stop-color="#ccd8f8"/>
+      <stop offset="55%"  stop-color="#b0b4ec"/>
+      <stop offset="85%"  stop-color="#9898d8"/>
+      <stop offset="100%" stop-color="#8888cc"/>
+    </radialGradient>
+
+    <!-- Background disc: top-left sky-blue → bottom-right lavender -->
+    <radialGradient id="disc-grad" cx="28%" cy="24%" r="80%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#c4daf8"/>
+      <stop offset="45%"  stop-color="#b0b8f0"/>
+      <stop offset="100%" stop-color="#c8a4e8"/>
+    </radialGradient>
+
+    <!-- Top-right concave cutout highlight -->
+    <radialGradient id="cut-top" cx="45%" cy="55%" r="55%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#d8e8ff"/>
+      <stop offset="100%" stop-color="#b8ccf8"/>
+    </radialGradient>
+
+    <!-- Bottom-left concave cutout shadow -->
+    <radialGradient id="cut-bot" cx="55%" cy="40%" r="55%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#a0a8dc"/>
+      <stop offset="100%" stop-color="#8888c4"/>
+    </radialGradient>
+
+    <!-- Subtle drop shadow for the sphere itself -->
+    <filter id="sph-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#7070b0" flood-opacity="0.35"/>
+    </filter>
+
+    <!-- Clip the sphere so cutout shapes don't overflow it -->
+    <clipPath id="sph-clip">
+      <circle cx="100" cy="108" r="57"/>
+    </clipPath>
+  </defs>
+
+  <!-- ── Neumorphic outer raised circle ── -->
+  <circle cx="100" cy="100" r="94" fill="#e6e8f2" filter="url(#nm-outer)"/>
+
+  <!-- ── Gradient disc (slightly inset, concave feel) ── -->
+  <circle cx="100" cy="100" r="82" fill="url(#disc-grad)" filter="url(#inner-depth)"/>
+
+  <!-- ── Main sphere body ── -->
+  <circle cx="100" cy="108" r="57" fill="url(#sph-grad)" filter="url(#sph-shadow)"/>
+
+  <!-- ── Top-right concave cutout (carved into the sphere) ── -->
+  <g clip-path="url(#sph-clip)">
+    <!-- Elliptical hollow, rotated to match the organic S-curve -->
+    <ellipse cx="125" cy="75" rx="28" ry="24"
+      transform="rotate(-20 125 75)"
+      fill="url(#cut-top)" opacity="0.88"/>
+    <!-- Inner rim highlight to sell the concavity -->
+    <ellipse cx="125" cy="75" rx="22" ry="18"
+      transform="rotate(-20 125 75)"
+      fill="#ddeaff" opacity="0.45"/>
+  </g>
+
+  <!-- ── Bottom-left concave cutout (shadow side) ── -->
+  <g clip-path="url(#sph-clip)">
+    <ellipse cx="76" cy="140" rx="28" ry="24"
+      transform="rotate(-20 76 140)"
+      fill="url(#cut-bot)" opacity="0.82"/>
+    <ellipse cx="76" cy="140" rx="22" ry="18"
+      transform="rotate(-20 76 140)"
+      fill="#8888b8" opacity="0.30"/>
+  </g>
+
+  <!-- ── Specular highlight on sphere top-left ── -->
+  <ellipse cx="82" cy="86" rx="18" ry="12"
+    transform="rotate(-35 82 86)"
+    fill="white" opacity="0.28"/>
+</svg>

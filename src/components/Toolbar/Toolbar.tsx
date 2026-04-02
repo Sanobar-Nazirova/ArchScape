@@ -307,11 +307,10 @@ export default function Toolbar() {
           >
             <ChevronLeft size={14} />
           </button>
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 8px rgba(224,123,63,.4)' }}
+          <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden"
+            style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.45), -2px -2px 6px rgba(255,255,255,.06)' }}
           >
-            <Layers size={14} className="text-white" />
+            <img src="/logo.svg" alt="ArchScape" className="w-full h-full object-cover" />
           </div>
           {editingName ? (
             <input
