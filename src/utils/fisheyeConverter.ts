@@ -56,14 +56,30 @@ export function fisheyeToEquirectangular(
         if (result) { srcX = result.x; srcY = result.y; valid = true; }
         else { srcX = 0; srcY = 0; }
       } else if (type === 'dual-sbs' || type === 'dual-tb') {
-        const useFront = sz >= 0;
-        const eye = useFront ? params.front : params.back;
-        // Flip x-axis for back hemisphere (optical axis = −z)
-        const lx = useFront ? sx : -sx;
-        const lz = useFront ? sz : -sz;
-        const result = projectToFisheye(lx, sy, lz, Math.PI, eye);
-        if (result) { srcX = result.x; srcY = result.y; valid = true; }
-        else { srcX = 0; srcY = 0; }
+        // Blend front and back eyes near the equator (|sz| < 0.08) to avoid a hard seam
+        const blendWidth = 0.08;
+        const t = Math.max(0, Math.min(1, (sz + blendWidth) / (2 * blendWidth))); // 0=back,1=front
+        const frontResult = projectToFisheye(sx, sy, sz, Math.PI, params.front);
+        const backResult  = projectToFisheye(-sx, sy, -sz, Math.PI, params.back);
+        if (t >= 1 && frontResult) {
+          srcX = frontResult.x; srcY = frontResult.y; valid = true;
+        } else if (t <= 0 && backResult) {
+          srcX = backResult.x; srcY = backResult.y; valid = true;
+        } else if (frontResult && backResult) {
+          // Blend pixels from both eyes across the seam
+          const fp = bilinearSample(srcData, srcW, srcH, frontResult.x, frontResult.y);
+          const bp = bilinearSample(srcData, srcW, srcH, backResult.x,  backResult.y);
+          if (fp && bp) {
+            const dstIdx = (oy * outW + ox) * 4;
+            outData.data[dstIdx]     = Math.round(fp.r * t + bp.r * (1 - t));
+            outData.data[dstIdx + 1] = Math.round(fp.g * t + bp.g * (1 - t));
+            outData.data[dstIdx + 2] = Math.round(fp.b * t + bp.b * (1 - t));
+            outData.data[dstIdx + 3] = Math.round(fp.a * t + bp.a * (1 - t));
+          }
+          continue; // already wrote pixel, skip the normal write below
+        } else {
+          srcX = 0; srcY = 0;
+        }
       } else {
         srcX = 0; srcY = 0;
       }

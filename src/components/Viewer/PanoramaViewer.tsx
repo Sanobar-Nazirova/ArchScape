@@ -394,11 +394,19 @@ export default function PanoramaViewer({
     pitchRef.current = scene.initialPitch;
     setActiveMedia(null);
 
-    const applyTexture = (texture: THREE.Texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
+    // Cap image to WebGL max texture size to avoid silent GPU failures on large SBS/TB panoramas
+    const capImageSize = (img: HTMLImageElement): HTMLImageElement | HTMLCanvasElement => {
+      const maxTex = rendererRef.current?.capabilities.maxTextureSize ?? 4096;
+      if (img.naturalWidth <= maxTex && img.naturalHeight <= maxTex) return img;
+      const scale = Math.min(maxTex / img.naturalWidth, maxTex / img.naturalHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.floor(img.naturalWidth  * scale);
+      canvas.height = Math.floor(img.naturalHeight * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    };
 
+    const applyTexture = (texture: THREE.Texture) => {
       // ── Swap geometry based on panorama format ────────────────────────
       const mesh = sphereRef.current!;
       const oldGeo = mesh.geometry;
@@ -407,72 +415,66 @@ export default function PanoramaViewer({
 
       switch (scene.format) {
         case 'cylindrical': {
-          // Open cylinder — 360° horizontal, limited vertical based on AR
           const height = Math.min(800, 500 / Math.max(ar, 0.5));
           newGeo = new THREE.CylinderGeometry(500, 500, height, 64, 1, true);
-          // Cylinder UV wraps correctly with BackSide
           break;
         }
         case 'partial':
         case 'rectilinear': {
-          // Partial sphere — limit horizontal spread based on AR
-          // phiLength = horizontal FOV in radians (estimate from AR)
-          const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8; // ~150° or ~100°
+          const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8;
           const vFov = hFov / Math.max(ar, 0.1);
           newGeo = new THREE.SphereGeometry(500, 48, 24,
-            -hFov / 2, hFov,                          // phi (horizontal)
-            Math.PI / 2 - vFov / 2, vFov              // theta (vertical)
-          );
+            -hFov / 2, hFov, Math.PI / 2 - vFov / 2, vFov);
           break;
         }
         case 'vertical': {
-          // Tall narrow — partial sphere tilted
-          const vFov2 = Math.PI * 1.2; // ~216°
+          const vFov2 = Math.PI * 1.2;
           const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (scene.aspectRatio ?? 0.4));
           newGeo = new THREE.SphereGeometry(500, 32, 48,
-            -hFov2 / 2, hFov2,
-            Math.PI / 2 - vFov2 / 2, vFov2
-          );
+            -hFov2 / 2, hFov2, Math.PI / 2 - vFov2 / 2, vFov2);
           break;
         }
         default:
-          // equirectangular-mono/sbs/tb, fisheye-*, cubic, unknown → sphere
           newGeo = new THREE.SphereGeometry(500, 64, 32);
       }
 
-      if (oldGeo !== newGeo) {
-        oldGeo.dispose();
-        mesh.geometry = newGeo;
-      }
+      if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
 
-      // ── UV adjustments for stereo formats ─────────────────────────────
+      // ── Set ALL texture properties before the single needsUpdate = true ──
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      // SBS stereo: sample only the left half (u: 0→0.5)
+      // TB stereo:  sample only the top half of the image.
+      //             With Three.js flipY=true the image is flipped vertically on upload,
+      //             so the image's top half lands at texture v ∈ [0.5, 1.0].
       switch (scene.format) {
         case 'equirectangular-sbs':
-          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapS   = THREE.ClampToEdgeWrapping;
+          texture.wrapT   = THREE.ClampToEdgeWrapping;
           texture.repeat.set(0.5, 1);
           texture.offset.set(0, 0);
-          texture.needsUpdate = true;
           break;
         case 'equirectangular-tb':
-          texture.wrapT = THREE.RepeatWrapping;
+          texture.wrapS   = THREE.ClampToEdgeWrapping;
+          texture.wrapT   = THREE.ClampToEdgeWrapping;
           texture.repeat.set(1, 0.5);
-          texture.offset.set(0, 0.5);
-          texture.needsUpdate = true;
+          texture.offset.set(0, 0.5); // top half after flipY
           break;
         default:
+          texture.wrapS   = THREE.ClampToEdgeWrapping;
+          texture.wrapT   = THREE.ClampToEdgeWrapping;
           texture.repeat.set(1, 1);
           texture.offset.set(0, 0);
       }
 
-      // ── Flip sphere inside-out for BackSide rendering ──────────────────
-      mat.side = (scene.format === 'partial' || scene.format === 'rectilinear' || scene.format === 'vertical')
-        ? THREE.BackSide
-        : THREE.BackSide; // always BackSide — camera is inside
+      texture.updateMatrix();  // apply repeat/offset to the UV transform matrix
+      texture.needsUpdate = true; // single upload with all correct settings
 
       textureRef.current = texture;
       mat.map = texture;
       mat.color.set(0xffffff);
-      mat.needsUpdate      = true;
+      mat.side = THREE.BackSide;
+      mat.needsUpdate = true;
     };
 
     if (scene.mediaType === 'panorama-video') {
@@ -492,8 +494,8 @@ export default function PanoramaViewer({
     } else if (scene.imageUrl) {
       const img = new window.Image() as HTMLImageElement;
       img.onload = () => {
-        const texture = new THREE.Texture(img);
-        texture.needsUpdate = true;
+        const source = capImageSize(img);
+        const texture = new THREE.Texture(source as HTMLImageElement);
         applyTexture(texture);
       };
       img.onerror = (_err: unknown) => console.error('Image load error');
