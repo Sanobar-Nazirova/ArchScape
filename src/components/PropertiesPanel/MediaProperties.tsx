@@ -48,7 +48,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
                 'px-3 py-1.5 rounded-lg text-xs border capitalize transition-all',
                 media.type === t
                   ? 'bg-yellow-500/20 border-yellow-400/50 text-yellow-300'
-                  : 'bg-sphera-surface border-sphera-border text-sphera-muted hover:text-white',
+                  : 'bg-nm-surface border-nm-border text-nm-muted hover:text-white',
               ].join(' ')}
             >
               {t}
@@ -78,7 +78,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
             />
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 w-full justify-center px-3 py-2 border border-dashed border-sphera-border rounded-lg text-xs text-sphera-muted hover:border-sphera-accent hover:text-white transition-colors"
+              className="flex items-center gap-2 w-full justify-center px-3 py-2 border border-dashed border-nm-border rounded-lg text-xs text-nm-muted hover:border-nm-accent hover:text-white transition-colors"
             >
               <Upload size={12} />
               Upload {media.type} file
@@ -97,7 +97,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
       {/* Preview */}
       {media.content && media.type === 'image' && (
         <Field label="Preview">
-          <img src={media.content} alt="" className="w-full rounded-lg border border-sphera-border object-cover max-h-32" />
+          <img src={media.content} alt="" className="w-full rounded-lg border border-nm-border object-cover max-h-32" />
         </Field>
       )}
 
@@ -105,7 +105,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
       <Field label="Position in Scene">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Yaw (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Yaw (°)</p>
             <input
               type="number" step="1"
               value={Math.round(media.yaw * 180 / Math.PI)}
@@ -114,7 +114,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
             />
           </div>
           <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Pitch (°)</p>
+            <p className="text-[10px] text-nm-muted mb-1">Pitch (°)</p>
             <input
               type="number" step="1" min="-85" max="85"
               value={Math.round(media.pitch * 180 / Math.PI)}
@@ -125,7 +125,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
         </div>
       </Field>
 
-      <div className="pt-2 border-t border-sphera-border">
+      <div className="pt-2 border-t border-nm-border">
         <button
           onClick={() => removeMediaPoint(sceneId, media.id)}
           className="flex items-center gap-2 text-xs text-red-400/70 hover:text-red-400 transition-colors"
@@ -141,7 +141,7 @@ export default function MediaProperties({ sceneId, media }: MediaPropertiesProps
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
+      <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
       {children}
     </div>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Trash2, RotateCcw, Camera } from 'lucide-react';
+import { Trash2, Camera } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
-import { ALL_FORMATS, formatLabel } from '../../utils/panoramaDetector';
+import { ALL_FORMATS, formatLabel, formatShortLabel } from '../../utils/panoramaDetector';
 import type { Scene } from '../../types';
 
 interface ScenePropertiesProps {
@@ -28,7 +28,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
     <div className="space-y-5">
       {/* Thumbnail */}
       {scene.thumbnail && (
-        <div className="rounded-xl overflow-hidden border border-sphera-border">
+        <div className="rounded-xl overflow-hidden border border-nm-border">
           <img src={scene.thumbnail} alt="" className="w-full object-cover" style={{ height: 80 }} />
         </div>
       )}
@@ -54,15 +54,21 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
             <option key={f} value={f}>{formatLabel(f)}</option>
           ))}
         </select>
-        {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
-          <p className="text-[10px] text-sphera-muted mt-1 leading-snug">
-            Stereo format detected — viewer will display the left eye channel.
-          </p>
-        )}
         {scene.format.startsWith('fisheye') && (
-          <p className="text-[10px] text-yellow-400/70 mt-1 leading-snug">
-            Fisheye format — use the Convert tool in the toolbar to convert before import.
-          </p>
+          <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <span className="text-yellow-400 text-[10px] leading-snug">
+              ⚠ Fisheye images display best after conversion. Re-upload and choose "Convert &amp; Import" in the dialog.
+            </span>
+          </div>
+        )}
+        {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">Stereo — left eye shown.</p>
+        )}
+        {scene.format === 'cylindrical' && (
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">360° horizontal, limited vertical field of view.</p>
+        )}
+        {(scene.format === 'partial' || scene.format === 'rectilinear') && (
+          <p className="text-[10px] text-nm-muted mt-1 leading-snug">Wide-angle, less than 360° coverage.</p>
         )}
       </Field>
 
@@ -72,46 +78,26 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border ${
             scene.mediaType === 'panorama-video'
               ? 'bg-purple-500/20 border-purple-400/40 text-purple-300'
-              : 'bg-sphera-accent/15 border-sphera-accent/30 text-sphera-accent'
+              : 'bg-nm-accent/15 border-nm-accent/30 text-nm-accent'
           }`}>
             {scene.mediaType === 'panorama-video' ? '360° Video' : 'Panorama Image'}
           </span>
         </div>
       </Field>
 
-      {/* Initial view */}
-      <Field label="Initial View Angle">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Yaw (°)</p>
-            <input
-              type="number"
-              step="5"
-              value={Math.round(scene.initialYaw * 180 / Math.PI)}
-              onChange={e => updateSceneInitialView(scene.id, Number(e.target.value) * Math.PI / 180, scene.initialPitch)}
-              className="input-base"
-            />
-          </div>
-          <div>
-            <p className="text-[10px] text-sphera-muted mb-1">Pitch (°)</p>
-            <input
-              type="number"
-              step="5"
-              min="-85"
-              max="85"
-              value={Math.round(scene.initialPitch * 180 / Math.PI)}
-              onChange={e => updateSceneInitialView(scene.id, scene.initialYaw, Number(e.target.value) * Math.PI / 180)}
-              className="input-base"
-            />
-          </div>
-        </div>
+      {/* Initial view — Save View button */}
+      <Field label="Initial View">
         <button
           onClick={handleSetCurrentView}
-          className="mt-2 flex items-center gap-1.5 text-xs text-sphera-muted hover:text-white transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+          style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 12px rgba(224,123,63,.35), -2px -2px 6px rgba(255,255,255,.05)' }}
         >
-          <Camera size={12} />
-          Set from current view
+          <Camera size={14} />
+          Save Current View
         </button>
+        <p className="text-[10px] text-nm-muted mt-1.5 text-center leading-snug">
+          Navigate to the desired starting angle, then click to save.
+        </p>
       </Field>
 
       {/* Stats */}
@@ -124,7 +110,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
       </Field>
 
       {/* Danger zone */}
-      <div className="pt-2 border-t border-sphera-border">
+      <div className="pt-2 border-t border-nm-border">
         <button
           onClick={() => {
             if (confirm(`Delete scene "${scene.name}"?`)) {
@@ -146,7 +132,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] text-sphera-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
+      <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
       {children}
     </div>
   );
@@ -154,9 +140,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-sphera-bg rounded-lg p-2 text-center">
+    <div className="bg-nm-base rounded-lg p-2 text-center">
       <p className="text-white font-semibold text-sm">{value}</p>
-      <p className="text-[10px] text-sphera-muted">{label}</p>
+      <p className="text-[10px] text-nm-muted">{label}</p>
     </div>
   );
 }

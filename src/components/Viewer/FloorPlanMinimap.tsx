@@ -22,19 +22,19 @@ export default function FloorPlanMinimap({
 
   return (
     <div
-      className="absolute bottom-4 left-4 z-10 bg-sphera-panel/90 backdrop-blur-sm border border-sphera-border rounded-xl overflow-hidden shadow-xl"
+      className="absolute bottom-4 left-4 z-10 bg-nm-base/90 backdrop-blur-sm border border-nm-border rounded-xl overflow-hidden shadow-xl"
       style={{ width: W }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-sphera-hover transition-colors"
+        className="flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-nm-surface transition-colors"
         onClick={() => setCollapsed(v => !v)}
       >
         <div className="flex items-center gap-1.5">
-          <Map size={11} className="text-sphera-accent" />
-          <span className="text-[10px] text-sphera-muted font-medium">Floor Plan</span>
+          <Map size={11} className="text-nm-accent" />
+          <span className="text-[10px] text-nm-muted font-medium">Floor Plan</span>
         </div>
-        {collapsed ? <ChevronUp size={11} className="text-sphera-border" /> : <ChevronDown size={11} className="text-sphera-border" />}
+        {collapsed ? <ChevronUp size={11} className="text-nm-border" /> : <ChevronDown size={11} className="text-nm-border" />}
       </div>
 
       {!collapsed && (
@@ -68,7 +68,7 @@ export default function FloorPlanMinimap({
               >
                 {/* Outer ring for current */}
                 {isCurrent && (
-                  <div className="absolute inset-0 rounded-full border-2 border-sphera-accent animate-ping opacity-50"
+                  <div className="absolute inset-0 rounded-full border-2 border-nm-accent animate-ping opacity-50"
                     style={{ width: 20, height: 20, left: -4, top: -4 }} />
                 )}
 
@@ -76,8 +76,8 @@ export default function FloorPlanMinimap({
                   className={[
                     'rounded-full border-2 flex items-center justify-center transition-transform group-hover:scale-125',
                     isCurrent
-                      ? 'bg-sphera-accent border-white w-4 h-4'
-                      : 'bg-sphera-panel border-sphera-border w-3 h-3 hover:border-sphera-accent',
+                      ? 'bg-nm-accent border-white w-4 h-4'
+                      : 'bg-nm-base border-nm-border w-3 h-3 hover:border-nm-accent',
                   ].join(' ')}
                 >
                   {isCurrent && (

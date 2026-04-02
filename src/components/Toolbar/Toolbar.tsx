@@ -27,15 +27,15 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
-      <div className="bg-sphera-panel border border-sphera-border rounded-2xl p-6 w-[460px] max-w-[95vw] shadow-2xl">
+      <div className="bg-nm-base border border-nm-border rounded-2xl p-6 w-[460px] max-w-[95vw] shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-semibold">Fisheye Image Detected</h3>
-          <button onClick={onCancel} className="text-sphera-muted hover:text-white transition-colors p-1">
+          <button onClick={onCancel} className="text-nm-muted hover:text-white transition-colors p-1">
             <X size={16} />
           </button>
         </div>
 
-        <p className="text-sphera-muted text-sm mb-5 leading-relaxed">
+        <p className="text-nm-muted text-sm mb-5 leading-relaxed">
           <span className="text-white font-medium">{file.name}</span>{' '}
           appears to be a fisheye image ({result.width}×{result.height}px, {result.aspectRatio.toFixed(2)}:1 ratio).
           Convert it to equirectangular for 360° viewing?
@@ -43,7 +43,7 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
 
         <div className="space-y-4 mb-6">
           <div>
-            <label className="text-[11px] text-sphera-muted uppercase tracking-wide block mb-1.5">Fisheye Type</label>
+            <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Fisheye Type</label>
             <select
               value={config.type}
               onChange={e => setConfig(c => ({ ...c, type: e.target.value as FisheyeConfig['type'] }))}
@@ -57,7 +57,7 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] text-sphera-muted uppercase tracking-wide block mb-1.5">Field of View (°)</label>
+              <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Field of View (°)</label>
               <input
                 type="number" min={120} max={240} step={5}
                 value={config.fov}
@@ -66,7 +66,7 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
               />
             </div>
             <div>
-              <label className="text-[11px] text-sphera-muted uppercase tracking-wide block mb-1.5">Circle Radius (0–1)</label>
+              <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Circle Radius (0–1)</label>
               <input
                 type="number" min={0.5} max={1} step={0.01}
                 value={config.radius}
@@ -79,13 +79,13 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
           {config.type === 'single' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] text-sphera-muted block mb-1.5">Center X (0–1)</label>
+                <label className="text-[11px] text-nm-muted block mb-1.5">Center X (0–1)</label>
                 <input type="number" min={0} max={1} step={0.01} value={config.centerX}
                   onChange={e => setConfig(c => ({ ...c, centerX: Number(e.target.value) }))}
                   className="input-base" />
               </div>
               <div>
-                <label className="text-[11px] text-sphera-muted block mb-1.5">Center Y (0–1)</label>
+                <label className="text-[11px] text-nm-muted block mb-1.5">Center Y (0–1)</label>
                 <input type="number" min={0} max={1} step={0.01} value={config.centerY}
                   onChange={e => setConfig(c => ({ ...c, centerY: Number(e.target.value) }))}
                   className="input-base" />
@@ -96,11 +96,11 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
 
         <div className="flex gap-2 justify-end">
           <button onClick={onSkip}
-            className="px-4 py-2 text-sm text-sphera-muted hover:text-white border border-sphera-border rounded-xl transition-colors">
+            className="px-4 py-2 text-sm text-nm-muted hover:text-white border border-nm-border rounded-xl transition-colors">
             Import as-is
           </button>
           <button onClick={() => onConfirm(config)}
-            className="px-5 py-2 text-sm bg-sphera-accent hover:bg-sphera-accent-hover text-white rounded-xl font-medium transition-colors">
+            className="px-5 py-2 text-sm bg-nm-accent hover:bg-nm-accent-hover text-white rounded-xl font-medium transition-colors">
             Convert &amp; Import
           </button>
         </div>
@@ -131,13 +131,13 @@ function PublishModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
-      <div className="bg-sphera-panel border border-sphera-border rounded-2xl p-6 w-[500px] max-w-[95vw] shadow-2xl">
+      <div className="bg-nm-base border border-nm-border rounded-2xl p-6 w-[500px] max-w-[95vw] shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Globe size={18} className="text-sphera-accent" />
+            <Globe size={18} className="text-nm-accent" />
             <h3 className="text-white font-semibold">Tour Published</h3>
           </div>
-          <button onClick={closePublishModal} className="text-sphera-muted hover:text-white p-1 transition-colors">
+          <button onClick={closePublishModal} className="text-nm-muted hover:text-white p-1 transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -149,18 +149,18 @@ function PublishModal() {
           </p>
         </div>
 
-        <div className="bg-sphera-bg border border-sphera-border rounded-xl px-3 py-2.5 mb-5">
-          <p className="text-[10px] text-sphera-muted mb-1">Tour data URL (blob)</p>
-          <p className="text-[11px] text-sphera-text font-mono break-all line-clamp-2">{publishUrl.slice(0, 80)}…</p>
+        <div className="bg-nm-base border border-nm-border rounded-xl px-3 py-2.5 mb-5">
+          <p className="text-[10px] text-nm-muted mb-1">Tour data URL (blob)</p>
+          <p className="text-[11px] text-nm-text font-mono break-all line-clamp-2">{publishUrl.slice(0, 80)}…</p>
         </div>
 
         <div className="flex gap-2">
           <button onClick={copy}
-            className="flex-1 py-2.5 text-sm border border-sphera-border rounded-xl text-sphera-text hover:border-sphera-accent hover:text-white transition-colors">
+            className="flex-1 py-2.5 text-sm border border-nm-border rounded-xl text-nm-text hover:border-nm-accent hover:text-white transition-colors">
             {copied ? '✓ Copied!' : 'Copy URL'}
           </button>
           <button onClick={download}
-            className="flex-1 py-2.5 text-sm bg-sphera-accent hover:bg-sphera-accent-hover text-white rounded-xl font-medium transition-colors">
+            className="flex-1 py-2.5 text-sm bg-nm-accent hover:bg-nm-accent-hover text-white rounded-xl font-medium transition-colors">
             Download JSON
           </button>
         </div>
@@ -172,9 +172,9 @@ function PublishModal() {
 /* ─── Processing toast ────────────────────────────────────────────────── */
 function ProcessingToast({ message }: { message: string }) {
   return (
-    <div className="fixed bottom-6 right-6 z-50 bg-sphera-surface border border-sphera-border rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-3">
-      <div className="w-4 h-4 border-2 border-sphera-accent border-t-transparent rounded-full animate-spin" />
-      <span className="text-sm text-sphera-text">{message}</span>
+    <div className="fixed bottom-6 right-6 z-50 bg-nm-surface border border-nm-border rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-3">
+      <div className="w-4 h-4 border-2 border-nm-accent border-t-transparent rounded-full animate-spin" />
+      <span className="text-sm text-nm-text">{message}</span>
     </div>
   );
 }
@@ -255,7 +255,7 @@ export default function Toolbar() {
         setProcessingMsg(`Processing ${file.name}…`);
         const thumbnail = await generateThumbnail(imageUrl);
         const sceneName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-        addScene(imageUrl, sceneName, finalFormat, detection.mediaType, thumbnail);
+        addScene(imageUrl, sceneName, finalFormat, detection.mediaType, thumbnail, detection.aspectRatio);
       } catch (err) {
         console.error('Failed to process file:', err);
       }

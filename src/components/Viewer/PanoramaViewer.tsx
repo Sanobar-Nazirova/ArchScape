@@ -7,13 +7,14 @@ import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
 import { useTourStore } from '../../store/useTourStore';
 import type {
-  Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle, ProjectedItem,
+  Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle,
 } from '../../types';
 import { triggerUpload } from '../../utils/uploadTrigger';
+import { formatShortLabel } from '../../utils/panoramaDetector';
 import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
-  Play, Pause, Volume2, ZoomIn, ZoomOut, Upload,
+  Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
 } from 'lucide-react';
 
 /* ─── HotspotIcon ─────────────────────────────────────────────────────── */
@@ -26,43 +27,39 @@ const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
 };
 
 function HotspotMarker({
-  hotspot, isSelected, isPreview, onClick,
+  hotspot, isSelected, isPreview, targetSceneName,
 }: {
   hotspot: Hotspot;
   isSelected: boolean;
   isPreview: boolean;
-  onClick: () => void;
+  targetSceneName?: string;
 }) {
+  const tooltip = hotspot.label || targetSceneName;
   return (
-    <button
-      onClick={onClick}
-      className={[
-        'flex flex-col items-center gap-1 group focus:outline-none',
-      ].join(' ')}
-    >
+    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
       <div className={[
         'w-10 h-10 rounded-full flex items-center justify-center transition-all',
         'border-2 shadow-lg backdrop-blur-sm',
         isSelected
-          ? 'bg-sphera-accent border-white text-white scale-110 shadow-sphera-accent/40'
+          ? 'bg-nm-accent border-white text-white scale-110 shadow-nm-accent/40'
           : isPreview
-          ? 'bg-black/60 border-white/70 text-white hover:scale-110 hover:bg-sphera-accent hover:border-white hotspot-pulse'
-          : 'bg-black/50 border-sphera-accent/70 text-sphera-accent hover:scale-110 hover:bg-sphera-accent hover:text-white hotspot-pulse',
-      ].join(' ')}
-      >
+          ? 'bg-black/60 border-white/70 text-white hover:scale-110 hover:bg-nm-accent hover:border-white hotspot-pulse'
+          : 'bg-black/50 border-nm-accent/70 text-nm-accent hover:scale-110 hover:bg-nm-accent hover:text-white hotspot-pulse',
+      ].join(' ')}>
         {HOTSPOT_ICONS[hotspot.iconStyle]}
       </div>
-      {hotspot.label && (
+      {tooltip && (
         <span className={[
-          'text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm border whitespace-nowrap',
+          'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
           isSelected
-            ? 'bg-sphera-accent text-white border-white/30'
-            : 'bg-black/60 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
+            ? 'bg-nm-accent text-white border-white/30 opacity-100'
+            : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
         ].join(' ')}>
-          {hotspot.label}
+          {targetSceneName && !hotspot.label && <span className="mr-1 opacity-60">→</span>}
+          {tooltip}
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -121,10 +118,10 @@ function VideoControls({ videoEl }: { videoEl: HTMLVideoElement | null }) {
   return (
     <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl px-2 py-1.5">
       <span className="text-[10px] text-white/50 mr-1">360° Video</span>
-      <button onClick={toggle} className="text-white hover:text-sphera-accent p-1 transition-colors" title={playing ? 'Pause' : 'Play'}>
+      <button onClick={toggle} className="text-white hover:text-nm-accent p-1 transition-colors" title={playing ? 'Pause' : 'Play'}>
         {playing ? <Pause size={13} /> : <Play size={13} />}
       </button>
-      <button onClick={toggleMute} className="text-white hover:text-sphera-accent p-1 transition-colors" title={muted ? 'Unmute' : 'Mute'}>
+      <button onClick={toggleMute} className="text-white hover:text-nm-accent p-1 transition-colors" title={muted ? 'Unmute' : 'Mute'}>
         <Volume2 size={13} className={muted ? 'opacity-40' : ''} />
       </button>
     </div>
@@ -135,10 +132,10 @@ function VideoControls({ videoEl }: { videoEl: HTMLVideoElement | null }) {
 function ZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut: () => void }) {
   return (
     <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
-      <button onClick={onZoomIn} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-sphera-accent hover:border-sphera-accent/40 transition-colors">
+      <button onClick={onZoomIn} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-nm-accent hover:border-nm-accent/40 transition-colors">
         <ZoomIn size={14} />
       </button>
-      <button onClick={onZoomOut} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-sphera-accent hover:border-sphera-accent/40 transition-colors">
+      <button onClick={onZoomOut} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-nm-accent hover:border-nm-accent/40 transition-colors">
         <ZoomOut size={14} />
       </button>
     </div>
@@ -210,13 +207,15 @@ interface PanoramaViewerProps {
   onHotspotClick: (hotspot: Hotspot) => void;
   onHotspotSelect: (hotspotId: string) => void;
   onMediaSelect: (mediaId: string) => void;
+  onHotspotReposition: (hotspotId: string, yaw: number, pitch: number) => void;
 }
 
 export default function PanoramaViewer({
   scene, isPreviewMode, activeTool, selectedElementId,
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
+  onHotspotReposition,
 }: PanoramaViewerProps) {
-  const { floorPlan, setActiveScene } = useTourStore();
+  const { floorPlan, setActiveScene, scenes } = useTourStore();
 
   // ── Three.js refs ──────────────────────────────────────────────────────
   const containerRef  = useRef<HTMLDivElement>(null);
@@ -234,18 +233,31 @@ export default function PanoramaViewer({
   const fovRef        = useRef(75);
   const draggingRef   = useRef(false);
   const lastMouseRef  = useRef({ x: 0, y: 0 });
-  const cameraYawRef  = useRef(0); // tracked for minimap
+
+  // ── Hotspot overlay refs ───────────────────────────────────────────────
+  const hotspotContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const mediaContainersRef   = useRef<Map<string, HTMLDivElement>>(new Map());
+  const draggingHotspotRef   = useRef<{ id: string; yaw: number; pitch: number } | null>(null);
+  const dragStateRef         = useRef<{ hotspotId: string; startX: number; startY: number; moved: boolean } | null>(null);
 
   // ── Prop refs ─────────────────────────────────────────────────────────
-  const sceneRef        = useRef(scene);
-  const activeToolRef   = useRef(activeTool);
+  const sceneRef              = useRef(scene);
+  const activeToolRef         = useRef(activeTool);
+  const isPreviewModeRef      = useRef(isPreviewMode);
+  const onHotspotClickRef     = useRef(onHotspotClick);
+  const onHotspotSelectRef    = useRef(onHotspotSelect);
+  const onHotspotRepositionRef = useRef(onHotspotReposition);
+
   useEffect(() => { sceneRef.current = scene; }, [scene]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+  useEffect(() => { isPreviewModeRef.current = isPreviewMode; }, [isPreviewMode]);
+  useEffect(() => { onHotspotClickRef.current = onHotspotClick; }, [onHotspotClick]);
+  useEffect(() => { onHotspotSelectRef.current = onHotspotSelect; }, [onHotspotSelect]);
+  useEffect(() => { onHotspotRepositionRef.current = onHotspotReposition; }, [onHotspotReposition]);
 
   // ── UI state ──────────────────────────────────────────────────────────
-  const [projectedItems, setProjectedItems] = useState<ProjectedItem[]>([]);
-  const [activeMedia, setActiveMedia]       = useState<MediaPoint | null>(null);
-  const [minimapYaw, setMinimapYaw]         = useState(0);
+  const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
+  const [minimapYaw, setMinimapYaw]   = useState(0);
 
   // ── Expose camera view getter globally (for "Set from current view" button) ──
   useEffect(() => {
@@ -259,9 +271,15 @@ export default function PanoramaViewer({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    } catch (_e) {
+      console.error('WebGL not supported:', _e);
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(container.clientWidth || 800, container.clientHeight || 600);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
@@ -297,50 +315,41 @@ export default function PanoramaViewer({
         (textureRef.current as THREE.VideoTexture).needsUpdate = true;
       }
 
-      // Project hotspots/media (every 2 frames for performance)
-      if (frame % 2 === 0) {
-        const w = container.clientWidth;
-        const h = container.clientHeight;
-        const sc = sceneRef.current;
-        const items: ProjectedItem[] = [];
-
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-
-        if (sc) {
-          for (const hs of sc.hotspots) {
-            const wp = yawPitchToWorld(hs.yaw, hs.pitch);
-            const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-            const proj = v.clone().project(cam);
-            const dot = forward.dot(v);
-            items.push({
-              id: hs.id, type: 'hotspot',
-              x: (proj.x + 1) / 2 * w,
-              y: (1 - proj.y) / 2 * h,
-              visible: dot > 0.15,
-              data: hs,
-            });
-          }
-          for (const mp of sc.mediaPoints) {
-            const wp = yawPitchToWorld(mp.yaw, mp.pitch);
-            const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-            const proj = v.clone().project(cam);
-            const dot = forward.dot(v);
-            items.push({
-              id: mp.id, type: 'media',
-              x: (proj.x + 1) / 2 * w,
-              y: (1 - proj.y) / 2 * h,
-              visible: dot > 0.15,
-              data: mp,
-            });
-          }
+      // Imperatively update hotspot/media overlay positions every frame
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      const sc = sceneRef.current;
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+      if (sc) {
+        for (const hs of (sc.hotspots ?? [])) {
+          const el = hotspotContainersRef.current.get(hs.id);
+          if (!el) continue;
+          // use dragging override position if active
+          const pos = draggingHotspotRef.current?.id === hs.id ? draggingHotspotRef.current : hs;
+          const wp = yawPitchToWorld(pos.yaw, pos.pitch);
+          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
+          const proj = v.clone().project(cam);
+          const visible = forward.dot(v.normalize()) > 0.15;
+          const x = (proj.x + 1) / 2 * w;
+          const y = (1 - proj.y) / 2 * h;
+          el.style.transform = `translate3d(${x}px,${y}px,0)`;
+          el.style.opacity = visible ? '1' : '0';
+          el.style.pointerEvents = visible ? 'auto' : 'none';
         }
-        setProjectedItems(items);
-
-        // Update minimap direction every 10 frames
-        if (frame % 10 === 0) {
-          cameraYawRef.current = yawRef.current;
-          setMinimapYaw(yawRef.current);
+        for (const mp of (sc.mediaPoints ?? [])) {
+          const el = mediaContainersRef.current.get(mp.id);
+          if (!el) continue;
+          const wp = yawPitchToWorld(mp.yaw, mp.pitch);
+          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
+          const proj = v.clone().project(cam);
+          const visible = forward.dot(v.normalize()) > 0.15;
+          const x = (proj.x + 1) / 2 * w;
+          const y = (1 - proj.y) / 2 * h;
+          el.style.transform = `translate3d(${x}px,${y}px,0)`;
+          el.style.opacity = visible ? '1' : '0';
+          el.style.pointerEvents = visible ? 'auto' : 'none';
         }
+        if (frame % 10 === 0) setMinimapYaw(yawRef.current);
       }
 
       renderer.render(threeScene, cam);
@@ -386,29 +395,82 @@ export default function PanoramaViewer({
     setActiveMedia(null);
 
     const applyTexture = (texture: THREE.Texture) => {
-      texture.colorSpace  = THREE.SRGBColorSpace;
-      texture.wrapS       = THREE.ClampToEdgeWrapping;
-      texture.wrapT       = THREE.ClampToEdgeWrapping;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
 
-      // Handle stereo formats by UV cropping
+      // ── Swap geometry based on panorama format ────────────────────────
+      const mesh = sphereRef.current!;
+      const oldGeo = mesh.geometry;
+      let newGeo: THREE.BufferGeometry;
+      const ar = scene.aspectRatio ?? 2;
+
+      switch (scene.format) {
+        case 'cylindrical': {
+          // Open cylinder — 360° horizontal, limited vertical based on AR
+          const height = Math.min(800, 500 / Math.max(ar, 0.5));
+          newGeo = new THREE.CylinderGeometry(500, 500, height, 64, 1, true);
+          // Cylinder UV wraps correctly with BackSide
+          break;
+        }
+        case 'partial':
+        case 'rectilinear': {
+          // Partial sphere — limit horizontal spread based on AR
+          // phiLength = horizontal FOV in radians (estimate from AR)
+          const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8; // ~150° or ~100°
+          const vFov = hFov / Math.max(ar, 0.1);
+          newGeo = new THREE.SphereGeometry(500, 48, 24,
+            -hFov / 2, hFov,                          // phi (horizontal)
+            Math.PI / 2 - vFov / 2, vFov              // theta (vertical)
+          );
+          break;
+        }
+        case 'vertical': {
+          // Tall narrow — partial sphere tilted
+          const vFov2 = Math.PI * 1.2; // ~216°
+          const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (scene.aspectRatio ?? 0.4));
+          newGeo = new THREE.SphereGeometry(500, 32, 48,
+            -hFov2 / 2, hFov2,
+            Math.PI / 2 - vFov2 / 2, vFov2
+          );
+          break;
+        }
+        default:
+          // equirectangular-mono/sbs/tb, fisheye-*, cubic, unknown → sphere
+          newGeo = new THREE.SphereGeometry(500, 64, 32);
+      }
+
+      if (oldGeo !== newGeo) {
+        oldGeo.dispose();
+        mesh.geometry = newGeo;
+      }
+
+      // ── UV adjustments for stereo formats ─────────────────────────────
       switch (scene.format) {
         case 'equirectangular-sbs':
-          // Left eye = left half
+          texture.wrapS = THREE.RepeatWrapping;
           texture.repeat.set(0.5, 1);
           texture.offset.set(0, 0);
+          texture.needsUpdate = true;
           break;
         case 'equirectangular-tb':
-          // Left eye = top half (UV y=0.5 to 1.0)
+          texture.wrapT = THREE.RepeatWrapping;
           texture.repeat.set(1, 0.5);
           texture.offset.set(0, 0.5);
+          texture.needsUpdate = true;
           break;
         default:
           texture.repeat.set(1, 1);
           texture.offset.set(0, 0);
       }
 
-      textureRef.current   = texture;
-      mat.map              = texture;
+      // ── Flip sphere inside-out for BackSide rendering ──────────────────
+      mat.side = (scene.format === 'partial' || scene.format === 'rectilinear' || scene.format === 'vertical')
+        ? THREE.BackSide
+        : THREE.BackSide; // always BackSide — camera is inside
+
+      textureRef.current = texture;
+      mat.map = texture;
       mat.color.set(0xffffff);
       mat.needsUpdate      = true;
     };
@@ -531,6 +593,56 @@ export default function PanoramaViewer({
     }
   }, [onHotspotPlace, onMediaPlace]);
 
+  // ── Hotspot drag handlers ─────────────────────────────────────────────
+  const handleHotspotPointerDown = useCallback((e: React.PointerEvent, hotspotId: string) => {
+    if (isPreviewModeRef.current) return;
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragStateRef.current = { hotspotId, startX: e.clientX, startY: e.clientY, moved: false };
+  }, []);
+
+  const handleHotspotPointerMove = useCallback((e: React.PointerEvent, hotspotId: string) => {
+    const ds = dragStateRef.current;
+    if (!ds || ds.hotspotId !== hotspotId) return;
+    const dx = e.clientX - ds.startX;
+    const dy = e.clientY - ds.startY;
+    if (!ds.moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) ds.moved = true;
+    if (!ds.moved) return;
+    const container = containerRef.current;
+    const camera = cameraRef.current;
+    const sphere = sphereRef.current;
+    if (!container || !camera || !sphere) return;
+    const rect = container.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(nx, ny), camera);
+    const hits = ray.intersectObject(sphere);
+    if (hits.length > 0) {
+      const pt = hits[0].point.clone().normalize();
+      const { yaw, pitch } = worldToYawPitch(pt.x, pt.y, pt.z);
+      draggingHotspotRef.current = { id: hotspotId, yaw, pitch };
+    }
+  }, []);
+
+  const handleHotspotPointerUp = useCallback((e: React.PointerEvent, hotspot: Hotspot) => {
+    const ds = dragStateRef.current;
+    dragStateRef.current = null;
+    if (ds?.moved) {
+      e.stopPropagation();
+      const dh = draggingHotspotRef.current;
+      draggingHotspotRef.current = null;
+      if (dh && dh.id === hotspot.id) {
+        onHotspotRepositionRef.current(hotspot.id, dh.yaw, dh.pitch);
+      }
+      return;
+    }
+    draggingHotspotRef.current = null;
+    // it was a click — select or navigate
+    if (isPreviewModeRef.current) onHotspotClickRef.current(hotspot);
+    else onHotspotSelectRef.current(hotspot.id);
+  }, []);
+
   const zoomIn  = useCallback(() => { fovRef.current = Math.max(30, fovRef.current - 10); }, []);
   const zoomOut = useCallback(() => { fovRef.current = Math.min(120, fovRef.current + 10); }, []);
 
@@ -564,43 +676,54 @@ export default function PanoramaViewer({
 
       {scene && (
         <>
-          {/* ── Overlay: hotspots + media markers ── */}
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-            {projectedItems.map(item => {
-              if (!item.visible) return null;
-              return (
-                <div
-                  key={item.id}
-                  className="absolute pointer-events-auto"
-                  style={{
-                    left: item.x,
-                    top:  item.y,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  {item.type === 'hotspot' ? (
-                    <HotspotMarker
-                      hotspot={item.data as Hotspot}
-                      isSelected={selectedElementId === item.id}
-                      isPreview={isPreviewMode}
-                      onClick={() => {
-                        if (isPreviewMode) onHotspotClick(item.data as Hotspot);
-                        else onHotspotSelect(item.id);
-                      }}
-                    />
-                  ) : (
-                    <MediaMarker
-                      media={item.data as MediaPoint}
-                      isSelected={selectedElementId === item.id}
-                      onClick={() => {
-                        if (isPreviewMode) setActiveMedia(item.data as MediaPoint);
-                        else { onMediaSelect(item.id); setActiveMedia(item.data as MediaPoint); }
-                      }}
-                    />
-                  )}
+          {/* Hotspots overlay — positions updated imperatively every frame */}
+          <div className="absolute inset-0 overflow-visible" style={{ zIndex: 5, pointerEvents: 'none' }}>
+            {(scene.hotspots ?? []).map(hs => (
+              <div
+                key={hs.id}
+                ref={el => {
+                  if (el) hotspotContainersRef.current.set(hs.id, el);
+                  else hotspotContainersRef.current.delete(hs.id);
+                }}
+                className="absolute"
+                style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
+                onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
+                onPointerUp={e => handleHotspotPointerUp(e, hs)}
+              >
+                <div style={{ transform: 'translate(-50%,-50%)' }}>
+                  <HotspotMarker
+                    hotspot={hs}
+                    isSelected={selectedElementId === hs.id}
+                    isPreview={isPreviewMode}
+                    targetSceneName={scenes.find(s => s.id === hs.targetSceneId)?.name}
+                  />
                 </div>
-              );
-            })}
+              </div>
+            ))}
+            {(scene.mediaPoints ?? []).map(mp => (
+              <div
+                key={mp.id}
+                ref={el => {
+                  if (el) mediaContainersRef.current.set(mp.id, el);
+                  else mediaContainersRef.current.delete(mp.id);
+                }}
+                className="absolute"
+                style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                onClick={() => {
+                  if (isPreviewMode) setActiveMedia(mp);
+                  else { onMediaSelect(mp.id); setActiveMedia(mp); }
+                }}
+              >
+                <div style={{ transform: 'translate(-50%,-50%)' }}>
+                  <MediaMarker
+                    media={mp}
+                    isSelected={selectedElementId === mp.id}
+                    onClick={() => {}}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* ── Tool hint banner ── */}
@@ -612,15 +735,26 @@ export default function PanoramaViewer({
             </div>
           )}
 
-          {/* ── Scene label (editor mode) ── */}
+          {/* ── Scene label + format badge (editor mode) ── */}
           {!isPreviewMode && (
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 pointer-events-none">
-              <div className={[
-                'w-2 h-2 rounded-full',
-                scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-sphera-accent',
-              ].join(' ')} />
-              <span className="text-white text-xs font-medium">{scene.name}</span>
-              <span className="text-white/40 text-[10px]">{scene.format.replace('equirectangular-', '').toUpperCase()}</span>
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2 pointer-events-none">
+              <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+                <div className={[
+                  'w-2 h-2 rounded-full flex-shrink-0',
+                  scene.mediaType === 'panorama-video' ? 'bg-purple-400' : 'bg-nm-accent',
+                ].join(' ')} />
+                <span className="text-white text-xs font-medium">{scene.name}</span>
+                <span className="text-white/40 text-[10px] border-l border-white/10 pl-2">
+                  {formatShortLabel(scene.format)}
+                </span>
+              </div>
+              {/* Fisheye warning — not yet converted */}
+              {scene.format.startsWith('fisheye') && (
+                <div className="flex items-center gap-1.5 bg-yellow-500/90 backdrop-blur-sm px-2.5 py-1.5 rounded-xl pointer-events-auto">
+                  <AlertTriangle size={11} className="text-black" />
+                  <span className="text-black text-[10px] font-semibold">Fisheye — convert for best quality</span>
+                </div>
+              )}
             </div>
           )}
 

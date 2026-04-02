@@ -20,14 +20,14 @@ export default function MediaPanel({ media, onClose }: MediaPanelProps) {
       className="absolute inset-0 flex items-center justify-center pointer-events-none"
       style={{ zIndex: 20 }}
     >
-      <div className="pointer-events-auto bg-sphera-panel/95 backdrop-blur-sm border border-sphera-border rounded-2xl shadow-2xl w-[480px] max-w-[90vw] max-h-[70vh] overflow-hidden flex flex-col animate-fade-in">
+      <div className="pointer-events-auto bg-nm-base/95 backdrop-blur-sm border border-nm-border rounded-2xl shadow-2xl w-[480px] max-w-[90vw] max-h-[70vh] overflow-hidden flex flex-col animate-fade-in">
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-sphera-border">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-nm-border">
           {ICONS[media.type]}
           <span className="flex-1 text-white font-medium text-sm truncate">{media.title || 'Information'}</span>
           <button
             onClick={onClose}
-            className="text-sphera-muted hover:text-white transition-colors p-1 rounded hover:bg-sphera-hover"
+            className="text-nm-muted hover:text-white transition-colors p-1 rounded hover:bg-nm-surface"
           >
             <X size={16} />
           </button>
@@ -36,8 +36,8 @@ export default function MediaPanel({ media, onClose }: MediaPanelProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {media.type === 'text' && (
-            <p className="text-sphera-text text-sm leading-relaxed whitespace-pre-wrap">
-              {media.content || <span className="text-sphera-muted italic">No content</span>}
+            <p className="text-nm-text text-sm leading-relaxed whitespace-pre-wrap">
+              {media.content || <span className="text-nm-muted italic">No content</span>}
             </p>
           )}
 
@@ -60,12 +60,12 @@ export default function MediaPanel({ media, onClose }: MediaPanelProps) {
           {media.type === 'pdf' && media.content && (
             <div className="flex flex-col items-center gap-3 py-6">
               <FileArchive size={40} className="text-orange-400" />
-              <p className="text-sm text-sphera-text">PDF Document</p>
+              <p className="text-sm text-nm-text">PDF Document</p>
               <a
                 href={media.content}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-sphera-accent rounded-lg text-white text-sm hover:bg-sphera-accent-hover transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-nm-accent rounded-lg text-white text-sm hover:bg-nm-accent-hover transition-colors"
               >
                 <ExternalLink size={14} />
                 Open PDF
@@ -74,7 +74,7 @@ export default function MediaPanel({ media, onClose }: MediaPanelProps) {
           )}
 
           {!media.content && (
-            <p className="text-sphera-muted text-sm italic text-center py-6">No content attached yet.</p>
+            <p className="text-nm-muted text-sm italic text-center py-6">No content attached yet.</p>
           )}
         </div>
       </div>

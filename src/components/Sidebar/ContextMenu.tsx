@@ -57,7 +57,7 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
               'w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] transition-colors text-left',
               item.danger
                 ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
-                : 'text-sphera-text hover:bg-sphera-hover hover:text-white',
+                : 'text-nm-text hover:bg-nm-surface hover:text-white',
               item.disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer',
             ].join(' ')}
           >

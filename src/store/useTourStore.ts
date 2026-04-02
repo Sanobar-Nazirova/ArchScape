@@ -49,7 +49,7 @@ interface TourState {
 
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name: string) => void;
-  addScene: (imageUrl: string, name: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string) => string;
+  addScene: (imageUrl: string, name: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string, aspectRatio?: number) => string;
   removeScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   reorderScenes: (activeId: string, overId: string) => void;
@@ -183,14 +183,22 @@ export const useTourStore = create<TourState>()((set, get) => ({
     const state = get();
     const tour = state.projects[projectId]?.tours?.[tourId];
     if (!tour) return;
+    // Normalize scenes loaded from storage — ensure required arrays always exist
+    const scenes = (tour.scenes ?? []).map(s => ({
+      ...s,
+      hotspots:     s.hotspots     ?? [],
+      mediaPoints:  s.mediaPoints  ?? [],
+      audioSources: s.audioSources ?? [],
+      tags:         s.tags         ?? [],
+    }));
     set({
       currentScreen: 'editor',
       currentProjectId: projectId,
       currentTourId: tourId,
       projectName: tour.name,
-      scenes: tour.scenes ?? [],
+      scenes,
       folders: tour.folders ?? [],
-      activeSceneId: tour.scenes?.[0]?.id ?? null,
+      activeSceneId: scenes[0]?.id ?? null,
       selectedElementId: null,
       selectedElementType: null,
       activeTool: 'none',
@@ -244,7 +252,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
   // ── Scene actions ─────────────────────────────────────────────────────────
   setProjectName: (name) => set({ projectName: name }),
 
-  addScene: (imageUrl, name, format, mediaType, thumbnail) => {
+  addScene: (imageUrl, name, format, mediaType, thumbnail, aspectRatio) => {
     const id = genId('scene');
     const scene: Scene = {
       id, name, imageUrl, mediaType, format,
@@ -255,6 +263,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
       initialYaw: 0,
       initialPitch: 0,
       thumbnail,
+      aspectRatio,
     };
     set((s) => ({
       scenes: [...s.scenes, scene],
