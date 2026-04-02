@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import type { Hotspot, HotspotIconStyle } from '../../types';
+import ScenePicker from '../ScenePicker';
 
 const ICON_STYLES: HotspotIconStyle[] = ['arrow', 'door', 'circle', 'stairs', 'exit'];
 
@@ -15,35 +16,77 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
   const update = (updates: Partial<Hotspot>) => updateHotspot(sceneId, hotspot.id, updates);
 
   const otherScenes = scenes.filter(s => s.id !== sceneId);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
     <div className="space-y-5">
       {/* Destination */}
       <Field label="Link to Scene">
         {otherScenes.length === 0 ? (
-          <div className="px-3 py-2 rounded-lg bg-nm-surface/50 text-[11px] text-nm-muted">
+          <div className="px-3 py-2.5 rounded-xl text-[11px] text-nm-muted text-center"
+            style={{ boxShadow: 'inset 3px 3px 7px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in)' }}>
             Upload more scenes to enable navigation links.
           </div>
         ) : (
           <>
-            <select
-              value={hotspot.targetSceneId}
-              onChange={e => update({ targetSceneId: e.target.value })}
-              className="input-base"
-            >
-              <option value="">— Select destination scene —</option>
-              {otherScenes.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            {hotspot.targetSceneId && (
-              <p className="text-[10px] text-nm-accent mt-1">
-                → Hover tooltip will show "{otherScenes.find(s => s.id === hotspot.targetSceneId)?.name}"
-              </p>
+            {hotspot.targetSceneId ? (
+              /* Linked scene card */
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
+              >
+                {(() => {
+                  const linked = otherScenes.find(s => s.id === hotspot.targetSceneId);
+                  return (
+                    <>
+                      {linked?.thumbnail ? (
+                        <img src={linked.thumbnail} alt={linked?.name} className="w-full object-cover" style={{ height: 64 }} />
+                      ) : (
+                        <div className="w-full flex items-center justify-center text-2xl"
+                          style={{ height: 64, background: 'var(--nm-surface, #2a2a36)' }}>🌐</div>
+                      )}
+                      <div className="flex items-center justify-between px-3 py-2"
+                        style={{ background: 'var(--nm-surface, #2a2a36)' }}>
+                        <div>
+                          <p className="text-xs text-nm-text font-medium truncate max-w-[140px]">{linked?.name ?? 'Unknown'}</p>
+                          <p className="text-[10px] text-nm-accent">Linked ✓</p>
+                        </div>
+                        <button
+                          onClick={() => setPickerOpen(true)}
+                          className="text-[11px] text-nm-muted hover:text-nm-text px-2 py-1 rounded-lg transition-colors"
+                          style={{ boxShadow: '2px 2px 5px var(--sh-d), -1px -1px 3px var(--sh-l)' }}
+                        >
+                          Change
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : (
+              /* No link yet */
+              <button
+                onClick={() => setPickerOpen(true)}
+                className="w-full py-3 rounded-xl text-sm text-nm-muted hover:text-nm-text transition-all flex items-center justify-center gap-2"
+                style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
+              >
+                <span className="text-lg">🔗</span>
+                Select destination scene
+              </button>
             )}
           </>
         )}
       </Field>
+
+      {pickerOpen && (
+        <ScenePicker
+          scenes={scenes}
+          currentSceneId={sceneId}
+          linkedSceneId={hotspot.targetSceneId}
+          onSelect={(id) => update({ targetSceneId: id })}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {/* Label override */}
       <Field label="Custom Tooltip Label">

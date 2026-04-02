@@ -7,7 +7,7 @@ import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
 import { useTourStore } from '../../store/useTourStore';
 import type {
-  Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle, ProjectedItem,
+  Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle,
 } from '../../types';
 import { triggerUpload } from '../../utils/uploadTrigger';
 import { formatShortLabel } from '../../utils/panoramaDetector';
@@ -27,22 +27,16 @@ const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
 };
 
 function HotspotMarker({
-  hotspot, isSelected, isPreview, onClick, targetSceneName,
+  hotspot, isSelected, isPreview, targetSceneName,
 }: {
   hotspot: Hotspot;
   isSelected: boolean;
   isPreview: boolean;
-  onClick: () => void;
   targetSceneName?: string;
 }) {
-  // Show tooltip: custom label > linked scene name > nothing
   const tooltip = hotspot.label || targetSceneName;
-
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-1 group focus:outline-none"
-    >
+    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
       <div className={[
         'w-10 h-10 rounded-full flex items-center justify-center transition-all',
         'border-2 shadow-lg backdrop-blur-sm',
@@ -51,8 +45,7 @@ function HotspotMarker({
           : isPreview
           ? 'bg-black/60 border-white/70 text-white hover:scale-110 hover:bg-nm-accent hover:border-white hotspot-pulse'
           : 'bg-black/50 border-nm-accent/70 text-nm-accent hover:scale-110 hover:bg-nm-accent hover:text-white hotspot-pulse',
-      ].join(' ')}
-      >
+      ].join(' ')}>
         {HOTSPOT_ICONS[hotspot.iconStyle]}
       </div>
       {tooltip && (
@@ -66,7 +59,7 @@ function HotspotMarker({
           {tooltip}
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -214,11 +207,13 @@ interface PanoramaViewerProps {
   onHotspotClick: (hotspot: Hotspot) => void;
   onHotspotSelect: (hotspotId: string) => void;
   onMediaSelect: (mediaId: string) => void;
+  onHotspotReposition: (hotspotId: string, yaw: number, pitch: number) => void;
 }
 
 export default function PanoramaViewer({
   scene, isPreviewMode, activeTool, selectedElementId,
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
+  onHotspotReposition,
 }: PanoramaViewerProps) {
   const { floorPlan, setActiveScene, scenes } = useTourStore();
 
@@ -238,18 +233,31 @@ export default function PanoramaViewer({
   const fovRef        = useRef(75);
   const draggingRef   = useRef(false);
   const lastMouseRef  = useRef({ x: 0, y: 0 });
-  const cameraYawRef  = useRef(0); // tracked for minimap
+
+  // ── Hotspot overlay refs ───────────────────────────────────────────────
+  const hotspotContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const mediaContainersRef   = useRef<Map<string, HTMLDivElement>>(new Map());
+  const draggingHotspotRef   = useRef<{ id: string; yaw: number; pitch: number } | null>(null);
+  const dragStateRef         = useRef<{ hotspotId: string; startX: number; startY: number; moved: boolean } | null>(null);
 
   // ── Prop refs ─────────────────────────────────────────────────────────
-  const sceneRef        = useRef(scene);
-  const activeToolRef   = useRef(activeTool);
+  const sceneRef              = useRef(scene);
+  const activeToolRef         = useRef(activeTool);
+  const isPreviewModeRef      = useRef(isPreviewMode);
+  const onHotspotClickRef     = useRef(onHotspotClick);
+  const onHotspotSelectRef    = useRef(onHotspotSelect);
+  const onHotspotRepositionRef = useRef(onHotspotReposition);
+
   useEffect(() => { sceneRef.current = scene; }, [scene]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+  useEffect(() => { isPreviewModeRef.current = isPreviewMode; }, [isPreviewMode]);
+  useEffect(() => { onHotspotClickRef.current = onHotspotClick; }, [onHotspotClick]);
+  useEffect(() => { onHotspotSelectRef.current = onHotspotSelect; }, [onHotspotSelect]);
+  useEffect(() => { onHotspotRepositionRef.current = onHotspotReposition; }, [onHotspotReposition]);
 
   // ── UI state ──────────────────────────────────────────────────────────
-  const [projectedItems, setProjectedItems] = useState<ProjectedItem[]>([]);
-  const [activeMedia, setActiveMedia]       = useState<MediaPoint | null>(null);
-  const [minimapYaw, setMinimapYaw]         = useState(0);
+  const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
+  const [minimapYaw, setMinimapYaw]   = useState(0);
 
   // ── Expose camera view getter globally (for "Set from current view" button) ──
   useEffect(() => {
@@ -301,50 +309,41 @@ export default function PanoramaViewer({
         (textureRef.current as THREE.VideoTexture).needsUpdate = true;
       }
 
-      // Project hotspots/media (every 2 frames for performance)
-      if (frame % 2 === 0) {
-        const w = container.clientWidth;
-        const h = container.clientHeight;
-        const sc = sceneRef.current;
-        const items: ProjectedItem[] = [];
-
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-
-        if (sc) {
-          for (const hs of sc.hotspots) {
-            const wp = yawPitchToWorld(hs.yaw, hs.pitch);
-            const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-            const proj = v.clone().project(cam);
-            const dot = forward.dot(v);
-            items.push({
-              id: hs.id, type: 'hotspot',
-              x: (proj.x + 1) / 2 * w,
-              y: (1 - proj.y) / 2 * h,
-              visible: dot > 0.15,
-              data: hs,
-            });
-          }
-          for (const mp of sc.mediaPoints) {
-            const wp = yawPitchToWorld(mp.yaw, mp.pitch);
-            const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-            const proj = v.clone().project(cam);
-            const dot = forward.dot(v);
-            items.push({
-              id: mp.id, type: 'media',
-              x: (proj.x + 1) / 2 * w,
-              y: (1 - proj.y) / 2 * h,
-              visible: dot > 0.15,
-              data: mp,
-            });
-          }
+      // Imperatively update hotspot/media overlay positions every frame
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      const sc = sceneRef.current;
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+      if (sc) {
+        for (const hs of sc.hotspots) {
+          const el = hotspotContainersRef.current.get(hs.id);
+          if (!el) continue;
+          // use dragging override position if active
+          const pos = draggingHotspotRef.current?.id === hs.id ? draggingHotspotRef.current : hs;
+          const wp = yawPitchToWorld(pos.yaw, pos.pitch);
+          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
+          const proj = v.clone().project(cam);
+          const visible = forward.dot(v.normalize()) > 0.15;
+          const x = (proj.x + 1) / 2 * w;
+          const y = (1 - proj.y) / 2 * h;
+          el.style.transform = `translate3d(${x}px,${y}px,0)`;
+          el.style.opacity = visible ? '1' : '0';
+          el.style.pointerEvents = visible ? 'auto' : 'none';
         }
-        setProjectedItems(items);
-
-        // Update minimap direction every 10 frames
-        if (frame % 10 === 0) {
-          cameraYawRef.current = yawRef.current;
-          setMinimapYaw(yawRef.current);
+        for (const mp of sc.mediaPoints) {
+          const el = mediaContainersRef.current.get(mp.id);
+          if (!el) continue;
+          const wp = yawPitchToWorld(mp.yaw, mp.pitch);
+          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
+          const proj = v.clone().project(cam);
+          const visible = forward.dot(v.normalize()) > 0.15;
+          const x = (proj.x + 1) / 2 * w;
+          const y = (1 - proj.y) / 2 * h;
+          el.style.transform = `translate3d(${x}px,${y}px,0)`;
+          el.style.opacity = visible ? '1' : '0';
+          el.style.pointerEvents = visible ? 'auto' : 'none';
         }
+        if (frame % 10 === 0) setMinimapYaw(yawRef.current);
       }
 
       renderer.render(threeScene, cam);
@@ -443,12 +442,16 @@ export default function PanoramaViewer({
       // ── UV adjustments for stereo formats ─────────────────────────────
       switch (scene.format) {
         case 'equirectangular-sbs':
+          texture.wrapS = THREE.RepeatWrapping;
           texture.repeat.set(0.5, 1);
           texture.offset.set(0, 0);
+          texture.needsUpdate = true;
           break;
         case 'equirectangular-tb':
+          texture.wrapT = THREE.RepeatWrapping;
           texture.repeat.set(1, 0.5);
           texture.offset.set(0, 0.5);
+          texture.needsUpdate = true;
           break;
         default:
           texture.repeat.set(1, 1);
@@ -584,6 +587,56 @@ export default function PanoramaViewer({
     }
   }, [onHotspotPlace, onMediaPlace]);
 
+  // ── Hotspot drag handlers ─────────────────────────────────────────────
+  const handleHotspotPointerDown = useCallback((e: React.PointerEvent, hotspotId: string) => {
+    if (isPreviewModeRef.current) return;
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragStateRef.current = { hotspotId, startX: e.clientX, startY: e.clientY, moved: false };
+  }, []);
+
+  const handleHotspotPointerMove = useCallback((e: React.PointerEvent, hotspotId: string) => {
+    const ds = dragStateRef.current;
+    if (!ds || ds.hotspotId !== hotspotId) return;
+    const dx = e.clientX - ds.startX;
+    const dy = e.clientY - ds.startY;
+    if (!ds.moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) ds.moved = true;
+    if (!ds.moved) return;
+    const container = containerRef.current;
+    const camera = cameraRef.current;
+    const sphere = sphereRef.current;
+    if (!container || !camera || !sphere) return;
+    const rect = container.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(nx, ny), camera);
+    const hits = ray.intersectObject(sphere);
+    if (hits.length > 0) {
+      const pt = hits[0].point.clone().normalize();
+      const { yaw, pitch } = worldToYawPitch(pt.x, pt.y, pt.z);
+      draggingHotspotRef.current = { id: hotspotId, yaw, pitch };
+    }
+  }, []);
+
+  const handleHotspotPointerUp = useCallback((e: React.PointerEvent, hotspot: Hotspot) => {
+    const ds = dragStateRef.current;
+    dragStateRef.current = null;
+    if (ds?.moved) {
+      e.stopPropagation();
+      const dh = draggingHotspotRef.current;
+      draggingHotspotRef.current = null;
+      if (dh && dh.id === hotspot.id) {
+        onHotspotRepositionRef.current(hotspot.id, dh.yaw, dh.pitch);
+      }
+      return;
+    }
+    draggingHotspotRef.current = null;
+    // it was a click — select or navigate
+    if (isPreviewModeRef.current) onHotspotClickRef.current(hotspot);
+    else onHotspotSelectRef.current(hotspot.id);
+  }, []);
+
   const zoomIn  = useCallback(() => { fovRef.current = Math.max(30, fovRef.current - 10); }, []);
   const zoomOut = useCallback(() => { fovRef.current = Math.min(120, fovRef.current + 10); }, []);
 
@@ -617,44 +670,54 @@ export default function PanoramaViewer({
 
       {scene && (
         <>
-          {/* ── Overlay: hotspots + media markers ── */}
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-            {projectedItems.map(item => {
-              if (!item.visible) return null;
-              return (
-                <div
-                  key={item.id}
-                  className="absolute pointer-events-auto"
-                  style={{
-                    left: item.x,
-                    top:  item.y,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  {item.type === 'hotspot' ? (
-                    <HotspotMarker
-                      hotspot={item.data as Hotspot}
-                      isSelected={selectedElementId === item.id}
-                      isPreview={isPreviewMode}
-                      targetSceneName={scenes.find(s => s.id === (item.data as Hotspot).targetSceneId)?.name}
-                      onClick={() => {
-                        if (isPreviewMode) onHotspotClick(item.data as Hotspot);
-                        else onHotspotSelect(item.id);
-                      }}
-                    />
-                  ) : (
-                    <MediaMarker
-                      media={item.data as MediaPoint}
-                      isSelected={selectedElementId === item.id}
-                      onClick={() => {
-                        if (isPreviewMode) setActiveMedia(item.data as MediaPoint);
-                        else { onMediaSelect(item.id); setActiveMedia(item.data as MediaPoint); }
-                      }}
-                    />
-                  )}
+          {/* Hotspots overlay — positions updated imperatively every frame */}
+          <div className="absolute inset-0 overflow-visible" style={{ zIndex: 5, pointerEvents: 'none' }}>
+            {scene.hotspots.map(hs => (
+              <div
+                key={hs.id}
+                ref={el => {
+                  if (el) hotspotContainersRef.current.set(hs.id, el);
+                  else hotspotContainersRef.current.delete(hs.id);
+                }}
+                className="absolute"
+                style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
+                onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
+                onPointerUp={e => handleHotspotPointerUp(e, hs)}
+              >
+                <div style={{ transform: 'translate(-50%,-50%)' }}>
+                  <HotspotMarker
+                    hotspot={hs}
+                    isSelected={selectedElementId === hs.id}
+                    isPreview={isPreviewMode}
+                    targetSceneName={scenes.find(s => s.id === hs.targetSceneId)?.name}
+                  />
                 </div>
-              );
-            })}
+              </div>
+            ))}
+            {scene.mediaPoints.map(mp => (
+              <div
+                key={mp.id}
+                ref={el => {
+                  if (el) mediaContainersRef.current.set(mp.id, el);
+                  else mediaContainersRef.current.delete(mp.id);
+                }}
+                className="absolute"
+                style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                onClick={() => {
+                  if (isPreviewMode) setActiveMedia(mp);
+                  else { onMediaSelect(mp.id); setActiveMedia(mp); }
+                }}
+              >
+                <div style={{ transform: 'translate(-50%,-50%)' }}>
+                  <MediaMarker
+                    media={mp}
+                    isSelected={selectedElementId === mp.id}
+                    onClick={() => {}}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* ── Tool hint banner ── */}

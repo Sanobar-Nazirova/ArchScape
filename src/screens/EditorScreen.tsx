@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Toolbar from '../components/Toolbar/Toolbar';
 import Sidebar from '../components/Sidebar/Sidebar';
 import PanoramaViewer from '../components/Viewer/PanoramaViewer';
 import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel';
+import ScenePicker from '../components/ScenePicker';
 import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
 import { ChevronLeft, ChevronRight, Maximize2, Play } from 'lucide-react';
@@ -91,19 +92,27 @@ export default function EditorScreen() {
     scenes, activeSceneId, setActiveScene,
     selectedElementId, setSelectedElement,
     activeTool, setActiveTool,
-    addHotspot, addMediaPoint,
+    addHotspot, addMediaPoint, updateHotspot,
     isPreviewMode,
   } = useTourStore();
 
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
+  const [pendingHotspotId, setPendingHotspotId] = useState<string | null>(null);
 
   const handleHotspotClick = useCallback((hs: Hotspot) => {
     if (hs.targetSceneId) setActiveScene(hs.targetSceneId);
   }, [setActiveScene]);
 
   const handleHotspotPlace = useCallback((yaw: number, pitch: number) => {
-    if (activeSceneId) addHotspot(activeSceneId, yaw, pitch);
+    if (activeSceneId) {
+      const id = addHotspot(activeSceneId, yaw, pitch);
+      setPendingHotspotId(id);
+    }
   }, [activeSceneId, addHotspot]);
+
+  const handleHotspotReposition = useCallback((hotspotId: string, yaw: number, pitch: number) => {
+    if (activeSceneId) updateHotspot(activeSceneId, hotspotId, { yaw, pitch });
+  }, [activeSceneId, updateHotspot]);
 
   const handleMediaPlace = useCallback((yaw: number, pitch: number) => {
     if (activeSceneId) addMediaPoint(activeSceneId, yaw, pitch);
@@ -137,8 +146,20 @@ export default function EditorScreen() {
           onHotspotClick={handleHotspotClick}
           onHotspotSelect={() => {}}
           onMediaSelect={() => {}}
+          onHotspotReposition={() => {}}
         />
         <PresentationHUD />
+        {pendingHotspotId && activeScene && (
+          <ScenePicker
+            scenes={scenes}
+            currentSceneId={activeScene.id}
+            onSelect={(targetId) => {
+              updateHotspot(activeScene.id, pendingHotspotId, { targetSceneId: targetId });
+              setPendingHotspotId(null);
+            }}
+            onClose={() => setPendingHotspotId(null)}
+          />
+        )}
       </div>
     );
   }
@@ -174,6 +195,7 @@ export default function EditorScreen() {
             onHotspotClick={handleHotspotClick}
             onHotspotSelect={handleHotspotSelect}
             onMediaSelect={handleMediaSelect}
+            onHotspotReposition={handleHotspotReposition}
           />
         </div>
 
@@ -182,6 +204,17 @@ export default function EditorScreen() {
           <PropertiesPanel />
         </div>
       </div>
+      {pendingHotspotId && activeScene && (
+        <ScenePicker
+          scenes={scenes}
+          currentSceneId={activeScene.id}
+          onSelect={(targetId) => {
+            updateHotspot(activeScene.id, pendingHotspotId, { targetSceneId: targetId });
+            setPendingHotspotId(null);
+          }}
+          onClose={() => setPendingHotspotId(null)}
+        />
+      )}
     </div>
   );
 }

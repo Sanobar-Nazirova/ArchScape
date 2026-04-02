@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, RotateCcw, Camera } from 'lucide-react';
+import { Trash2, Camera } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import { ALL_FORMATS, formatLabel, formatShortLabel } from '../../utils/panoramaDetector';
 import type { Scene } from '../../types';
@@ -85,39 +85,19 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
         </div>
       </Field>
 
-      {/* Initial view */}
-      <Field label="Initial View Angle">
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <p className="text-[10px] text-nm-muted mb-1">Yaw (°)</p>
-            <input
-              type="number"
-              step="5"
-              value={Math.round(scene.initialYaw * 180 / Math.PI)}
-              onChange={e => updateSceneInitialView(scene.id, Number(e.target.value) * Math.PI / 180, scene.initialPitch)}
-              className="input-base"
-            />
-          </div>
-          <div>
-            <p className="text-[10px] text-nm-muted mb-1">Pitch (°)</p>
-            <input
-              type="number"
-              step="5"
-              min="-85"
-              max="85"
-              value={Math.round(scene.initialPitch * 180 / Math.PI)}
-              onChange={e => updateSceneInitialView(scene.id, scene.initialYaw, Number(e.target.value) * Math.PI / 180)}
-              className="input-base"
-            />
-          </div>
-        </div>
+      {/* Initial view — Save View button */}
+      <Field label="Initial View">
         <button
           onClick={handleSetCurrentView}
-          className="mt-2 flex items-center gap-1.5 text-xs text-nm-muted hover:text-white transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+          style={{ background: 'var(--nm-accent)', boxShadow: '4px 4px 12px rgba(224,123,63,.35), -2px -2px 6px rgba(255,255,255,.05)' }}
         >
-          <Camera size={12} />
-          Set from current view
+          <Camera size={14} />
+          Save Current View
         </button>
+        <p className="text-[10px] text-nm-muted mt-1.5 text-center leading-snug">
+          Navigate to the desired starting angle, then click to save.
+        </p>
       </Field>
 
       {/* Stats */}
