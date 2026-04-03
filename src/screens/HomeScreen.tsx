@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, FolderOpen, Trash2, X, Layers } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Plus, FolderOpen, Trash2, X, Camera, HelpCircle } from 'lucide-react';
 import { useTourStore } from '../store/useTourStore';
 import ThemeToggle from '../components/ThemeToggle';
+import HelpModal from '../components/HelpModal';
 import type { Project } from '../types';
 
 /* ─── New Project Modal ─────────────────────────────────────────────────── */
@@ -81,13 +82,25 @@ function NewProjectModal({ onClose }: { onClose: () => void }) {
 
 /* ─── Project Card ──────────────────────────────────────────────────────── */
 function ProjectCard({ project }: { project: Project }) {
-  const { openProject, deleteProject } = useTourStore();
+  const { openProject, deleteProject, updateProject } = useTourStore();
+  const thumbInputRef = useRef<HTMLInputElement>(null);
   const tourCount = Object.keys(project.tours ?? {}).length;
-  const initials = project.name.slice(0, 2).toUpperCase();
 
   const created = new Date(project.created).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
+
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      updateProject(project.id, { thumbnail: dataUrl });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   return (
     <div
@@ -95,12 +108,30 @@ function ProjectCard({ project }: { project: Project }) {
       style={{ background: 'var(--nm-base)', boxShadow: '6px 6px 14px rgba(0,0,0,.6), -4px -4px 10px rgba(255,255,255,.04)' }}
       onClick={() => openProject(project.id)}
     >
-      {/* Thumb */}
+      {/* Thumbnail */}
       <div
-        className="w-full h-32 rounded-nm-sm mb-4 flex items-center justify-center"
+        className="relative w-full h-32 rounded-nm-sm mb-4 overflow-hidden flex items-center justify-center"
         style={{ boxShadow: 'inset 4px 4px 10px rgba(0,0,0,.6), inset -3px -3px 8px rgba(255,255,255,.04)' }}
       >
-        <span className="font-syne text-4xl font-bold text-nm-accent opacity-60">{initials}</span>
+        {project.thumbnail ? (
+          <img src={project.thumbnail} alt={project.name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="font-syne text-4xl font-bold text-nm-accent opacity-40">
+            {project.name.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+        {/* Upload thumbnail overlay */}
+        <button
+          onClick={e => { e.stopPropagation(); thumbInputRef.current?.click(); }}
+          className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Upload project thumbnail"
+        >
+          <div className="flex flex-col items-center gap-1 text-white/80">
+            <Camera size={20} />
+            <span className="text-[10px] font-medium">Set thumbnail</span>
+          </div>
+        </button>
+        <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
       </div>
 
       <div className="flex items-start justify-between gap-2">
@@ -122,7 +153,10 @@ function ProjectCard({ project }: { project: Project }) {
             <FolderOpen size={14} />
           </button>
           <button
-            onClick={e => { e.stopPropagation(); if (confirm(`Delete "${project.name}"?`)) deleteProject(project.id); }}
+            onClick={e => {
+              e.stopPropagation();
+              if (confirm(`Delete "${project.name}"?`)) deleteProject(project.id);
+            }}
             className="p-1.5 rounded-lg text-nm-muted hover:text-nm-danger transition-colors"
             title="Delete project"
           >
@@ -138,6 +172,7 @@ function ProjectCard({ project }: { project: Project }) {
 export default function HomeScreen() {
   const { projects } = useTourStore();
   const [showModal, setShowModal] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const projectList = Object.values(projects).sort((a, b) => b.created - a.created);
 
@@ -157,6 +192,15 @@ export default function HomeScreen() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowHelp(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
+            style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+            title="Help & Tutorial"
+          >
+            <HelpCircle size={14} />
+            Help
+          </button>
           <ThemeToggle />
           <button
             onClick={() => setShowModal(true)}
@@ -218,6 +262,7 @@ export default function HomeScreen() {
       </main>
 
       {showModal && <NewProjectModal onClose={() => setShowModal(false)} />}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
     </div>
   );
 }

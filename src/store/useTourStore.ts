@@ -6,6 +6,7 @@ import type {
   PanoramaFormat, MediaType,
   AppScreen, Project, Tour,
 } from '../types';
+import { saveImage, loadImage, deleteImage } from '../utils/imageDB';
 
 let _idCounter = 0;
 const genId = (prefix = 'id') => `${prefix}_${++_idCounter}_${Math.random().toString(36).slice(2, 7)}`;
@@ -39,9 +40,13 @@ interface TourState {
   addProject: (name: string, desc?: string) => string;
   deleteProject: (id: string) => void;
   openProject: (id: string) => void;
+  updateProject: (id: string, updates: { name?: string; desc?: string; thumbnail?: string }) => void;
   addTour: (projectId: string, name: string, desc?: string) => string;
   deleteTour: (projectId: string, tourId: string) => void;
+  duplicateTour: (projectId: string, tourId: string) => string;
+  updateTour: (projectId: string, tourId: string, updates: { name?: string; desc?: string; password?: string }) => void;
   openTour: (projectId: string, tourId: string) => void;
+  restoreSceneImages: () => Promise<void>;
   saveTour: (name?: string) => void;
   goBack: () => void;
   goHome: () => void;
@@ -151,6 +156,12 @@ export const useTourStore = create<TourState>()((set, get) => ({
     return { projects: rest };
   }),
 
+  updateProject: (id, updates) => set(s => {
+    const updated = { ...s.projects, [id]: { ...s.projects[id], ...updates } };
+    try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
+    return { projects: updated };
+  }),
+
   openProject: (id) => set({ currentScreen: 'project', currentProjectId: id }),
 
   addTour: (projectId, name, desc) => {
@@ -175,6 +186,53 @@ export const useTourStore = create<TourState>()((set, get) => ({
     const updated = {
       ...s.projects,
       [projectId]: { ...s.projects[projectId], tours: rest },
+    };
+    try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
+    return { projects: updated };
+  }),
+
+  duplicateTour: (projectId, tourId) => {
+    const state = get();
+    const orig = state.projects[projectId]?.tours[tourId];
+    if (!orig) return '';
+    const newId = genId('tour');
+    const copy: Tour = {
+      ...orig,
+      id: newId,
+      name: `${orig.name} (copy)`,
+      created: Date.now(),
+      updated: undefined,
+    };
+    // Copy images in IndexedDB for each scene
+    orig.scenes.forEach(sc => {
+      loadImage(`scene_${sc.id}`).then(url => {
+        if (url) saveImage(`scene_${newId}_${sc.id}`, url);
+      });
+    });
+    const updated = {
+      ...state.projects,
+      [projectId]: {
+        ...state.projects[projectId],
+        tours: { ...state.projects[projectId].tours, [newId]: copy },
+      },
+    };
+    try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
+    set({ projects: updated });
+    return newId;
+  },
+
+  updateTour: (projectId, tourId, updates) => set(s => {
+    const existing = s.projects[projectId]?.tours[tourId];
+    if (!existing) return {};
+    const updated = {
+      ...s.projects,
+      [projectId]: {
+        ...s.projects[projectId],
+        tours: {
+          ...s.projects[projectId].tours,
+          [tourId]: { ...existing, ...updates },
+        },
+      },
     };
     try { localStorage.setItem('sphera_v2', JSON.stringify(updated)); } catch (_e) {}
     return { projects: updated };
@@ -214,11 +272,19 @@ export const useTourStore = create<TourState>()((set, get) => ({
     const existing = projects[pid].tours[tid];
     if (!existing) return;
     const thumbUrl = scenes[0]?.thumbnail;
+
+    // Persist full images in IndexedDB; strip from localStorage to avoid quota overflow
+    scenes.forEach(sc => {
+      if (sc.imageUrl) saveImage(`scene_${sc.id}`, sc.imageUrl);
+    });
+
+    // Strip imageUrl before localStorage — it can be 10–100 MB per scene
+    const scenesForStorage = scenes.map(sc => ({ ...sc, imageUrl: '' }));
     const updated: Tour = {
       ...existing,
       name: name ?? existing.name,
       updated: Date.now(),
-      scenes,
+      scenes: scenesForStorage,
       folders,
       thumbUrl,
     };
@@ -231,8 +297,21 @@ export const useTourStore = create<TourState>()((set, get) => ({
     };
     set({ projects: newProjects });
     try { localStorage.setItem('sphera_v2', JSON.stringify(newProjects)); } catch (_e) {
-      console.warn('Storage full');
+      console.warn('Storage full – consider removing old tours');
     }
+  },
+
+  /** After openTour, call this to restore imageUrls from IndexedDB. */
+  restoreSceneImages: async () => {
+    const { scenes } = get();
+    const updates = await Promise.all(
+      scenes.map(async sc => {
+        if (sc.imageUrl) return sc; // already has URL (same session)
+        const url = await loadImage(`scene_${sc.id}`);
+        return url ? { ...sc, imageUrl: url } : sc;
+      }),
+    );
+    set({ scenes: updates });
   },
 
   goBack: () => {
@@ -276,6 +355,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
   },
 
   removeScene: (id) => {
+    deleteImage(`scene_${id}`);
     set((s) => {
       const scenes = s.scenes.filter(sc => sc.id !== id);
       const activeSceneId = s.activeSceneId === id

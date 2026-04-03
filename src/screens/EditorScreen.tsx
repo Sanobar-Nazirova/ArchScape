@@ -93,8 +93,11 @@ export default function EditorScreen() {
     selectedElementId, setSelectedElement,
     activeTool, setActiveTool,
     addHotspot, addMediaPoint, updateHotspot,
-    isPreviewMode,
+    isPreviewMode, restoreSceneImages,
   } = useTourStore();
+
+  // Restore panorama images from IndexedDB when editor opens (after page refresh)
+  useEffect(() => { restoreSceneImages(); }, []);
 
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
   const [pendingHotspotId, setPendingHotspotId] = useState<string | null>(null);

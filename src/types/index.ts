@@ -95,6 +95,7 @@ export interface Project {
   name: string;
   desc?: string;
   created: number;
+  thumbnail?: string;
   tours: Record<string, Tour>;
 }
 
@@ -105,6 +106,7 @@ export interface Tour {
   created: number;
   updated?: number;
   thumbUrl?: string;
+  password?: string;
   scenes: Scene[];
   folders: Folder[];
 }
