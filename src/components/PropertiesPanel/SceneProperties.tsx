@@ -63,22 +63,27 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
         )}
         {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
           <div className="mt-2">
-            <p className="text-[10px] text-nm-muted mb-1.5">Stereo Eye</p>
+            <p className="text-[10px] text-nm-muted mb-1.5">Stereo Eye to Display</p>
             <div className="flex rounded-lg overflow-hidden border border-nm-border">
-              {(['left', 'right'] as const).map(eye => (
-                <button
-                  key={eye}
-                  onClick={() => updateSceneStereoEye(scene.id, eye)}
-                  className={[
-                    'flex-1 py-1.5 text-xs capitalize transition-colors',
-                    (scene.stereoEye ?? 'left') === eye
-                      ? 'bg-nm-accent text-white'
-                      : 'text-nm-muted hover:text-nm-text',
-                  ].join(' ')}
-                >
-                  {eye} eye
-                </button>
-              ))}
+              {(['left', 'right'] as const).map(eye => {
+                const label = scene.format === 'equirectangular-tb'
+                  ? eye === 'left' ? 'Top (left eye)' : 'Bottom (right eye)'
+                  : eye === 'left' ? 'Left eye' : 'Right eye';
+                return (
+                  <button
+                    key={eye}
+                    onClick={() => updateSceneStereoEye(scene.id, eye)}
+                    className={[
+                      'flex-1 py-1.5 text-xs transition-colors',
+                      (scene.stereoEye ?? 'left') === eye
+                        ? 'bg-nm-accent text-white'
+                        : 'text-nm-muted hover:text-nm-text',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
             <p className="text-[10px] text-nm-muted mt-1">Switch if image appears reversed/distorted.</p>
           </div>

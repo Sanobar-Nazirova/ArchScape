@@ -8,7 +8,7 @@ import { useTourStore } from '../../store/useTourStore';
 import ThemeToggle from '../ThemeToggle';
 import { registerUploadTrigger } from '../../utils/uploadTrigger';
 import { detectPanorama } from '../../utils/panoramaDetector';
-import { fisheyeToEquirectangular, fileToCanvas } from '../../utils/fisheyeConverter';
+import { fisheyeToEquirectangular, fileToCanvas, autoDetectFisheyeCircles } from '../../utils/fisheyeConverter';
 import { generateThumbnail } from '../../utils/panoramaGenerator';
 import type { PanoramaDetectionResult, FisheyeConfig } from '../../types';
 
@@ -23,12 +23,36 @@ interface FisheyeDialogProps {
 
 function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: FisheyeDialogProps) {
   const [config, setConfig] = useState<FisheyeConfig>(
-    result.suggestedFisheyeConfig ?? { type: 'dual-sbs', fov: 180, centerX: 0.25, centerY: 0.5, radius: 0.92 },
+    result.suggestedFisheyeConfig ?? { type: 'dual-sbs', fov: 190, centerX: 0.25, centerY: 0.5, radius: 0.92 },
   );
+  const [detecting, setDetecting] = useState(false);
+  const [autoDetected, setAutoDetected] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Run auto-detection once the file is loaded into a canvas
+  const runDetect = useCallback(async (type: FisheyeConfig['type']) => {
+    setDetecting(true);
+    try {
+      if (!canvasRef.current) canvasRef.current = await fileToCanvas(file);
+      const detected = autoDetectFisheyeCircles(canvasRef.current, type);
+      setConfig(c => ({ ...c, ...detected }));
+      setAutoDetected(true);
+    } catch { /* ignore */ }
+    setDetecting(false);
+  }, [file]);
+
+  // Auto-detect on first open
+  useEffect(() => { runDetect(config.type); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleTypeChange = (newType: FisheyeConfig['type']) => {
+    setConfig(c => ({ ...c, type: newType }));
+    setAutoDetected(false);
+    runDetect(newType);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
-      <div className="bg-nm-base border border-nm-border rounded-2xl p-6 w-[460px] max-w-[95vw] shadow-2xl">
+      <div className="bg-nm-base border border-nm-border rounded-2xl p-6 w-[480px] max-w-[95vw] shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white font-semibold">Fisheye Image Detected</h3>
           <button onClick={onCancel} className="text-nm-muted hover:text-white transition-colors p-1">
@@ -47,7 +71,7 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
             <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Fisheye Type</label>
             <select
               value={config.type}
-              onChange={e => setConfig(c => ({ ...c, type: e.target.value as FisheyeConfig['type'] }))}
+              onChange={e => handleTypeChange(e.target.value as FisheyeConfig['type'])}
               className="input-base"
             >
               <option value="dual-sbs">Dual Fisheye — Side by Side (Ricoh Theta, Insta360 ONE)</option>
@@ -56,43 +80,65 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Field of View (°)</label>
-              <input
-                type="number" min={120} max={240} step={5}
-                value={config.fov}
-                onChange={e => setConfig(c => ({ ...c, fov: Number(e.target.value) }))}
-                className="input-base"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Circle Radius (0–1)</label>
-              <input
-                type="number" min={0.5} max={1} step={0.01}
-                value={config.radius}
-                onChange={e => setConfig(c => ({ ...c, radius: Number(e.target.value) }))}
-                className="input-base"
-              />
-            </div>
+          <div>
+            <label className="text-[11px] text-nm-muted uppercase tracking-wide block mb-1.5">Field of View (°)</label>
+            <input
+              type="number" min={120} max={240} step={5}
+              value={config.fov}
+              onChange={e => setConfig(c => ({ ...c, fov: Number(e.target.value) }))}
+              className="input-base"
+            />
           </div>
 
-          {config.type === 'single' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] text-nm-muted block mb-1.5">Center X (0–1)</label>
-                <input type="number" min={0} max={1} step={0.01} value={config.centerX}
-                  onChange={e => setConfig(c => ({ ...c, centerX: Number(e.target.value) }))}
-                  className="input-base" />
-              </div>
-              <div>
-                <label className="text-[11px] text-nm-muted block mb-1.5">Center Y (0–1)</label>
-                <input type="number" min={0} max={1} step={0.01} value={config.centerY}
-                  onChange={e => setConfig(c => ({ ...c, centerY: Number(e.target.value) }))}
-                  className="input-base" />
+          {/* Circle parameters — auto-detected, always visible */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] text-nm-muted uppercase tracking-wide">Circle Parameters</label>
+              <div className="flex items-center gap-2">
+                {autoDetected && !detecting && (
+                  <span className="text-[10px] text-green-400 bg-green-900/30 border border-green-700/30 px-2 py-0.5 rounded-full">
+                    Auto-detected
+                  </span>
+                )}
+                <button
+                  onClick={() => runDetect(config.type)}
+                  disabled={detecting}
+                  className="text-[10px] text-nm-accent hover:text-white disabled:opacity-50 transition-colors flex items-center gap-1"
+                >
+                  {detecting ? (
+                    <><span className="w-2.5 h-2.5 border border-nm-accent border-t-transparent rounded-full animate-spin inline-block" /> Detecting…</>
+                  ) : 'Re-detect'}
+                </button>
               </div>
             </div>
-          )}
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] text-nm-muted block mb-1">Center X</label>
+                <input type="number" min={0} max={1} step={0.01} value={config.centerX.toFixed(3)}
+                  onChange={e => setConfig(c => ({ ...c, centerX: Number(e.target.value) }))}
+                  className="input-base text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] text-nm-muted block mb-1">Center Y</label>
+                <input type="number" min={0} max={1} step={0.01} value={config.centerY.toFixed(3)}
+                  onChange={e => setConfig(c => ({ ...c, centerY: Number(e.target.value) }))}
+                  className="input-base text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] text-nm-muted block mb-1">Radius</label>
+                <input type="number" min={0.3} max={1.5} step={0.01} value={config.radius.toFixed(3)}
+                  onChange={e => setConfig(c => ({ ...c, radius: Number(e.target.value) }))}
+                  className="input-base text-xs" />
+              </div>
+            </div>
+            <p className="text-[9px] text-nm-muted mt-1 leading-snug">
+              {config.type === 'dual-sbs'
+                ? 'Center is for the left circle (fraction of full image). Radius is fraction of half-image width.'
+                : config.type === 'dual-tb'
+                  ? 'Center is for the top circle (fraction of full image). Radius is fraction of half-image height.'
+                  : 'All values are fractions of image dimensions.'}
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-2 justify-end">

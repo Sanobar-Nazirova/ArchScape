@@ -132,16 +132,22 @@ function buildFisheyeParams(
   }
 
   if (type === 'dual-sbs') {
+    // centerX/centerY = front (left) circle center as fraction of full image
+    // radius = fraction of half-image width
+    const r = radius * (srcW / 2);
     return {
-      front: { cx: srcW * 0.25, cy: srcH * 0.5, r: srcW * 0.25 * 0.92 },
-      back:  { cx: srcW * 0.75, cy: srcH * 0.5, r: srcW * 0.25 * 0.92 },
+      front: { cx: centerX * srcW,         cy: centerY * srcH, r },
+      back:  { cx: (1 - centerX) * srcW,   cy: centerY * srcH, r },
     };
   }
 
   // dual-tb
+  // centerX/centerY = front (top) circle center as fraction of full image
+  // radius = fraction of half-image height
+  const r = radius * (srcH / 2);
   return {
-    front: { cx: srcW * 0.5, cy: srcH * 0.25, r: srcH * 0.25 * 0.92 },
-    back:  { cx: srcW * 0.5, cy: srcH * 0.75, r: srcH * 0.25 * 0.92 },
+    front: { cx: centerX * srcW, cy: centerY * srcH,         r },
+    back:  { cx: centerX * srcW, cy: (1 - centerY) * srcH,   r },
   };
 }
 
@@ -201,6 +207,90 @@ function bilinearSample(
     b: Math.round(c00.b * (1 - fx) * (1 - fy) + c10.b * fx * (1 - fy) + c01.b * (1 - fx) * fy + c11.b * fx * fy),
     a: Math.round(c00.a * (1 - fx) * (1 - fy) + c10.a * fx * (1 - fy) + c01.a * (1 - fx) * fy + c11.a * fx * fy),
   };
+}
+
+/**
+ * Auto-detect fisheye circle parameters by scanning pixel brightness.
+ * Returns normalized centerX/centerY/radius suitable for FisheyeConfig.
+ */
+export function autoDetectFisheyeCircles(
+  canvas: HTMLCanvasElement,
+  type: FisheyeConfig['type'],
+): Pick<FisheyeConfig, 'centerX' | 'centerY' | 'radius'> {
+  const ctx = canvas.getContext('2d')!;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  if (type === 'dual-sbs') {
+    const halfW = Math.floor(W / 2);
+    const leftPx  = ctx.getImageData(0,      0, halfW, H).data;
+    const rightPx = ctx.getImageData(halfW,   0, halfW, H).data;
+    const left  = detectCircleInPixels(leftPx,  halfW, H);
+    const right = detectCircleInPixels(rightPx, halfW, H);
+    const avgR = (left.r + right.r) / 2;
+    return {
+      centerX: left.cx / W,            // front circle center, full-image fraction
+      centerY: left.cy / H,
+      radius:  avgR   / halfW,          // fraction of half-width
+    };
+  }
+
+  if (type === 'dual-tb') {
+    const halfH = Math.floor(H / 2);
+    const topPx    = ctx.getImageData(0, 0,     W, halfH).data;
+    const bottomPx = ctx.getImageData(0, halfH, W, halfH).data;
+    const top    = detectCircleInPixels(topPx,    W, halfH);
+    const bottom = detectCircleInPixels(bottomPx, W, halfH);
+    const avgR = (top.r + bottom.r) / 2;
+    return {
+      centerX: top.cx / W,
+      centerY: top.cy / H,
+      radius:  avgR   / halfH,
+    };
+  }
+
+  // single
+  const px = ctx.getImageData(0, 0, W, H).data;
+  const circle = detectCircleInPixels(px, W, H);
+  return {
+    centerX: circle.cx / W,
+    centerY: circle.cy / H,
+    radius:  circle.r  / (Math.min(W, H) / 2),
+  };
+}
+
+function detectCircleInPixels(
+  data: Uint8ClampedArray,
+  w: number,
+  h: number,
+): { cx: number; cy: number; r: number } {
+  // Use a low brightness threshold — fisheye backgrounds are pure black
+  const THRESH = 20;
+  let minX = w, maxX = 0, minY = h, maxY = 0;
+  let found = false;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if ((data[i] + data[i + 1] + data[i + 2]) / 3 > THRESH) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        found = true;
+      }
+    }
+  }
+
+  if (!found) return { cx: w / 2, cy: h / 2, r: Math.min(w, h) / 2 * 0.92 };
+
+  // Bounding box centre is more robust than centroid for partially-dark scenes
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  // Use the smaller axis so we always inscribe the circle
+  const r  = Math.min((maxX - minX) / 2, (maxY - minY) / 2);
+
+  return { cx, cy, r };
 }
 
 /**
