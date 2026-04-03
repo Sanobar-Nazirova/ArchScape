@@ -44,6 +44,7 @@ interface TourState {
   openTour: (projectId: string, tourId: string) => void;
   saveTour: (name?: string) => void;
   goBack: () => void;
+  goHome: () => void;
   setPropsTab: (tab: 'scene' | 'hotspots' | 'media' | 'audio') => void;
   toggleTheme: () => void;
 
@@ -239,6 +240,8 @@ export const useTourStore = create<TourState>()((set, get) => ({
     if (currentScreen === 'editor') set({ currentScreen: 'project', isPreviewMode: false });
     else if (currentScreen === 'project') set({ currentScreen: 'home' });
   },
+
+  goHome: () => set({ currentScreen: 'home', isPreviewMode: false }),
 
   setPropsTab: (tab) => set({ propsTab: tab }),
 
