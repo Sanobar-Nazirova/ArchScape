@@ -162,11 +162,10 @@ export default function ProjectScreen() {
           </button>
           <div className="w-px h-5 bg-white/10" />
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
-              style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.4), -2px -2px 5px rgba(255,255,255,.06)' }}
-            >
-              <img src="/logo.svg" alt="ArchScape" className="w-full h-full object-cover" />
-            </div>
+            <img src="/logo-512.png" alt="ArchScape"
+              className="w-8 h-8 rounded-full flex-shrink-0 object-cover"
+              style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.08)' }}
+            />
             <span className="font-syne font-semibold text-nm-text">{project.name}</span>
           </div>
         </div>

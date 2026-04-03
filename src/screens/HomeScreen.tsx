@@ -149,11 +149,10 @@ export default function HomeScreen() {
         style={{ boxShadow: '0 4px 14px var(--sh-d)' }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
-            style={{ boxShadow: '4px 4px 10px rgba(0,0,0,.45), -2px -2px 6px rgba(255,255,255,.06)' }}
-          >
-            <img src="/logo.svg" alt="ArchScape" className="w-full h-full object-cover" />
-          </div>
+          <img src="/logo-512.png" alt="ArchScape"
+            className="w-11 h-11 rounded-full flex-shrink-0 object-cover"
+            style={{ boxShadow: '4px 4px 10px rgba(0,0,0,.5), -2px -2px 6px rgba(255,255,255,.08)' }}
+          />
           <span className="font-syne text-lg font-bold text-nm-text">ArchScape</span>
         </div>
 
@@ -185,11 +184,10 @@ export default function HomeScreen() {
               className="flex flex-col items-center justify-center py-20 rounded-nm"
               style={{ boxShadow: 'inset 4px 4px 12px rgba(0,0,0,.5), inset -3px -3px 8px rgba(255,255,255,.03)' }}
             >
-              <div className="w-20 h-20 rounded-full overflow-hidden mb-4"
+              <img src="/logo-512.png" alt="ArchScape"
+                className="w-20 h-20 rounded-full object-cover mb-4 opacity-70"
                 style={{ boxShadow: '6px 6px 14px rgba(0,0,0,.6), -4px -4px 10px rgba(255,255,255,.04)' }}
-              >
-                <img src="/logo.svg" alt="ArchScape" className="w-full h-full object-cover opacity-60" />
-              </div>
+              />
               <h3 className="font-syne font-semibold text-nm-text mb-2">No projects yet</h3>
               <p className="text-sm text-nm-muted mb-5">Create your first virtual tour project to get started.</p>
               <button
