@@ -447,21 +447,25 @@ export default function PanoramaViewer({
       // TB stereo:  sample only the top half of the image.
       //             With Three.js flipY=true the image is flipped vertically on upload,
       //             so the image's top half lands at texture v ∈ [0.5, 1.0].
+      // wrapS must be RepeatWrapping for all equirectangular formats: the sphere geometry
+      // has a seam at u=0/u=1; ClampToEdgeWrapping causes the interpolation between those
+      // two vertices to sweep backwards across the entire texture, producing the thick
+      // black vertical band. RepeatWrapping wraps correctly at the seam.
       switch (scene.format) {
         case 'equirectangular-sbs':
-          texture.wrapS   = THREE.ClampToEdgeWrapping;
+          texture.wrapS   = THREE.RepeatWrapping;
           texture.wrapT   = THREE.ClampToEdgeWrapping;
           texture.repeat.set(0.5, 1);
           texture.offset.set(0, 0);
           break;
         case 'equirectangular-tb':
-          texture.wrapS   = THREE.ClampToEdgeWrapping;
+          texture.wrapS   = THREE.RepeatWrapping;
           texture.wrapT   = THREE.ClampToEdgeWrapping;
           texture.repeat.set(1, 0.5);
           texture.offset.set(0, 0.5); // top half after flipY
           break;
         default:
-          texture.wrapS   = THREE.ClampToEdgeWrapping;
+          texture.wrapS   = THREE.RepeatWrapping;
           texture.wrapT   = THREE.ClampToEdgeWrapping;
           texture.repeat.set(1, 1);
           texture.offset.set(0, 0);
@@ -640,9 +644,14 @@ export default function PanoramaViewer({
       return;
     }
     draggingHotspotRef.current = null;
-    // it was a click — select or navigate
-    if (isPreviewModeRef.current) onHotspotClickRef.current(hotspot);
-    else onHotspotSelectRef.current(hotspot.id);
+    // it was a click — always navigate if linked, also select in edit mode
+    if (isPreviewModeRef.current) {
+      onHotspotClickRef.current(hotspot);
+    } else {
+      onHotspotSelectRef.current(hotspot.id);
+      // teleport to linked scene in edit mode too
+      if (hotspot.targetSceneId) onHotspotClickRef.current(hotspot);
+    }
   }, []);
 
   const zoomIn  = useCallback(() => { fovRef.current = Math.max(30, fovRef.current - 10); }, []);

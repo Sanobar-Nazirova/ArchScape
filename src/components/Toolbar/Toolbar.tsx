@@ -1,8 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   Upload, Plus, Image, Music, Map, Eye, Globe,
-  X, Layers, MonitorPlay, ChevronLeft, Save,
+  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle,
 } from 'lucide-react';
+import HelpModal from '../HelpModal';
 import { useTourStore } from '../../store/useTourStore';
 import ThemeToggle from '../ThemeToggle';
 import { registerUploadTrigger } from '../../utils/uploadTrigger';
@@ -184,7 +185,7 @@ export default function Toolbar() {
   const {
     scenes, activeTool, setActiveTool, isPreviewMode, togglePreviewMode,
     addScene, publish, projectName, setProjectName, setFloorPlan,
-    goBack, saveTour,
+    goBack, goHome, saveTour,
   } = useTourStore();
 
   const panoramaInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +204,7 @@ export default function Toolbar() {
 
   const [processingMsg, setProcessingMsg] = useState('');
   const [editingName, setEditingName] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const waitForFisheyeDialog = useCallback((result: PanoramaDetectionResult, file: File): Promise<FisheyeConfig | null> => {
     return new Promise(resolve => {
@@ -308,8 +310,10 @@ export default function Toolbar() {
             <ChevronLeft size={14} />
           </button>
           <img src="/logo-512.png" alt="ArchScape"
-            className="w-9 h-9 rounded-full flex-shrink-0 object-cover"
+            onClick={goHome}
+            className="w-9 h-9 rounded-full flex-shrink-0 object-cover cursor-pointer hover:scale-105 transition-transform"
             style={{ boxShadow: '3px 3px 8px rgba(0,0,0,.5), -2px -2px 5px rgba(255,255,255,.08)' }}
+            title="Go to Home"
           />
           {editingName ? (
             <input
@@ -385,6 +389,16 @@ export default function Toolbar() {
           </span>
         )}
 
+        <button
+          onClick={() => setShowHelp(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Help & Tutorial"
+        >
+          <HelpCircle size={13} />
+          Help
+        </button>
+
         <ThemeToggle />
 
         <button
@@ -444,6 +458,7 @@ export default function Toolbar() {
       )}
 
       <PublishModal />
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
     </>
   );
 }
