@@ -65,6 +65,7 @@ export interface Scene {
   aspectRatio?: number;      // original image width/height ratio
   thumbnail?: string;
   tags?: string[];
+  stereoEye?: 'left' | 'right'; // which eye to show for SBS/TB stereo
 }
 
 export interface Folder {

@@ -63,6 +63,7 @@ interface TourState {
   setSceneFolderId: (sceneId: string, folderId: string | null) => void;
   updateSceneInitialView: (sceneId: string, yaw: number, pitch: number) => void;
   updateSceneFormat: (sceneId: string, format: PanoramaFormat) => void;
+  updateSceneStereoEye: (sceneId: string, eye: 'left' | 'right') => void;
 
   // ── Folder actions ────────────────────────────────────────────────────────
   addFolder: (name: string, parentId?: string | null) => string;
@@ -403,6 +404,9 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   updateSceneFormat: (sceneId, format) =>
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, format } : sc) })),
+
+  updateSceneStereoEye: (sceneId, eye) =>
+    set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, stereoEye: eye } : sc) })),
 
   // ── Folder actions ─────────────────────────────────────────────────────────
   addFolder: (name, parentId = null) => {

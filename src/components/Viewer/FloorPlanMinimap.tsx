@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Map, ChevronDown, ChevronUp } from 'lucide-react';
 import type { FloorPlan } from '../../types';
 import { useTourStore } from '../../store/useTourStore';
@@ -15,8 +15,11 @@ export default function FloorPlanMinimap({
 }: FloorPlanMinimapProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { scenes } = useTourStore();
-  const W = 180;
-  const H = 120;
+  const W = 220;
+  const H = 150;
+
+  // Auto-expand when scene changes (to draw attention to location)
+  useEffect(() => { setCollapsed(false); }, [currentSceneId]);
 
   const currentMarker = floorPlan.markers.find(m => m.sceneId === currentSceneId);
 

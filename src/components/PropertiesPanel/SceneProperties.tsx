@@ -10,7 +10,7 @@ interface ScenePropertiesProps {
 
 export default function SceneProperties({ scene }: ScenePropertiesProps) {
   const {
-    renameScene, removeScene, updateSceneFormat,
+    renameScene, removeScene, updateSceneFormat, updateSceneStereoEye,
     updateSceneInitialView, setActiveScene, scenes,
   } = useTourStore();
 
@@ -62,7 +62,26 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
           </div>
         )}
         {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
-          <p className="text-[10px] text-nm-muted mt-1 leading-snug">Stereo — left eye shown.</p>
+          <div className="mt-2">
+            <p className="text-[10px] text-nm-muted mb-1.5">Stereo Eye</p>
+            <div className="flex rounded-lg overflow-hidden border border-nm-border">
+              {(['left', 'right'] as const).map(eye => (
+                <button
+                  key={eye}
+                  onClick={() => updateSceneStereoEye(scene.id, eye)}
+                  className={[
+                    'flex-1 py-1.5 text-xs capitalize transition-colors',
+                    (scene.stereoEye ?? 'left') === eye
+                      ? 'bg-nm-accent text-white'
+                      : 'text-nm-muted hover:text-nm-text',
+                  ].join(' ')}
+                >
+                  {eye} eye
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-nm-muted mt-1">Switch if image appears reversed/distorted.</p>
+          </div>
         )}
         {scene.format === 'cylindrical' && (
           <p className="text-[10px] text-nm-muted mt-1 leading-snug">360° horizontal, limited vertical field of view.</p>

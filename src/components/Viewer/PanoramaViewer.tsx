@@ -15,6 +15,7 @@ import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 /* ─── HotspotIcon ─────────────────────────────────────────────────────── */
@@ -443,30 +444,35 @@ export default function PanoramaViewer({
       // ── Set ALL texture properties before the single needsUpdate = true ──
       texture.colorSpace = THREE.SRGBColorSpace;
 
-      // SBS stereo: sample only the left half (u: 0→0.5)
-      // TB stereo:  sample only the top half of the image.
-      //             With Three.js flipY=true the image is flipped vertically on upload,
-      //             so the image's top half lands at texture v ∈ [0.5, 1.0].
-      // wrapS must be RepeatWrapping for all equirectangular formats: the sphere geometry
-      // has a seam at u=0/u=1; ClampToEdgeWrapping causes the interpolation between those
-      // two vertices to sweep backwards across the entire texture, producing the thick
-      // black vertical band. RepeatWrapping wraps correctly at the seam.
+      // wrapS must be RepeatWrapping for all equirectangular formats to avoid the black
+      // vertical seam (ClampToEdge interpolates backwards across the full texture at u=0/u=1).
+      //
+      // Stereo eye selection:
+      //   SBS — left eye = u[0→0.5], right eye = u[0.5→1.0]
+      //   TB (image, flipY=true) — image top = left eye → UV v[0.5→1.0] after flip
+      //                            image bottom = right eye → UV v[0→0.5] after flip
+      //   TB (video, flipY=false) — no flip, so top = v[1→0.5], bottom = v[0.5→0]
+      //                             left eye (top) → UV v[0.5→1.0]; right eye → v[0→0.5]
+      //   Both image and video TB land the same way: left eye = v[0.5→1.0]
+      const isRightEye = scene.stereoEye === 'right';
       switch (scene.format) {
         case 'equirectangular-sbs':
-          texture.wrapS   = THREE.RepeatWrapping;
-          texture.wrapT   = THREE.ClampToEdgeWrapping;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
           texture.repeat.set(0.5, 1);
-          texture.offset.set(0, 0);
+          texture.offset.set(isRightEye ? 0.5 : 0, 0);
           break;
         case 'equirectangular-tb':
-          texture.wrapS   = THREE.RepeatWrapping;
-          texture.wrapT   = THREE.ClampToEdgeWrapping;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
           texture.repeat.set(1, 0.5);
-          texture.offset.set(0, 0.5); // top half after flipY
+          // image flipY=true: left eye → v[0.5,1.0]; right eye → v[0,0.5]
+          // video flipY=false: same result because video flips y independently
+          texture.offset.set(0, isRightEye ? 0 : 0.5);
           break;
         default:
-          texture.wrapS   = THREE.RepeatWrapping;
-          texture.wrapT   = THREE.ClampToEdgeWrapping;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
           texture.repeat.set(1, 1);
           texture.offset.set(0, 0);
       }
@@ -505,7 +511,7 @@ export default function PanoramaViewer({
       img.onerror = (_err: unknown) => console.error('Image load error');
       img.src = scene.imageUrl;
     }
-  }, [scene?.id, scene?.imageUrl, scene?.format, scene?.mediaType]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene?.id, scene?.imageUrl, scene?.format, scene?.mediaType, scene?.stereoEye]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset initial view when scene's initialYaw/Pitch changes
   useEffect(() => {
@@ -657,6 +663,33 @@ export default function PanoramaViewer({
   const zoomIn  = useCallback(() => { fovRef.current = Math.max(30, fovRef.current - 10); }, []);
   const zoomOut = useCallback(() => { fovRef.current = Math.min(120, fovRef.current + 10); }, []);
 
+  // ── Scene navigation (keyboard + arrows) ─────────────────────────────
+  const sceneIdx  = scenes.findIndex(s => s.id === scene?.id);
+  const prevScene = sceneIdx > 0 ? scenes[sceneIdx - 1] : null;
+  const nextScene = sceneIdx < scenes.length - 1 ? scenes[sceneIdx + 1] : null;
+
+  const goToPrev = useCallback(() => {
+    if (prevScene) setActiveScene(prevScene.id);
+  }, [prevScene, setActiveScene]);
+
+  const goToNext = useCallback(() => {
+    if (nextScene) setActiveScene(nextScene.id);
+  }, [nextScene, setActiveScene]);
+
+  // Keyboard navigation — left/right arrows navigate scenes; wasd to look around
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Don't capture when typing in inputs
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft')  { goToPrev(); }
+      if (e.key === 'ArrowRight') { goToNext(); }
+      if (e.key === '+' || e.key === '=') zoomIn();
+      if (e.key === '-')           zoomOut();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goToPrev, goToNext, zoomIn, zoomOut]);
+
   const cursor = activeTool !== 'none' ? 'crosshair' : draggingRef.current ? 'grabbing' : 'grab';
 
   // Always render the container so Three.js can initialize on mount.
@@ -780,6 +813,32 @@ export default function PanoramaViewer({
           {/* ── Media panel ── */}
           {activeMedia && (
             <MediaPanel media={activeMedia} onClose={() => setActiveMedia(null)} />
+          )}
+
+          {/* ── Scene navigation arrows ── */}
+          {scenes.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+              <button
+                onClick={goToPrev}
+                disabled={!prevScene}
+                className="w-9 h-9 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl text-white hover:text-nm-accent hover:border-nm-accent/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title={prevScene ? `← ${prevScene.name}  (←)` : 'No previous scene'}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="px-3 py-1.5 bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl text-center min-w-[80px]">
+                <p className="text-white text-[11px] font-medium truncate max-w-[120px]">{scene.name}</p>
+                <p className="text-white/40 text-[9px]">{sceneIdx + 1} / {scenes.length}</p>
+              </div>
+              <button
+                onClick={goToNext}
+                disabled={!nextScene}
+                className="w-9 h-9 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl text-white hover:text-nm-accent hover:border-nm-accent/40 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title={nextScene ? `${nextScene.name} → (→)` : 'No next scene'}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           )}
 
           {/* ── Floor plan minimap ── */}
