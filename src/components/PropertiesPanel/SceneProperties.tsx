@@ -1,7 +1,8 @@
-import React from 'react';
-import { Trash2, Camera } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Camera, RotateCcw, Save, Edit2 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
-import { ALL_FORMATS, formatLabel, formatShortLabel } from '../../utils/panoramaDetector';
+import { ALL_FORMATS, formatLabel } from '../../utils/panoramaDetector';
+import { clearFisheyeCache } from '../../utils/fisheyeConverter';
 import type { Scene } from '../../types';
 
 interface ScenePropertiesProps {
@@ -11,8 +12,39 @@ interface ScenePropertiesProps {
 export default function SceneProperties({ scene }: ScenePropertiesProps) {
   const {
     renameScene, removeScene, updateSceneFormat, updateSceneStereoEye,
-    updateSceneInitialView, setActiveScene, scenes,
+    updateSceneInitialView, setActiveScene, scenes, updateSceneFisheyeConfig,
   } = useTourStore();
+
+  // ── Fisheye adjustment local state ─────────────────────────────────────
+  const [fisheyeEditing, setFisheyeEditing] = useState(false);
+  const [localFov, setLocalFov]         = useState(scene.fisheyeConfig?.fov ?? 190);
+  const [localRotation, setLocalRotation] = useState(scene.fisheyeConfig?.yawOffset ?? 0);
+  const [localRadius, setLocalRadius]   = useState(scene.fisheyeConfig?.radius ?? 0.92);
+
+  // Sync local state when a different scene is selected
+  useEffect(() => {
+    setLocalFov(scene.fisheyeConfig?.fov ?? 190);
+    setLocalRotation(scene.fisheyeConfig?.yawOffset ?? 0);
+    setLocalRadius(scene.fisheyeConfig?.radius ?? 0.92);
+    setFisheyeEditing(false);
+  }, [scene.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveFisheyeAdjust = () => {
+    const baseType = scene.format === 'fisheye-dual-tb' ? 'dual-tb'
+      : scene.format === 'fisheye-dual-sbs' ? 'dual-sbs'
+      : 'single';
+    const saved = {
+      type: baseType as 'single' | 'dual-sbs' | 'dual-tb',
+      fov: localFov,
+      centerX: scene.fisheyeConfig?.centerX ?? (baseType === 'dual-sbs' ? 0.25 : 0.5),
+      centerY: scene.fisheyeConfig?.centerY ?? (baseType === 'dual-tb'  ? 0.25 : 0.5),
+      radius: localRadius,
+      yawOffset: localRotation,
+    };
+    clearFisheyeCache(scene.id);
+    updateSceneFisheyeConfig(scene.id, saved);
+    setFisheyeEditing(false);
+  };
 
   const handleSetCurrentView = () => {
     // This would ideally read the current camera yaw/pitch from the viewer.
@@ -55,10 +87,68 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
           ))}
         </select>
         {scene.format.startsWith('fisheye') && (
-          <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <span className="text-yellow-400 text-[10px] leading-snug">
-              ⚠ Fisheye images display best after conversion. Re-upload and choose "Convert &amp; Import" in the dialog.
-            </span>
+          <div className="mt-2 rounded-xl border border-nm-border overflow-hidden">
+            {/* Header row */}
+            <div className="flex items-center justify-between px-3 py-2"
+              style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <span className="text-[10px] uppercase tracking-widest text-nm-muted font-medium">
+                Fisheye Adjustment
+              </span>
+              {fisheyeEditing ? (
+                <button
+                  onClick={() => { setFisheyeEditing(false); setLocalFov(scene.fisheyeConfig?.fov ?? 190); setLocalRotation(scene.fisheyeConfig?.yawOffset ?? 0); setLocalRadius(scene.fisheyeConfig?.radius ?? 0.92); }}
+                  className="text-[10px] text-nm-muted hover:text-nm-text transition-colors flex items-center gap-0.5"
+                >
+                  <RotateCcw size={10} /> Reset
+                </button>
+              ) : (
+                <button onClick={() => setFisheyeEditing(true)}
+                  className="text-[10px] text-nm-accent hover:text-white transition-colors flex items-center gap-0.5"
+                >
+                  <Edit2 size={10} /> Edit
+                </button>
+              )}
+            </div>
+
+            {/* Saved state badge */}
+            {!fisheyeEditing && (
+              <div className="px-3 py-2 text-[10px] text-nm-muted">
+                {scene.fisheyeConfig
+                  ? <>FOV {scene.fisheyeConfig.fov}° · Rotation {scene.fisheyeConfig.yawOffset ?? 0}° · Radius {scene.fisheyeConfig.radius.toFixed(2)}</>
+                  : 'Auto-detected — click Edit to adjust'}
+              </div>
+            )}
+
+            {/* Sliders */}
+            {fisheyeEditing && (
+              <div className="px-3 pb-3 space-y-3 pt-1">
+                <SliderField
+                  label={`FOV: ${localFov}°`}
+                  min={140} max={240} step={1} value={localFov}
+                  onChange={setLocalFov}
+                  hint="Higher FOV extends coverage toward the seam"
+                />
+                <SliderField
+                  label={`Rotation: ${localRotation}°`}
+                  min={-180} max={180} step={1} value={localRotation}
+                  onChange={setLocalRotation}
+                  hint="Rotate the panorama to move the seam to a less visible spot"
+                />
+                <SliderField
+                  label={`Radius: ${localRadius.toFixed(2)}`}
+                  min={0.5} max={1.3} step={0.01} value={localRadius}
+                  onChange={setLocalRadius}
+                  hint="Fraction of half-image that each circle occupies"
+                />
+                <button
+                  onClick={saveFisheyeAdjust}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: 'var(--nm-accent)' }}
+                >
+                  <Save size={11} /> Save &amp; Apply
+                </button>
+              </div>
+            )}
           </div>
         )}
         {(scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb') && (
@@ -158,6 +248,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium mb-1.5">{label}</p>
       {children}
+    </div>
+  );
+}
+
+function SliderField({ label, min, max, step, value, onChange, hint }: {
+  label: string; min: number; max: number; step: number;
+  value: number; onChange: (v: number) => void; hint?: string;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] text-nm-text">{label}</span>
+      </div>
+      <input
+        type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+        style={{ accentColor: 'var(--nm-accent)' }}
+      />
+      {hint && <p className="text-[9px] text-nm-muted mt-0.5 leading-snug">{hint}</p>}
     </div>
   );
 }

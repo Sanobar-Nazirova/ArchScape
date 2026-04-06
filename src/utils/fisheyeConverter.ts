@@ -1,5 +1,10 @@
 import type { FisheyeConfig } from '../types';
 
+// ── Session-level fisheye conversion cache (keyed by sceneId) ────────────
+// Cleared when the user saves new adjustment settings for a scene.
+export const fisheyeCache = new Map<string, HTMLCanvasElement>();
+export function clearFisheyeCache(sceneId: string) { fisheyeCache.delete(sceneId); }
+
 /**
  * Convert a fisheye image to an equirectangular panorama using the equidistant
  * projection model (r = f·θ). Supports single and dual fisheye formats.
@@ -12,8 +17,9 @@ export function fisheyeToEquirectangular(
   sourceCanvas: HTMLCanvasElement,
   config: FisheyeConfig,
 ): HTMLCanvasElement {
-  const { type, fov, centerX, centerY, radius } = config;
+  const { type, fov, centerX, centerY, radius, yawOffset = 0 } = config;
   const fovRad = (fov * Math.PI) / 180;
+  const yawRad = (yawOffset * Math.PI) / 180;
 
   const srcW = sourceCanvas.width;
   const srcH = sourceCanvas.height;
@@ -40,11 +46,10 @@ export function fisheyeToEquirectangular(
     for (let ox = 0; ox < outW; ox++) {
       // Map output pixel → spherical coordinates.
       //
-      // Longitude offset: -1.5π instead of -π so that lon=0° (front hemisphere
-      // center) falls at u=0.75. Three.js SphereGeometry maps u=0.75 to the
-      // camera's forward (-Z) direction, so without this shift the front-back
-      // seam appears right at the center of the initial view.
-      const lon = (ox / outW) * 2 * Math.PI - Math.PI * 1.5; // −1.5π … 0.5π
+      // Longitude offset: -1.5π aligns the front circle (lon=0°) with the
+      // Three.js camera forward direction (u=0.75 on the sphere). yawOffset
+      // lets users rotate the output to move the seam to a less visible spot.
+      const lon = (ox / outW) * 2 * Math.PI - Math.PI * 1.5 + yawRad;
       const lat = (oy / outH) * Math.PI - Math.PI / 2;        // −π/2  … π/2
 
       // Cartesian unit vector

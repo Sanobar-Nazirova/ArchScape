@@ -65,7 +65,8 @@ export interface Scene {
   aspectRatio?: number;      // original image width/height ratio
   thumbnail?: string;
   tags?: string[];
-  stereoEye?: 'left' | 'right'; // which eye to show for SBS/TB stereo
+  stereoEye?: 'left' | 'right';    // which eye to show for SBS/TB stereo
+  fisheyeConfig?: FisheyeConfig;   // user-saved adjustments for fisheye scenes
 }
 
 export interface Folder {
@@ -114,10 +115,11 @@ export interface Tour {
 
 export interface FisheyeConfig {
   type: 'single' | 'dual-sbs' | 'dual-tb';
-  fov: number;       // degrees (typically 180)
-  centerX: number;   // 0–1 normalized
+  fov: number;        // degrees (typically 180–220)
+  centerX: number;    // 0–1 normalized
   centerY: number;
-  radius: number;    // 0–1 relative to min(w,h)/2
+  radius: number;     // 0–1 relative to min(w,h)/2
+  yawOffset?: number; // degrees, rotates the equirectangular output
 }
 
 export interface PanoramaDetectionResult {

@@ -44,7 +44,8 @@ interface TourState {
   addTour: (projectId: string, name: string, desc?: string) => string;
   deleteTour: (projectId: string, tourId: string) => void;
   duplicateTour: (projectId: string, tourId: string) => string;
-  updateTour: (projectId: string, tourId: string, updates: { name?: string; desc?: string; password?: string }) => void;
+  updateTour: (projectId: string, tourId: string, updates: { name?: string; desc?: string; password?: string; thumbUrl?: string }) => void;
+  updateSceneFisheyeConfig: (sceneId: string, config: import('../types').FisheyeConfig) => void;
   openTour: (projectId: string, tourId: string) => void;
   restoreSceneImages: () => Promise<void>;
   saveTour: (name?: string) => void;
@@ -407,6 +408,9 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   updateSceneStereoEye: (sceneId, eye) =>
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, stereoEye: eye } : sc) })),
+
+  updateSceneFisheyeConfig: (sceneId, config) =>
+    set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, fisheyeConfig: config } : sc) })),
 
   // ── Folder actions ─────────────────────────────────────────────────────────
   addFolder: (name, parentId = null) => {

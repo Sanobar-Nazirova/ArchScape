@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Plus, ChevronLeft, Play, Trash2, X, Copy, Share2,
-  Edit2, Lock, Globe, Headset, HelpCircle, QrCode, Check,
+  Edit2, Lock, Globe, Headset, HelpCircle, Check, Camera,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useTourStore } from '../store/useTourStore';
@@ -233,9 +233,21 @@ function ShareModal({ tour, projectId, onClose }: { tour: Tour; projectId: strin
 type TourModal = 'edit' | 'share' | 'password' | null;
 
 function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
-  const { openTour, deleteTour, duplicateTour, togglePreviewMode } = useTourStore();
+  const { openTour, deleteTour, duplicateTour, togglePreviewMode, updateTour } = useTourStore();
   const [modal, setModal] = useState<TourModal>(null);
   const [hovered, setHovered] = useState(false);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
+
+  const handleThumbUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateTour(projectId, tour.id, { thumbUrl: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const sceneCount = tour.scenes?.length ?? 0;
   const updated = tour.updated
@@ -279,7 +291,7 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
             </div>
           )}
 
-          {/* Hover overlay: View options */}
+          {/* Hover overlay: View options + thumbnail upload */}
           {hovered && (
             <div
               className="absolute inset-0 flex items-center justify-center gap-3 bg-black/70 backdrop-blur-sm"
@@ -302,8 +314,24 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
                 <Headset size={18} />
                 <span className="text-[10px] font-medium">View VR</span>
               </button>
+
+              {/* Thumbnail upload — bottom-right corner */}
+              <button
+                onClick={() => thumbInputRef.current?.click()}
+                className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/60 text-white/70 hover:text-white hover:bg-black/80 transition-colors text-[10px]"
+                title="Set thumbnail image"
+              >
+                <Camera size={11} />
+                Set Thumbnail
+              </button>
             </div>
           )}
+
+          {/* Hidden thumbnail file input */}
+          <input
+            ref={thumbInputRef} type="file" accept="image/*" className="hidden"
+            onChange={handleThumbUpload}
+          />
 
           {/* Password badge */}
           {tour.password && (

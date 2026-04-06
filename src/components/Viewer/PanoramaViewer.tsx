@@ -11,17 +11,13 @@ import type {
 } from '../../types';
 import { triggerUpload } from '../../utils/uploadTrigger';
 import { formatShortLabel } from '../../utils/panoramaDetector';
-import { fisheyeToEquirectangular, autoDetectFisheyeCircles } from '../../utils/fisheyeConverter';
+import { fisheyeToEquirectangular, autoDetectFisheyeCircles, fisheyeCache } from '../../utils/fisheyeConverter';
 import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
-
-// ── Fisheye conversion cache (keyed by sceneId) ──────────────────────────
-// Conversion is CPU-heavy so results are cached for the session lifetime.
-const fisheyeCache = new Map<string, HTMLCanvasElement>();
 
 function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
   switch (format) {
@@ -535,12 +531,16 @@ export default function PanoramaViewer({
           raw.width  = Math.floor(img.naturalWidth  * scale);
           raw.height = Math.floor(img.naturalHeight * scale);
           raw.getContext('2d')!.drawImage(img, 0, 0, raw.width, raw.height);
-          // Start from format-derived defaults, then refine with pixel detection
-          const cfg = fisheyeConfigFromFormat(scene.format as PanoramaFormat);
-          try {
-            const detected = autoDetectFisheyeCircles(raw, cfg.type);
-            Object.assign(cfg, detected);
-          } catch { /* keep defaults on any error */ }
+          // Use saved user config if available; otherwise auto-detect from pixels
+          const cfg = scene.fisheyeConfig
+            ? { ...scene.fisheyeConfig }
+            : fisheyeConfigFromFormat(scene.format as PanoramaFormat);
+          if (!scene.fisheyeConfig) {
+            try {
+              const detected = autoDetectFisheyeCircles(raw, cfg.type);
+              Object.assign(cfg, detected);
+            } catch { /* keep defaults on any error */ }
+          }
           // Convert fisheye → equirectangular and cache
           const converted = fisheyeToEquirectangular(raw, cfg);
           fisheyeCache.set(scene.id, converted);
@@ -556,7 +556,10 @@ export default function PanoramaViewer({
       img.onerror = (_err: unknown) => console.error('Image load error');
       img.src = scene.imageUrl;
     }
-  }, [scene?.id, scene?.imageUrl, scene?.format, scene?.mediaType, scene?.stereoEye]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [  // eslint-disable-line react-hooks/exhaustive-deps
+    scene?.id, scene?.imageUrl, scene?.format, scene?.mediaType, scene?.stereoEye,
+    scene?.fisheyeConfig?.fov, scene?.fisheyeConfig?.yawOffset, scene?.fisheyeConfig?.radius,
+  ]);
 
   // Reset initial view when scene's initialYaw/Pitch changes
   useEffect(() => {
