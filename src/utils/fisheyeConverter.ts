@@ -38,9 +38,14 @@ export function fisheyeToEquirectangular(
 
   for (let oy = 0; oy < outH; oy++) {
     for (let ox = 0; ox < outW; ox++) {
-      // Map output pixel → spherical coordinates
-      const lon = (ox / outW) * 2 * Math.PI - Math.PI;   // −π … π
-      const lat = (oy / outH) * Math.PI - Math.PI / 2;   // −π/2 … π/2
+      // Map output pixel → spherical coordinates.
+      //
+      // Longitude offset: -1.5π instead of -π so that lon=0° (front hemisphere
+      // center) falls at u=0.75. Three.js SphereGeometry maps u=0.75 to the
+      // camera's forward (-Z) direction, so without this shift the front-back
+      // seam appears right at the center of the initial view.
+      const lon = (ox / outW) * 2 * Math.PI - Math.PI * 1.5; // −1.5π … 0.5π
+      const lat = (oy / outH) * Math.PI - Math.PI / 2;        // −π/2  … π/2
 
       // Cartesian unit vector
       const sx =  Math.cos(lat) * Math.sin(lon);
@@ -56,8 +61,8 @@ export function fisheyeToEquirectangular(
         if (result) { srcX = result.x; srcY = result.y; valid = true; }
         else { srcX = 0; srcY = 0; }
       } else if (type === 'dual-sbs' || type === 'dual-tb') {
-        // Blend front and back eyes near the equator (|sz| < 0.08) to avoid a hard seam
-        const blendWidth = 0.08;
+        // Blend front and back eyes across ±15° around the seam to avoid a hard edge
+        const blendWidth = 0.25;
         const t = Math.max(0, Math.min(1, (sz + blendWidth) / (2 * blendWidth))); // 0=back,1=front
         const frontResult = projectToFisheye(sx, sy, sz, Math.PI, params.front);
         const backResult  = projectToFisheye(-sx, sy, -sz, Math.PI, params.back);
