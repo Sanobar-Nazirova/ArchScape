@@ -73,8 +73,13 @@ export function fisheyeToEquirectangular(
 
         if (frontResult && backResult) {
           // Overlap zone — blend smoothly. t=1 → pure front, t=0 → pure back.
-          // Use a fixed 0.15 blend window in sz-space (~9° at equator).
-          const t = Math.max(0, Math.min(1, (sz + 0.15) / 0.3));
+          //
+          // Adaptive blend window: for fov > 180° both eyes are valid over an sz range
+          // of [-|cos(fovRad/2)|, +|cos(fovRad/2)|].  Matching the blend window to this
+          // exact range eliminates the hard cutoff where one eye drops out.
+          // Minimum 0.05 so there's always a little softening even at fov=180°.
+          const overlapSz  = Math.max(0.05, -Math.cos(fovRad / 2));
+          const t = Math.max(0, Math.min(1, (sz + overlapSz) / (2 * overlapSz)));
           const fp = bilinearSample(srcData, srcW, srcH, frontResult.x, frontResult.y);
           const bp = bilinearSample(srcData, srcW, srcH, backResult.x,  backResult.y);
           if (fp || bp) {

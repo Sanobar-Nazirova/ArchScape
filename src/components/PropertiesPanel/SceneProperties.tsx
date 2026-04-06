@@ -22,7 +22,7 @@ const overlapToFov = (ov: number) => 180 + ov * 2;
 /** Format-appropriate defaults — dual lenses use a smaller radius scale. */
 function formatDefaults(format: string): { overlap: number; radius: number } {
   if (format === 'fisheye-dual-sbs' || format === 'fisheye-dual-tb') {
-    return { overlap: 5, radius: 0.46 };
+    return { overlap: 10, radius: 0.46 };
   }
   return { overlap: 0, radius: 0.92 };
 }

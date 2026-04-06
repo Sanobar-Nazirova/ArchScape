@@ -22,9 +22,9 @@ import {
 function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
   switch (format) {
     case 'fisheye-dual-sbs':
-      return { type: 'dual-sbs', fov: 190, centerX: 0.25, centerY: 0.5, radius: 0.46 };
+      return { type: 'dual-sbs', fov: 200, centerX: 0.25, centerY: 0.5, radius: 0.46 };
     case 'fisheye-dual-tb':
-      return { type: 'dual-tb', fov: 190, centerX: 0.5, centerY: 0.25, radius: 0.46 };
+      return { type: 'dual-tb', fov: 200, centerX: 0.5, centerY: 0.25, radius: 0.46 };
     default: // fisheye-single
       return { type: 'single', fov: 180, centerX: 0.5, centerY: 0.5, radius: 0.92 };
   }
