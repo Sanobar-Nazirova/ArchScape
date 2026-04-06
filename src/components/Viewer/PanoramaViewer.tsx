@@ -7,16 +7,32 @@ import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
 import { useTourStore } from '../../store/useTourStore';
 import type {
-  Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle,
+  Hotspot, MediaPoint, Scene, ToolMode, HotspotIconStyle, PanoramaFormat, FisheyeConfig,
 } from '../../types';
 import { triggerUpload } from '../../utils/uploadTrigger';
 import { formatShortLabel } from '../../utils/panoramaDetector';
+import { fisheyeToEquirectangular, autoDetectFisheyeCircles } from '../../utils/fisheyeConverter';
 import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
+
+// ── Fisheye conversion cache (keyed by sceneId) ──────────────────────────
+// Conversion is CPU-heavy so results are cached for the session lifetime.
+const fisheyeCache = new Map<string, HTMLCanvasElement>();
+
+function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
+  switch (format) {
+    case 'fisheye-dual-sbs':
+      return { type: 'dual-sbs', fov: 190, centerX: 0.25, centerY: 0.5, radius: 0.46 };
+    case 'fisheye-dual-tb':
+      return { type: 'dual-tb', fov: 190, centerX: 0.5, centerY: 0.25, radius: 0.46 };
+    default: // fisheye-single
+      return { type: 'single', fov: 180, centerX: 0.5, centerY: 0.5, radius: 0.92 };
+  }
+}
 
 /* ─── HotspotIcon ─────────────────────────────────────────────────────── */
 const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
@@ -504,6 +520,35 @@ export default function PanoramaViewer({
     } else if (scene.imageUrl) {
       const img = new window.Image() as HTMLImageElement;
       img.onload = () => {
+        // ── Raw fisheye: auto-detect circles + convert to equirectangular ──
+        if (scene.format.startsWith('fisheye')) {
+          // Check cache to avoid re-converting on every scene switch
+          const cached = fisheyeCache.get(scene.id);
+          if (cached) {
+            applyTexture(new THREE.Texture(cached));
+            return;
+          }
+          // Draw into canvas; cap to 2048 px so conversion stays fast
+          const MAX = 2048;
+          const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
+          const raw = document.createElement('canvas');
+          raw.width  = Math.floor(img.naturalWidth  * scale);
+          raw.height = Math.floor(img.naturalHeight * scale);
+          raw.getContext('2d')!.drawImage(img, 0, 0, raw.width, raw.height);
+          // Start from format-derived defaults, then refine with pixel detection
+          const cfg = fisheyeConfigFromFormat(scene.format as PanoramaFormat);
+          try {
+            const detected = autoDetectFisheyeCircles(raw, cfg.type);
+            Object.assign(cfg, detected);
+          } catch { /* keep defaults on any error */ }
+          // Convert fisheye → equirectangular and cache
+          const converted = fisheyeToEquirectangular(raw, cfg);
+          fisheyeCache.set(scene.id, converted);
+          applyTexture(new THREE.Texture(converted));
+          return;
+        }
+
+        // ── Normal equirectangular / other formats ──────────────────────
         const source = capImageSize(img);
         const texture = new THREE.Texture(source as HTMLImageElement);
         applyTexture(texture);
