@@ -19,6 +19,14 @@ const savePresets = (list: FisheyePreset[]) => {
 const fovToOverlap = (fov: number) => Math.max(0, Math.round((fov - 180) / 2));
 const overlapToFov = (ov: number) => 180 + ov * 2;
 
+/** Format-appropriate defaults — dual lenses use a smaller radius scale. */
+function formatDefaults(format: string): { overlap: number; radius: number } {
+  if (format === 'fisheye-dual-sbs' || format === 'fisheye-dual-tb') {
+    return { overlap: 5, radius: 0.46 };
+  }
+  return { overlap: 0, radius: 0.92 };
+}
+
 /* ── Component ──────────────────────────────────────────────────────────── */
 interface ScenePropertiesProps { scene: Scene; }
 
@@ -29,10 +37,11 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
   } = useTourStore();
 
   /* ── Fisheye editing state ─────────────────────────────────────────────── */
+  const defs = formatDefaults(scene.format);
   const [fisheyeEditing, setFisheyeEditing] = useState(false);
-  const [localOverlap, setLocalOverlap]   = useState(fovToOverlap(scene.fisheyeConfig?.fov ?? 190));
+  const [localOverlap, setLocalOverlap]   = useState(fovToOverlap(scene.fisheyeConfig?.fov ?? overlapToFov(defs.overlap)));
   const [localRotation, setLocalRotation] = useState(scene.fisheyeConfig?.yawOffset ?? 0);
-  const [localRadius, setLocalRadius]     = useState(scene.fisheyeConfig?.radius ?? 0.92);
+  const [localRadius, setLocalRadius]     = useState(scene.fisheyeConfig?.radius ?? defs.radius);
   const [presets, setPresets]             = useState<FisheyePreset[]>(loadPresets);
   const [copied, setCopied]               = useState(false);
 
@@ -43,12 +52,13 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
   /* Sync when switching scenes */
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    setLocalOverlap(fovToOverlap(scene.fisheyeConfig?.fov ?? 190));
+    const d = formatDefaults(scene.format);
+    setLocalOverlap(fovToOverlap(scene.fisheyeConfig?.fov ?? overlapToFov(d.overlap)));
     setLocalRotation(scene.fisheyeConfig?.yawOffset ?? 0);
-    setLocalRadius(scene.fisheyeConfig?.radius ?? 0.92);
+    setLocalRadius(scene.fisheyeConfig?.radius ?? d.radius);
     setFisheyeEditing(false);
     editStartRef.current = null;
-  }, [scene.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene.id, scene.format]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Config builder ────────────────────────────────────────────────────── */
   const buildConfig = useCallback((overlap: number, rot: number, radius: number): FisheyeConfig => {
@@ -93,7 +103,7 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
   };
 
   const handleReset = () => {
-    const snap = editStartRef.current ?? { overlap: 5, rotation: 0, radius: 0.92 };
+    const snap = editStartRef.current ?? { overlap: defs.overlap, rotation: 0, radius: defs.radius };
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setLocalOverlap(snap.overlap);
     setLocalRotation(snap.rotation);

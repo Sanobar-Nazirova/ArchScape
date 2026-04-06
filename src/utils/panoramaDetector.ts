@@ -87,7 +87,7 @@ function classifyAR(ar: number, isImage: boolean): PanoramaFormat {
     return isImage ? 'fisheye-dual-sbs' : 'equirectangular-tb';
   }
   if (ar >= 0.55)      return isImage ? 'rectilinear' : 'partial';
-  if (ar >= 0.45)      return isImage ? 'fisheye-dual-tb' : 'vertical';
+  if (ar >= 0.40)      return isImage ? 'fisheye-dual-tb' : 'vertical';
   return 'vertical';
 }
 
