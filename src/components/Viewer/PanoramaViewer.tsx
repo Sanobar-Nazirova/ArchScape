@@ -272,6 +272,20 @@ export default function PanoramaViewer({
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
 
+  // ── Expose fisheye yaw rotation helper (for real-time slider feedback) ──
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any)['__sphera_setFisheyeYaw'] = (deg: number) => {
+      const tex = textureRef.current;
+      const sc  = sceneRef.current;
+      if (!tex || !sc?.format.startsWith('fisheye')) return;
+      tex.offset.x = -deg / 360;
+      tex.updateMatrix();
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return () => { delete (window as any)['__sphera_setFisheyeYaw']; };
+  }, []);
+
   // ── Expose camera view getter globally (for "Set from current view" button) ──
   useEffect(() => {
     const getCameraView = () => ({ yaw: yawRef.current, pitch: pitchRef.current });

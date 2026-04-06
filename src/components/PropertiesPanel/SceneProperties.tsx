@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Camera, RotateCcw, Save, Edit2 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import { ALL_FORMATS, formatLabel } from '../../utils/panoramaDetector';
@@ -23,26 +23,62 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
 
   // Sync local state when a different scene is selected
   useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setLocalFov(scene.fisheyeConfig?.fov ?? 190);
     setLocalRotation(scene.fisheyeConfig?.yawOffset ?? 0);
     setLocalRadius(scene.fisheyeConfig?.radius ?? 0.92);
     setFisheyeEditing(false);
   }, [scene.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveFisheyeAdjust = () => {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const buildConfig = useCallback((fov: number, rot: number, radius: number) => {
     const baseType = scene.format === 'fisheye-dual-tb' ? 'dual-tb'
       : scene.format === 'fisheye-dual-sbs' ? 'dual-sbs'
       : 'single';
-    const saved = {
+    return {
       type: baseType as 'single' | 'dual-sbs' | 'dual-tb',
-      fov: localFov,
+      fov,
       centerX: scene.fisheyeConfig?.centerX ?? (baseType === 'dual-sbs' ? 0.25 : 0.5),
       centerY: scene.fisheyeConfig?.centerY ?? (baseType === 'dual-tb'  ? 0.25 : 0.5),
-      radius: localRadius,
-      yawOffset: localRotation,
+      radius,
+      yawOffset: rot,
     };
+  }, [scene.format, scene.fisheyeConfig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply immediately (clear cache + update store → viewer re-converts)
+  const applyConfig = useCallback((fov: number, rot: number, radius: number) => {
     clearFisheyeCache(scene.id);
-    updateSceneFisheyeConfig(scene.id, saved);
+    updateSceneFisheyeConfig(scene.id, buildConfig(fov, rot, radius));
+  }, [scene.id, buildConfig, updateSceneFisheyeConfig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced version for FOV / radius (re-conversion is CPU-heavy)
+  const debouncedApply = useCallback((fov: number, rot: number, radius: number) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => applyConfig(fov, rot, radius), 500);
+  }, [applyConfig]);
+
+  // Rotation: instant texture-offset update, debounced full re-conversion
+  const handleRotation = (val: number) => {
+    setLocalRotation(val);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any)['__sphera_setFisheyeYaw']?.(val);
+    debouncedApply(localFov, val, localRadius);
+  };
+
+  // FOV / radius: debounced re-conversion
+  const handleFov = (val: number) => {
+    setLocalFov(val);
+    debouncedApply(val, localRotation, localRadius);
+  };
+  const handleRadius = (val: number) => {
+    setLocalRadius(val);
+    debouncedApply(localFov, localRotation, val);
+  };
+
+  const saveFisheyeAdjust = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    applyConfig(localFov, localRotation, localRadius);
     setFisheyeEditing(false);
   };
 
@@ -125,19 +161,19 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
                 <SliderField
                   label={`FOV: ${localFov}°`}
                   min={140} max={240} step={1} value={localFov}
-                  onChange={setLocalFov}
+                  onChange={handleFov}
                   hint="Higher FOV extends coverage toward the seam"
                 />
                 <SliderField
                   label={`Rotation: ${localRotation}°`}
                   min={-180} max={180} step={1} value={localRotation}
-                  onChange={setLocalRotation}
-                  hint="Rotate the panorama to move the seam to a less visible spot"
+                  onChange={handleRotation}
+                  hint="Rotate to move the seam to a less visible area"
                 />
                 <SliderField
                   label={`Radius: ${localRadius.toFixed(2)}`}
                   min={0.5} max={1.3} step={0.01} value={localRadius}
-                  onChange={setLocalRadius}
+                  onChange={handleRadius}
                   hint="Fraction of half-image that each circle occupies"
                 />
                 <button
