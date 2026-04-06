@@ -23,11 +23,14 @@ function detectVideo(file: File): Promise<PanoramaDetectionResult> {
     video.onloadedmetadata = () => {
       const w = video.videoWidth, h = video.videoHeight;
       URL.revokeObjectURL(url);
+      const ar     = w / h;
+      const format = classifyAR(ar, true);   // use image rules so fisheye ARs are detected
       resolve({
-        format: classifyAR(w / h, false),
+        format,
         mediaType: 'panorama-video',
-        width: w, height: h, aspectRatio: w / h,
+        width: w, height: h, aspectRatio: ar,
         needsConversion: false,
+        suggestedFisheyeConfig: format.startsWith('fisheye') ? buildFisheyeConfig(format, ar) : undefined,
       });
     };
     video.onerror = () => {
