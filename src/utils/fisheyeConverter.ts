@@ -26,8 +26,11 @@ export function fisheyeToEquirectangular(
   const srcCtx = sourceCanvas.getContext('2d')!;
   const srcData = srcCtx.getImageData(0, 0, srcW, srcH);
 
-  // Output is always 2:1 equirectangular
-  const outW = Math.max(srcW, 1024);
+  // Output is always 2:1 equirectangular.
+  // Base width on the larger source dimension so portrait dual-tb images
+  // (where srcH >> srcW) produce an output that matches the circle resolution.
+  // Minimum 2048, maximum 4096 to balance quality vs GPU texture budget.
+  const outW = Math.min(4096, Math.max(Math.max(srcW, srcH), 2048));
   const outH = Math.round(outW / 2);
 
   const outCanvas = document.createElement('canvas');

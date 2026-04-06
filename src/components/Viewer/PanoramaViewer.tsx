@@ -538,8 +538,9 @@ export default function PanoramaViewer({
             applyTexture(new THREE.Texture(cached));
             return;
           }
-          // Draw into canvas; cap to 2048 px so conversion stays fast
-          const MAX = 2048;
+          // Draw into canvas; cap per-dimension at 4096 so conversion stays fast
+          // while preserving enough resolution for a good 360° output (≥11 px/°).
+          const MAX = 4096;
           const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
           const raw = document.createElement('canvas');
           raw.width  = Math.floor(img.naturalWidth  * scale);
