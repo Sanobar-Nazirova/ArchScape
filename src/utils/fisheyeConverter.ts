@@ -66,27 +66,31 @@ export function fisheyeToEquirectangular(
         if (result) { srcX = result.x; srcY = result.y; valid = true; }
         else { srcX = 0; srcY = 0; }
       } else if (type === 'dual-sbs' || type === 'dual-tb') {
-        // Blend front and back eyes across ±15° around the seam to avoid a hard edge
-        const blendWidth = 0.25;
-        const t = Math.max(0, Math.min(1, (sz + blendWidth) / (2 * blendWidth))); // 0=back,1=front
-        const frontResult = projectToFisheye(sx, sy, sz, Math.PI, params.front);
-        const backResult  = projectToFisheye(-sx, sy, -sz, Math.PI, params.back);
-        if (t >= 1 && frontResult) {
-          srcX = frontResult.x; srcY = frontResult.y; valid = true;
-        } else if (t <= 0 && backResult) {
-          srcX = backResult.x; srcY = backResult.y; valid = true;
-        } else if (frontResult && backResult) {
-          // Blend pixels from both eyes across the seam
+        // Use fovRad so the Overlap/FOV setting is respected.
+        // projectToFisheye returns null when theta > fovRad/2 (outside circle).
+        const frontResult = projectToFisheye(sx,  sy,  sz,  fovRad, params.front);
+        const backResult  = projectToFisheye(-sx, sy, -sz,  fovRad, params.back);
+
+        if (frontResult && backResult) {
+          // Overlap zone — blend smoothly. t=1 → pure front, t=0 → pure back.
+          // Use a fixed 0.15 blend window in sz-space (~9° at equator).
+          const t = Math.max(0, Math.min(1, (sz + 0.15) / 0.3));
           const fp = bilinearSample(srcData, srcW, srcH, frontResult.x, frontResult.y);
           const bp = bilinearSample(srcData, srcW, srcH, backResult.x,  backResult.y);
-          if (fp && bp) {
+          if (fp || bp) {
             const dstIdx = (oy * outW + ox) * 4;
-            outData.data[dstIdx]     = Math.round(fp.r * t + bp.r * (1 - t));
-            outData.data[dstIdx + 1] = Math.round(fp.g * t + bp.g * (1 - t));
-            outData.data[dstIdx + 2] = Math.round(fp.b * t + bp.b * (1 - t));
-            outData.data[dstIdx + 3] = Math.round(fp.a * t + bp.a * (1 - t));
+            const fr = fp ?? { r: 0, g: 0, b: 0, a: 0 };
+            const br = bp ?? { r: 0, g: 0, b: 0, a: 0 };
+            outData.data[dstIdx]     = Math.round(fr.r * t + br.r * (1 - t));
+            outData.data[dstIdx + 1] = Math.round(fr.g * t + br.g * (1 - t));
+            outData.data[dstIdx + 2] = Math.round(fr.b * t + br.b * (1 - t));
+            outData.data[dstIdx + 3] = Math.round(fr.a * t + br.a * (1 - t));
           }
-          continue; // already wrote pixel, skip the normal write below
+          continue; // already wrote pixel
+        } else if (frontResult) {
+          srcX = frontResult.x; srcY = frontResult.y; valid = true;
+        } else if (backResult) {
+          srcX = backResult.x; srcY = backResult.y; valid = true;
         } else {
           srcX = 0; srcY = 0;
         }
