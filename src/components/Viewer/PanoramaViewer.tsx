@@ -1,6 +1,7 @@
 import React, {
   useEffect, useRef, useCallback, useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { yawPitchToWorld, worldToYawPitch } from '../../utils/sphereCoords';
 import MediaPanel from './MediaPanel';
@@ -1206,6 +1207,58 @@ export default function PanoramaViewer({
               isEditMode={!isPreviewMode}
             />
           )}
+
+          {/* ── Persistent design options tray (preview mode) ── */}
+          {isPreviewMode && (() => {
+            const variantHotspots = scene.hotspots.filter(h => h.type === 'variants' && (h.variantSceneIds?.length ?? 0) > 1);
+            if (!variantHotspots.length) return null;
+            return createPortal(
+              <div className="fixed bottom-[72px] left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-auto">
+                {variantHotspots.map(hs => (
+                  <div key={hs.id} className="flex flex-col items-center gap-1.5">
+                    {variantHotspots.length > 1 && (
+                      <p className="text-[9px] text-white/50 uppercase tracking-widest">{hs.label || 'Design Options'}</p>
+                    )}
+                    <div className="flex gap-2 bg-black/75 backdrop-blur-md rounded-2xl px-3 py-2.5 border border-white/10 shadow-2xl">
+                      {hs.variantSceneIds!.map(sid => {
+                        const vs = scenes.find(sc => sc.id === sid);
+                        const isCurrent = sid === scene.id;
+                        return (
+                          <button
+                            key={sid}
+                            onClick={() => {
+                              if (!isCurrent) {
+                                setPendingStartView({ yaw: yawRef.current, pitch: pitchRef.current });
+                                useTourStore.getState().syncVariantHotspot(scene.id, hs.id);
+                                setActiveScene(sid);
+                              }
+                            }}
+                            title={vs?.name}
+                            className={[
+                              'flex flex-col items-center gap-1 rounded-xl overflow-hidden transition-all',
+                              isCurrent ? 'ring-2 ring-white scale-105 opacity-100' : 'opacity-60 hover:opacity-100 hover:scale-105',
+                            ].join(' ')}
+                            style={{ width: 72 }}
+                          >
+                            {vs?.thumbnail
+                              ? <img src={vs.thumbnail} className="w-full object-cover rounded-t-xl" style={{ height: 48 }} />
+                              : <div className="w-full bg-white/10 flex items-center justify-center rounded-t-xl" style={{ height: 48 }}>
+                                  <Layers size={16} className="text-white/40" />
+                                </div>
+                            }
+                            <p className="text-[9px] text-white/80 px-1 pb-1 text-center truncate w-full leading-tight">
+                              {vs?.name ?? sid}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>,
+              document.body,
+            );
+          })()}
         </>
       )}
     </div>
