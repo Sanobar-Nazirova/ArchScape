@@ -105,6 +105,11 @@ interface TourState {
   setFloorPlanMarker: (floorPlanId: string, sceneId: string, x: number, y: number) => void;
   removeFloorPlanMarker: (floorPlanId: string, sceneId: string) => void;
 
+  // ── Variant hotspot actions ───────────────────────────────────────────────
+  pendingStartView: { yaw: number; pitch: number } | null;
+  setPendingStartView: (v: { yaw: number; pitch: number } | null) => void;
+  syncVariantHotspot: (fromSceneId: string, hotspotId: string) => void;
+
   // ── UI actions ────────────────────────────────────────────────────────────
   setActiveTool: (tool: ToolMode) => void;
   setSelectedElement: (type: SelectedElementType, id: string | null) => void;
@@ -147,6 +152,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
   publishJsonUrl: null,
   showPublishModal: false,
   isFloorPlanEditing: false,
+  pendingStartView: null,
 
   // ── Navigation actions ────────────────────────────────────────────────────
   addProject: (name, desc) => {
@@ -687,6 +693,27 @@ export const useTourStore = create<TourState>()((set, get) => ({
         fp.id !== floorPlanId ? fp : { ...fp, markers: fp.markers.filter(m => m.sceneId !== sceneId) },
       ),
     })),
+
+  // ── Variant hotspot actions ────────────────────────────────────────────────
+  setPendingStartView: (v) => set({ pendingStartView: v }),
+
+  syncVariantHotspot: (fromSceneId, hotspotId) => set(s => {
+    const fromScene = s.scenes.find(sc => sc.id === fromSceneId);
+    const srcHotspot = fromScene?.hotspots.find(h => h.id === hotspotId);
+    if (!srcHotspot || !srcHotspot.variantSceneIds?.length) return {};
+    // Copy this hotspot to every variant scene that doesn't already have it
+    const updatedScenes = s.scenes.map(sc => {
+      if (sc.id === fromSceneId) return sc;
+      if (!srcHotspot.variantSceneIds!.includes(sc.id)) return sc;
+      const existingIdx = sc.hotspots.findIndex(h => h.variantSceneIds && h.variantSceneIds.join() === srcHotspot.variantSceneIds!.join());
+      const newHotspot: Hotspot = { ...srcHotspot, id: existingIdx >= 0 ? sc.hotspots[existingIdx].id : `hs_v_${sc.id.slice(-6)}` };
+      if (existingIdx >= 0) {
+        return { ...sc, hotspots: sc.hotspots.map((h, i) => i === existingIdx ? newHotspot : h) };
+      }
+      return { ...sc, hotspots: [...sc.hotspots, newHotspot] };
+    });
+    return { scenes: updatedScenes };
+  }),
 
   // ── UI actions ─────────────────────────────────────────────────────────────
   setActiveTool: (tool) =>

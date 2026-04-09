@@ -16,7 +16,7 @@ import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Layers,
 } from 'lucide-react';
 
 function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
@@ -215,6 +215,36 @@ function HotspotMarker({
   );
 }
 
+/* ─── VariantHotspotMarker ────────────────────────────────────────────── */
+function VariantHotspotMarker({ hotspot, isSelected, isPreview, isOpen, currentSceneId: _currentSceneId, scenes: _scenes }: {
+  hotspot: Hotspot; isSelected: boolean; isPreview: boolean;
+  isOpen: boolean; currentSceneId: string; scenes: Scene[];
+}) {
+  const label = hotspot.label || 'Design Options';
+  return (
+    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
+      <div className={[
+        'w-10 h-10 rounded-full flex items-center justify-center transition-all border-2 shadow-lg backdrop-blur-sm',
+        isSelected || isOpen
+          ? 'bg-nm-teal border-white text-white scale-110'
+          : isPreview
+          ? 'bg-black/60 border-nm-teal/70 text-nm-teal hover:scale-110 hover:bg-nm-teal hover:border-white'
+          : 'bg-black/50 border-nm-teal/70 text-nm-teal hover:scale-110 hover:bg-nm-teal hover:text-white',
+      ].join(' ')}>
+        <Layers size={16} />
+      </div>
+      <span className={[
+        'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
+        isSelected || isOpen
+          ? 'bg-nm-teal text-white border-white/30 opacity-100'
+          : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
+      ].join(' ')}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /* ─── MediaMarker ─────────────────────────────────────────────────────── */
 const MEDIA_ICONS: Record<string, React.ReactNode> = {
   image: <Image   size={13} />,
@@ -367,7 +397,7 @@ export default function PanoramaViewer({
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
   onHotspotReposition,
 }: PanoramaViewerProps) {
-  const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes } = useTourStore();
+  const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes, setPendingStartView } = useTourStore();
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
   // ── Three.js refs ──────────────────────────────────────────────────────
@@ -412,6 +442,7 @@ export default function PanoramaViewer({
   // ── UI state ──────────────────────────────────────────────────────────
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
+  const [openVariantHotspotId, setOpenVariantHotspotId] = useState<string | null>(null);
 
   // ── Expose fisheye yaw rotation helper (for real-time slider feedback) ──
   useEffect(() => {
@@ -573,9 +604,16 @@ export default function PanoramaViewer({
     mat.color.set(0x111119);
     mat.needsUpdate = true;
 
-    // Reset camera to scene initial view
-    yawRef.current   = scene.initialYaw;
-    pitchRef.current = scene.initialPitch;
+    // Use pending start view if switching via variant, otherwise use scene default
+    const pv = useTourStore.getState().pendingStartView;
+    if (pv) {
+      yawRef.current   = pv.yaw;
+      pitchRef.current = pv.pitch;
+      useTourStore.getState().setPendingStartView(null);
+    } else {
+      yawRef.current   = scene.initialYaw;
+      pitchRef.current = scene.initialPitch;
+    }
     setActiveMedia(null);
 
     // Cap image to WebGL max texture size to avoid silent GPU failures on large SBS/TB panoramas
@@ -943,7 +981,7 @@ export default function PanoramaViewer({
       onMouseUp={scene ? handleMouseUp : undefined}
       onMouseLeave={scene ? handleMouseLeave : undefined}
       onWheel={scene ? handleWheel : undefined}
-      onClick={scene ? handleClick : undefined}
+      onClick={scene ? (e => { handleClick(e); setOpenVariantHotspotId(null); }) : undefined}
       onTouchStart={scene ? handleTouchStart : undefined}
       onTouchMove={scene ? handleTouchMove : undefined}
       onTouchEnd={scene ? handleMouseUp : undefined}
@@ -972,15 +1010,48 @@ export default function PanoramaViewer({
                 style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
-                onPointerUp={e => handleHotspotPointerUp(e, hs)}
+                onPointerUp={e => {
+                  const ds = dragStateRef.current;
+                  dragStateRef.current = null;
+                  if (ds?.moved) {
+                    e.stopPropagation();
+                    const dh = draggingHotspotRef.current;
+                    draggingHotspotRef.current = null;
+                    if (dh && dh.id === hs.id) {
+                      onHotspotRepositionRef.current(hs.id, dh.yaw, dh.pitch);
+                    }
+                    return;
+                  }
+                  draggingHotspotRef.current = null;
+                  if (hs.type === 'variants') {
+                    if (isPreviewModeRef.current) {
+                      setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+                    } else {
+                      onHotspotSelectRef.current(hs.id);
+                    }
+                  } else {
+                    handleHotspotPointerUp(e, hs);
+                  }
+                }}
               >
                 <div style={{ transform: 'translate(-50%,-50%)' }}>
-                  <HotspotMarker
-                    hotspot={hs}
-                    isSelected={selectedElementId === hs.id}
-                    isPreview={isPreviewMode}
-                    targetSceneName={scenes.find(s => s.id === hs.targetSceneId)?.name}
-                  />
+                  {hs.type === 'variants' ? (
+                    <VariantHotspotMarker
+                      hotspot={hs}
+                      isSelected={selectedElementId === hs.id}
+                      isPreview={isPreviewMode}
+                      isOpen={openVariantHotspotId === hs.id}
+                      currentSceneId={scene.id}
+                      scenes={scenes}
+                    />
+                  ) : (
+                    <HotspotMarker
+                      hotspot={hs}
+                      isSelected={selectedElementId === hs.id}
+                      isPreview={isPreviewMode}
+                      targetSceneName={scenes.find(s => s.id === hs.targetSceneId)?.name}
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -1008,6 +1079,46 @@ export default function PanoramaViewer({
               </div>
             ))}
           </div>
+
+          {/* ── Variant options panel ── */}
+          {openVariantHotspotId && (() => {
+            const hs = scene?.hotspots.find(h => h.id === openVariantHotspotId);
+            if (!hs?.variantSceneIds?.length) return null;
+            return (
+              <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-black/85 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-white/10"
+                onClick={e => e.stopPropagation()}>
+                <p className="text-[10px] text-white/50 text-center mb-2.5 uppercase tracking-wide">{hs.label || 'Design Options'}</p>
+                <div className="flex gap-2">
+                  {hs.variantSceneIds.map(sid => {
+                    const s = scenes.find(sc => sc.id === sid);
+                    const isCurrent = sid === scene?.id;
+                    return (
+                      <button
+                        key={sid}
+                        onClick={() => {
+                          if (!isCurrent) {
+                            setPendingStartView({ yaw: yawRef.current, pitch: pitchRef.current });
+                            setActiveScene(sid);
+                          }
+                          setOpenVariantHotspotId(null);
+                        }}
+                        className={['flex flex-col items-center gap-1 rounded-xl overflow-hidden transition-all', isCurrent ? 'ring-2 ring-nm-teal scale-105' : 'opacity-70 hover:opacity-100 hover:scale-105'].join(' ')}
+                        style={{ width: 80 }}
+                      >
+                        {s?.thumbnail
+                          ? <img src={s.thumbnail} className="w-full object-cover" style={{ height: 54 }} />
+                          : <div className="w-full bg-nm-surface/80 flex items-center justify-center" style={{ height: 54 }}>
+                              <Layers size={16} className="text-nm-teal/50" />
+                            </div>
+                        }
+                        <p className="text-[9px] text-white/80 px-1 pb-1 text-center truncate w-full">{s?.name ?? sid}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Tool hint banner ── */}
           {activeTool !== 'none' && (

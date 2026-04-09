@@ -28,6 +28,8 @@ export interface Hotspot {
   targetSceneId: string;
   label: string;
   iconStyle: HotspotIconStyle;
+  type?: 'navigation' | 'variants';   // defaults to 'navigation'
+  variantSceneIds?: string[];          // for variants type: all variant scene IDs (incl. current)
 }
 
 export interface MediaPoint {

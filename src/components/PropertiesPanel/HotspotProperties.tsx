@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Layers, RefreshCw, Plus, X } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import type { Hotspot, HotspotIconStyle } from '../../types';
 import ScenePicker from '../ScenePicker';
@@ -12,79 +12,164 @@ interface HotspotPropertiesProps {
 }
 
 export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertiesProps) {
-  const { scenes, updateHotspot, removeHotspot } = useTourStore();
+  const { scenes, updateHotspot, removeHotspot, syncVariantHotspot } = useTourStore();
   const update = (updates: Partial<Hotspot>) => updateHotspot(sceneId, hotspot.id, updates);
 
   const otherScenes = scenes.filter(s => s.id !== sceneId);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [variantPickerOpen, setVariantPickerOpen] = useState(false);
 
   return (
     <div className="space-y-5">
-      {/* Destination */}
-      <Field label="Link to Scene">
-        {otherScenes.length === 0 ? (
-          <div className="px-3 py-2.5 rounded-xl text-[11px] text-nm-muted text-center"
-            style={{ boxShadow: 'inset 3px 3px 7px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in)' }}>
-            Upload more scenes to enable navigation links.
-          </div>
-        ) : (
-          <>
-            {hotspot.targetSceneId ? (
-              /* Linked scene card */
-              <div
-                className="rounded-xl overflow-hidden"
-                style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
-              >
-                {(() => {
-                  const linked = otherScenes.find(s => s.id === hotspot.targetSceneId);
-                  return (
-                    <>
-                      {linked?.thumbnail ? (
-                        <img src={linked.thumbnail} alt={linked?.name} className="w-full object-cover" style={{ height: 64 }} />
-                      ) : (
-                        <div className="w-full flex items-center justify-center text-2xl"
-                          style={{ height: 64, background: 'var(--nm-surface, #2a2a36)' }}>🌐</div>
-                      )}
-                      <div className="flex items-center justify-between px-3 py-2"
-                        style={{ background: 'var(--nm-surface, #2a2a36)' }}>
-                        <div>
-                          <p className="text-xs text-nm-text font-medium truncate max-w-[140px]">{linked?.name ?? 'Unknown'}</p>
-                          <p className="text-[10px] text-nm-accent">Linked ✓</p>
-                        </div>
-                        <button
-                          onClick={() => setPickerOpen(true)}
-                          className="text-[11px] text-nm-muted hover:text-nm-text px-2 py-1 rounded-lg transition-colors"
-                          style={{ boxShadow: '2px 2px 5px var(--sh-d), -1px -1px 3px var(--sh-l)' }}
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            ) : (
-              /* No link yet */
-              <button
-                onClick={() => setPickerOpen(true)}
-                className="w-full py-3 rounded-xl text-sm text-nm-muted hover:text-nm-text transition-all flex items-center justify-center gap-2"
-                style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
-              >
-                <span className="text-lg">🔗</span>
-                Select destination scene
-              </button>
-            )}
-          </>
-        )}
+
+      {/* Hotspot Type */}
+      <Field label="Hotspot Type">
+        <div className="flex rounded-xl overflow-hidden border border-nm-border">
+          {(['navigation', 'variants'] as const).map(t => (
+            <button key={t} onClick={() => update({ type: t })}
+              className={['flex-1 py-1.5 text-xs flex items-center justify-center gap-1.5 transition-colors capitalize',
+                (hotspot.type ?? 'navigation') === t ? 'bg-nm-accent text-white' : 'text-nm-muted hover:text-nm-text',
+              ].join(' ')}>
+              {t === 'navigation' ? '→' : <Layers size={11} />}
+              {t === 'navigation' ? 'Navigation' : 'Design Options'}
+            </button>
+          ))}
+        </div>
       </Field>
 
-      {pickerOpen && (
+      {/* Navigation: Link to Scene */}
+      {(hotspot.type ?? 'navigation') === 'navigation' && (
+        <>
+          <Field label="Link to Scene">
+            {otherScenes.length === 0 ? (
+              <div className="px-3 py-2.5 rounded-xl text-[11px] text-nm-muted text-center"
+                style={{ boxShadow: 'inset 3px 3px 7px var(--sh-d-in), inset -2px -2px 5px var(--sh-l-in)' }}>
+                Upload more scenes to enable navigation links.
+              </div>
+            ) : (
+              <>
+                {hotspot.targetSceneId ? (
+                  /* Linked scene card */
+                  <div
+                    className="rounded-xl overflow-hidden"
+                    style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
+                  >
+                    {(() => {
+                      const linked = otherScenes.find(s => s.id === hotspot.targetSceneId);
+                      return (
+                        <>
+                          {linked?.thumbnail ? (
+                            <img src={linked.thumbnail} alt={linked?.name} className="w-full object-cover" style={{ height: 64 }} />
+                          ) : (
+                            <div className="w-full flex items-center justify-center text-2xl"
+                              style={{ height: 64, background: 'var(--nm-surface, #2a2a36)' }}>🌐</div>
+                          )}
+                          <div className="flex items-center justify-between px-3 py-2"
+                            style={{ background: 'var(--nm-surface, #2a2a36)' }}>
+                            <div>
+                              <p className="text-xs text-nm-text font-medium truncate max-w-[140px]">{linked?.name ?? 'Unknown'}</p>
+                              <p className="text-[10px] text-nm-accent">Linked ✓</p>
+                            </div>
+                            <button
+                              onClick={() => setPickerOpen(true)}
+                              className="text-[11px] text-nm-muted hover:text-nm-text px-2 py-1 rounded-lg transition-colors"
+                              style={{ boxShadow: '2px 2px 5px var(--sh-d), -1px -1px 3px var(--sh-l)' }}
+                            >
+                              Change
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  /* No link yet */
+                  <button
+                    onClick={() => setPickerOpen(true)}
+                    className="w-full py-3 rounded-xl text-sm text-nm-muted hover:text-nm-text transition-all flex items-center justify-center gap-2"
+                    style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
+                  >
+                    <span className="text-lg">🔗</span>
+                    Select destination scene
+                  </button>
+                )}
+              </>
+            )}
+          </Field>
+
+          {pickerOpen && (
+            <ScenePicker
+              scenes={scenes}
+              currentSceneId={sceneId}
+              linkedSceneId={hotspot.targetSceneId}
+              onSelect={(id) => update({ targetSceneId: id })}
+              onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </>
+      )}
+
+      {/* Variants: Design Variants picker */}
+      {(hotspot.type ?? 'navigation') === 'variants' && (
+        <Field label="Design Variants">
+          <p className="text-[10px] text-nm-muted mb-2 leading-snug">
+            Add scenes that show the same space with different design options. The view angle is preserved when switching.
+          </p>
+          {/* List current variants */}
+          {(hotspot.variantSceneIds ?? []).length > 0 && (
+            <div className="space-y-1 mb-2">
+              {(hotspot.variantSceneIds ?? []).map(sid => {
+                const s = scenes.find(sc => sc.id === sid);
+                const isCurrent = sid === sceneId;
+                return (
+                  <div key={sid} className="flex items-center gap-2 px-2 py-1.5 bg-nm-base rounded-lg border border-nm-border">
+                    {s?.thumbnail
+                      ? <img src={s.thumbnail} className="w-8 h-5 object-cover rounded flex-shrink-0" />
+                      : <div className="w-8 h-5 bg-nm-surface rounded flex-shrink-0" />
+                    }
+                    <span className="flex-1 text-xs text-nm-text truncate">{s?.name ?? sid}{isCurrent ? ' (this scene)' : ''}</span>
+                    {!isCurrent && (
+                      <button onClick={() => update({ variantSceneIds: (hotspot.variantSceneIds ?? []).filter(id => id !== sid) })}
+                        className="text-nm-muted hover:text-red-400 p-0.5 transition-colors">
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Add variant button */}
+          <button onClick={() => setVariantPickerOpen(true)}
+            className="w-full py-2 rounded-xl text-xs text-nm-muted hover:text-nm-accent border border-nm-border hover:border-nm-accent/40 transition-colors flex items-center justify-center gap-1.5">
+            <Plus size={11} /> Add variant scene
+          </button>
+          {/* Sync button */}
+          {(hotspot.variantSceneIds ?? []).length > 1 && (
+            <button onClick={() => syncVariantHotspot(sceneId, hotspot.id)}
+              className="mt-2 w-full py-2 rounded-xl text-xs font-medium text-nm-teal border border-nm-teal/30 hover:bg-nm-teal/10 transition-colors flex items-center justify-center gap-1.5">
+              <RefreshCw size={11} /> Sync hotspot position to all variants
+            </button>
+          )}
+        </Field>
+      )}
+
+      {variantPickerOpen && (
         <ScenePicker
           scenes={scenes}
           currentSceneId={sceneId}
-          linkedSceneId={hotspot.targetSceneId}
-          onSelect={(id) => update({ targetSceneId: id })}
-          onClose={() => setPickerOpen(false)}
+          linkedSceneId={undefined}
+          onSelect={(id) => {
+            const existing = hotspot.variantSceneIds ?? [];
+            if (!existing.includes(sceneId)) {
+              // auto-include current scene
+              update({ variantSceneIds: [...new Set([sceneId, ...existing, id])] });
+            } else {
+              update({ variantSceneIds: [...new Set([...existing, id])] });
+            }
+            setVariantPickerOpen(false);
+          }}
+          onClose={() => setVariantPickerOpen(false)}
         />
       )}
 
