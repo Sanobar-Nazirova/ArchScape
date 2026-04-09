@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2, Camera, RotateCcw, Save, Edit2, BookmarkPlus, Copy, Check } from 'lucide-react';
+import { Trash2, Camera, RotateCcw, Save, Edit2, BookmarkPlus, Copy, Check, RefreshCw } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
-import { ALL_FORMATS, formatLabel } from '../../utils/panoramaDetector';
+import { ALL_FORMATS, formatLabel, detectPanorama } from '../../utils/panoramaDetector';
 import { clearFisheyeCache } from '../../utils/fisheyeConverter';
+import { generateThumbnail } from '../../utils/panoramaGenerator';
 import type { Scene, FisheyeConfig } from '../../types';
 
 /* ── Fisheye preset storage (localStorage) ──────────────────────────────── */
@@ -34,7 +35,32 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
   const {
     renameScene, removeScene, updateSceneFormat, updateSceneStereoEye,
     updateSceneInitialView, setActiveScene, scenes, updateSceneFisheyeConfig,
+    updateSceneImage,
   } = useTourStore();
+
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replacing, setReplacing] = useState(false);
+
+  const handleReplaceImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setReplacing(true);
+    try {
+      const reader = new FileReader();
+      const imageUrl = await new Promise<string>((res, rej) => {
+        reader.onload = () => res(reader.result as string);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const detection = await detectPanorama(file);
+      const thumbnail = await generateThumbnail(imageUrl);
+      clearFisheyeCache(scene.id);
+      updateSceneImage(scene.id, imageUrl, detection.format, detection.mediaType, thumbnail, detection.aspectRatio);
+    } finally {
+      setReplacing(false);
+    }
+  }, [scene.id, updateSceneImage]);
 
   /* ── Fisheye editing state ─────────────────────────────────────────────── */
   const defs = formatDefaults(scene.format);
@@ -157,12 +183,30 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
   /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
     <div className="space-y-5">
-      {/* Thumbnail */}
-      {scene.thumbnail && (
-        <div className="rounded-xl overflow-hidden border border-nm-border">
-          <img src={scene.thumbnail} alt="" className="w-full object-cover" style={{ height: 80 }} />
+      {/* Thumbnail + Replace */}
+      <div className="relative rounded-xl overflow-hidden border border-nm-border group/thumb cursor-pointer"
+        onClick={() => replaceInputRef.current?.click()}
+        title="Click to replace panorama image"
+      >
+        {scene.thumbnail
+          ? <img src={scene.thumbnail} alt="" className="w-full object-cover" style={{ height: 80 }} />
+          : <div className="w-full flex items-center justify-center bg-nm-surface" style={{ height: 80 }}>
+              <Camera size={20} className="text-nm-muted opacity-40" />
+            </div>
+        }
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+          {replacing
+            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            : <div className="flex flex-col items-center gap-1 text-white/90">
+                <RefreshCw size={14} />
+                <span className="text-[9px] font-medium">Replace Image</span>
+              </div>
+          }
         </div>
-      )}
+        <input ref={replaceInputRef} type="file" accept="image/*,video/*" className="hidden"
+          onClick={e => e.stopPropagation()}
+          onChange={handleReplaceImage} />
+      </div>
 
       {/* Name */}
       <Field label="Scene Name">

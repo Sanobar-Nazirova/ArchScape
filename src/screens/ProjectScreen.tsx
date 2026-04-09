@@ -298,9 +298,18 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
           {/* Hover overlay: View options + thumbnail upload */}
           {hovered && (
             <div
-              className="absolute inset-0 flex items-center justify-center gap-3 bg-black/70 backdrop-blur-sm"
+              className="absolute inset-0 flex items-center justify-center gap-2 bg-black/70 backdrop-blur-sm"
               onClick={e => e.stopPropagation()}
             >
+              <button
+                onClick={e => { e.stopPropagation(); openTour(projectId, tour.id); }}
+                className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-white hover:bg-white/20 transition-colors"
+                title="Open in editor"
+              >
+                <Edit2 size={18} />
+                <span className="text-[10px] font-medium">Edit</span>
+              </button>
+              <div className="w-px h-10 bg-white/20" />
               <button
                 onClick={openInWeb}
                 className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-white hover:bg-white/20 transition-colors"

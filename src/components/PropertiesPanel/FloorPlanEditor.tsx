@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState } from 'react';
-import { X, Trash2, MapPin, Plus, Pencil, Check, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Trash2, MapPin, Plus, Pencil, Check, ChevronUp, ChevronDown, Maximize2 } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 
 const fileToDataUrl = (file: File): Promise<string> =>
@@ -19,18 +19,20 @@ export default function FloorPlanEditor() {
   } = useTourStore();
 
   const imgRef      = useRef<HTMLImageElement>(null);
+  const modalImgRef = useRef<HTMLImageElement>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName,  setEditName]  = useState('');
-  const [editLevel, setEditLevel] = useState(0);
+  const [editingId,  setEditingId]  = useState<string | null>(null);
+  const [editName,   setEditName]   = useState('');
+  const [editLevel,  setEditLevel]  = useState(0);
+  const [expanded,   setExpanded]   = useState(false);
 
   const sorted   = [...floorPlans].sort((a, b) => a.level - b.level);
   const activeFp = floorPlans.find(f => f.id === activeFloorPlanId) ?? sorted[0] ?? null;
 
-  const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!imgRef.current || !activeSceneId || !activeFp) return;
-    const rect = imgRef.current.getBoundingClientRect();
+  const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>, ref: React.RefObject<HTMLImageElement | null>) => {
+    if (!ref.current || !activeSceneId || !activeFp) return;
+    const rect = ref.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top)  / rect.height;
     setFloorPlanMarker(activeFp.id, activeSceneId, Math.max(0, Math.min(1, x)), Math.max(0, Math.min(1, y)));
@@ -113,9 +115,14 @@ export default function FloorPlanEditor() {
           {/* ── Active floor plan image editor ── */}
           {activeFp && (
             <div className="space-y-2">
-              <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium">
-                {activeFp.name}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium">{activeFp.name}</p>
+                <button onClick={() => setExpanded(true)}
+                  className="flex items-center gap-1 text-[10px] text-nm-accent hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-nm-accent/10"
+                  title="Expand for accurate placement">
+                  <Maximize2 size={10} /> Expand
+                </button>
+              </div>
 
               {activeSceneId ? (
                 <p className="text-[11px] text-nm-muted leading-snug">
@@ -128,7 +135,7 @@ export default function FloorPlanEditor() {
 
               <div
                 className="relative rounded-xl overflow-hidden border border-nm-border cursor-crosshair"
-                onClick={handleImageClick}
+                onClick={e => handleImageClick(e, imgRef)}
               >
                 <img
                   ref={imgRef}
@@ -220,6 +227,69 @@ export default function FloorPlanEditor() {
             })}
           </div>
         </>
+      )}
+
+      {/* ── Fullscreen expand modal ── */}
+      {expanded && activeFp && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col"
+          onClick={() => setExpanded(false)}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+            onClick={e => e.stopPropagation()}>
+            <div>
+              <p className="text-white font-semibold text-sm">{activeFp.name} — Place Markers</p>
+              {activeSceneId
+                ? <p className="text-[11px] text-white/60 mt-0.5">
+                    Click the map to place <span className="text-nm-accent">"{scenes.find(s => s.id === activeSceneId)?.name}"</span>
+                  </p>
+                : <p className="text-[11px] text-white/60 mt-0.5">Select a scene in the sidebar first.</p>
+              }
+            </div>
+            <button onClick={() => setExpanded(false)}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Floor plan image — fills remaining space */}
+          <div className="flex-1 overflow-hidden flex items-center justify-center p-4"
+            onClick={e => e.stopPropagation()}>
+            <div
+              className="relative cursor-crosshair rounded-xl overflow-hidden border border-white/20 max-h-full"
+              style={{ maxWidth: '100%' }}
+              onClick={e => handleImageClick(e, modalImgRef)}
+            >
+              <img
+                ref={modalImgRef}
+                src={activeFp.imageUrl}
+                alt={activeFp.name}
+                className="block max-w-full max-h-[calc(100vh-140px)] object-contain"
+                draggable={false}
+              />
+              {activeFp.markers.map(m => {
+                const sc = scenes.find(s => s.id === m.sceneId);
+                const isCurrentScene = m.sceneId === activeSceneId;
+                return (
+                  <div key={m.sceneId} className="absolute group"
+                    style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, transform: 'translate(-50%, -100%)' }}
+                    title={sc?.name}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <MapPin size={24}
+                      className={isCurrentScene ? 'text-nm-accent drop-shadow-lg' : 'text-white/70'}
+                      fill={isCurrentScene ? '#4f7cff' : 'rgba(255,255,255,0.3)'}
+                    />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block pointer-events-none">
+                      <span className="bg-black/80 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap">
+                        {sc?.name ?? m.sceneId}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

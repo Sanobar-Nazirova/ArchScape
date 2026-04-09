@@ -67,6 +67,7 @@ interface TourState {
   updateSceneInitialView: (sceneId: string, yaw: number, pitch: number) => void;
   updateSceneFormat: (sceneId: string, format: PanoramaFormat) => void;
   updateSceneStereoEye: (sceneId: string, eye: 'left' | 'right') => void;
+  updateSceneImage: (sceneId: string, imageUrl: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string, aspectRatio?: number) => void;
 
   // ── Folder actions ────────────────────────────────────────────────────────
   addFolder: (name: string, parentId?: string | null) => string;
@@ -427,6 +428,21 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   updateSceneStereoEye: (sceneId, eye) =>
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, stereoEye: eye } : sc) })),
+
+  updateSceneImage: (sceneId, imageUrl, format, mediaType, thumbnail, aspectRatio) => {
+    saveImage(`scene_${sceneId}`, imageUrl);
+    set((s) => ({
+      scenes: s.scenes.map(sc =>
+        sc.id !== sceneId ? sc : {
+          ...sc, imageUrl, format, mediaType,
+          ...(thumbnail   !== undefined && { thumbnail }),
+          ...(aspectRatio !== undefined && { aspectRatio }),
+          // Clear fisheye config so it re-derives from new image
+          fisheyeConfig: undefined,
+        },
+      ),
+    }));
+  },
 
   updateSceneFisheyeConfig: (sceneId, config) =>
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, fisheyeConfig: config } : sc) })),

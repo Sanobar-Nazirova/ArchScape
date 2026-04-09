@@ -144,6 +144,12 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
         </div>
       </Field>
 
+      {/* Reposition hint */}
+      <div className="px-3 py-2 rounded-xl text-[10px] text-nm-muted leading-snug"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--nm-border)' }}>
+        <span className="font-medium text-nm-text">Reposition:</span> drag the hotspot directly in the viewer, or edit the Yaw/Pitch values above.
+      </div>
+
       {/* Delete */}
       <div className="pt-2 border-t border-nm-border">
         <button
