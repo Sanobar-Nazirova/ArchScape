@@ -367,7 +367,8 @@ export default function PanoramaViewer({
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
   onHotspotReposition,
 }: PanoramaViewerProps) {
-  const { floorPlan, setActiveScene, scenes } = useTourStore();
+  const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes } = useTourStore();
+  const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
   // ── Three.js refs ──────────────────────────────────────────────────────
   const containerRef  = useRef<HTMLDivElement>(null);
@@ -1080,9 +1081,11 @@ export default function PanoramaViewer({
           )}
 
           {/* ── Floor plan minimap ── */}
-          {floorPlan && (
+          {floorPlans.length > 0 && (
             <FloorPlanMinimap
-              floorPlan={floorPlan}
+              floorPlans={floorPlans}
+              activeFloorPlanId={activeFloorPlanId ?? floorPlans[0]?.id ?? null}
+              onFloorPlanChange={setActiveFloorPlan}
               currentSceneId={scene.id}
               currentYaw={minimapYaw}
               onSceneChange={setActiveScene}

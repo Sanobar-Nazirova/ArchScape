@@ -11,7 +11,7 @@ import SceneList from './SceneList';
 export default function Sidebar() {
   const {
     scenes, folders, projectName, setProjectName, addFolder,
-    activeTool, setActiveTool, setFloorPlan,
+    activeTool, setActiveTool, addFloorPlan,
   } = useTourStore();
 
   const [searchQuery, setSearchQuery]       = useState('');
@@ -228,7 +228,7 @@ export default function Sidebar() {
           const file = e.target.files?.[0];
           if (file) {
             const reader = new FileReader();
-            reader.onload = () => setFloorPlan(reader.result as string);
+            reader.onload = () => addFloorPlan(reader.result as string);
             reader.readAsDataURL(file);
           }
           e.target.value = '';

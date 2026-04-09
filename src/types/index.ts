@@ -84,6 +84,9 @@ export interface FloorPlanMarker {
 }
 
 export interface FloorPlan {
+  id: string;
+  name: string;
+  level: number;   // floor level number (e.g. 0 = Ground, 1 = Level 1 …)
   imageUrl: string;
   markers: FloorPlanMarker[];
 }
@@ -111,6 +114,7 @@ export interface Tour {
   password?: string;
   scenes: Scene[];
   folders: Folder[];
+  floorPlans?: FloorPlan[];
 }
 
 export interface FisheyeConfig {

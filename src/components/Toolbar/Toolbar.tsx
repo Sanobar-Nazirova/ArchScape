@@ -271,7 +271,7 @@ function ProcessingToast({ message }: { message: string }) {
 export default function Toolbar() {
   const {
     scenes, activeTool, setActiveTool, isPreviewMode, togglePreviewMode,
-    addScene, publish, projectName, setProjectName, setFloorPlan,
+    addScene, publish, projectName, setProjectName, addFloorPlan,
     goBack, goHome, saveTour,
   } = useTourStore();
 
@@ -356,8 +356,8 @@ export default function Toolbar() {
     const file = files[0];
     if (!file) return;
     const url = await fileToDataUrl(file);
-    setFloorPlan(url);
-  }, [setFloorPlan]);
+    addFloorPlan(url);
+  }, [addFloorPlan]);
 
   if (isPreviewMode) {
     return (

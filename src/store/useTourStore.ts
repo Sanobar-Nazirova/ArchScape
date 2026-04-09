@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type {
-  Scene, Folder, FloorPlan, FloorPlanMarker,
+  Scene, Folder, FloorPlan,
   Hotspot, MediaPoint, AudioSource,
   ToolMode, SelectedElementType,
   PanoramaFormat, MediaType,
@@ -23,7 +23,8 @@ interface TourState {
   projectName: string;
   scenes: Scene[];
   folders: Folder[];
-  floorPlan: FloorPlan | null;
+  floorPlans: FloorPlan[];
+  activeFloorPlanId: string | null;
 
   // ── UI state ──────────────────────────────────────────────────────────────
   theme: 'dark' | 'light';
@@ -95,10 +96,12 @@ interface TourState {
   removeAudioSource: (sceneId: string, audioId: string) => void;
 
   // ── Floor plan actions ────────────────────────────────────────────────────
-  setFloorPlan: (imageUrl: string) => void;
-  removeFloorPlan: () => void;
-  setFloorPlanMarker: (sceneId: string, x: number, y: number) => void;
-  removeFloorPlanMarker: (sceneId: string) => void;
+  addFloorPlan: (imageUrl: string, name?: string, level?: number) => string;
+  removeFloorPlan: (id: string) => void;
+  updateFloorPlan: (id: string, updates: { name?: string; level?: number }) => void;
+  setActiveFloorPlan: (id: string | null) => void;
+  setFloorPlanMarker: (floorPlanId: string, sceneId: string, x: number, y: number) => void;
+  removeFloorPlanMarker: (floorPlanId: string, sceneId: string) => void;
 
   // ── UI actions ────────────────────────────────────────────────────────────
   setActiveTool: (tool: ToolMode) => void;
@@ -131,7 +134,8 @@ export const useTourStore = create<TourState>()((set, get) => ({
   projectName: 'Untitled Tour',
   scenes: [],
   folders: [],
-  floorPlan: null,
+  floorPlans: [],
+  activeFloorPlanId: null,
   activeSceneId: null,
   selectedElementId: null,
   selectedElementType: null,
@@ -254,6 +258,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
       audioSources: s.audioSources ?? [],
       tags:         s.tags         ?? [],
     }));
+    const floorPlans = tour.floorPlans ?? [];
     set({
       currentScreen: 'editor',
       currentProjectId: projectId,
@@ -261,6 +266,8 @@ export const useTourStore = create<TourState>()((set, get) => ({
       projectName: tour.name,
       scenes,
       folders: tour.folders ?? [],
+      floorPlans,
+      activeFloorPlanId: floorPlans[0]?.id ?? null,
       activeSceneId: scenes[0]?.id ?? null,
       selectedElementId: null,
       selectedElementType: null,
@@ -271,7 +278,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   saveTour: (name) => {
     const state = get();
-    const { currentProjectId: pid, currentTourId: tid, scenes, folders, projects } = state;
+    const { currentProjectId: pid, currentTourId: tid, scenes, folders, floorPlans, projects } = state;
     if (!pid || !tid || !projects[pid]) return;
     const existing = projects[pid].tours[tid];
     if (!existing) return;
@@ -281,15 +288,20 @@ export const useTourStore = create<TourState>()((set, get) => ({
     scenes.forEach(sc => {
       if (sc.imageUrl) saveImage(`scene_${sc.id}`, sc.imageUrl);
     });
+    floorPlans.forEach(fp => {
+      if (fp.imageUrl) saveImage(`fp_${fp.id}`, fp.imageUrl);
+    });
 
     // Strip imageUrl before localStorage — it can be 10–100 MB per scene
     const scenesForStorage = scenes.map(sc => ({ ...sc, imageUrl: '' }));
+    const floorPlansForStorage = floorPlans.map(fp => ({ ...fp, imageUrl: '' }));
     const updated: Tour = {
       ...existing,
       name: name ?? existing.name,
       updated: Date.now(),
       scenes: scenesForStorage,
       folders,
+      floorPlans: floorPlansForStorage,
       thumbUrl,
     };
     const newProjects = {
@@ -307,15 +319,20 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   /** After openTour, call this to restore imageUrls from IndexedDB. */
   restoreSceneImages: async () => {
-    const { scenes } = get();
-    const updates = await Promise.all(
-      scenes.map(async sc => {
-        if (sc.imageUrl) return sc; // already has URL (same session)
+    const { scenes, floorPlans } = get();
+    const [updatedScenes, updatedFloorPlans] = await Promise.all([
+      Promise.all(scenes.map(async sc => {
+        if (sc.imageUrl) return sc;
         const url = await loadImage(`scene_${sc.id}`);
         return url ? { ...sc, imageUrl: url } : sc;
-      }),
-    );
-    set({ scenes: updates });
+      })),
+      Promise.all(floorPlans.map(async fp => {
+        if (fp.imageUrl) return fp;
+        const url = await loadImage(`fp_${fp.id}`);
+        return url ? { ...fp, imageUrl: url } : fp;
+      })),
+    ]);
+    set({ scenes: updatedScenes, floorPlans: updatedFloorPlans });
   },
 
   goBack: () => {
@@ -373,11 +390,11 @@ export const useTourStore = create<TourState>()((set, get) => ({
         ...sc,
         hotspots: sc.hotspots.filter(h => h.targetSceneId !== id),
       }));
-      // Remove floor plan marker
-      const floorPlan = s.floorPlan
-        ? { ...s.floorPlan, markers: s.floorPlan.markers.filter(m => m.sceneId !== id) }
-        : null;
-      return { scenes: cleanedScenes, activeSceneId, selectedElementId, selectedElementType, floorPlan };
+      // Remove floor plan markers for this scene across all floor plans
+      const floorPlans = s.floorPlans.map(fp => ({
+        ...fp, markers: fp.markers.filter(m => m.sceneId !== id),
+      }));
+      return { scenes: cleanedScenes, activeSceneId, selectedElementId, selectedElementType, floorPlans };
     });
   },
 
@@ -592,27 +609,59 @@ export const useTourStore = create<TourState>()((set, get) => ({
     })),
 
   // ── Floor plan actions ─────────────────────────────────────────────────────
-  setFloorPlan: (imageUrl) =>
+  addFloorPlan: (imageUrl, name, level) => {
+    const id = genId('fp');
+    const existingLevels = get().floorPlans.map(f => f.level);
+    const nextLevel = existingLevels.length ? Math.max(...existingLevels) + 1 : 0;
+    const fp: FloorPlan = {
+      id,
+      name: name ?? `Level ${nextLevel}`,
+      level: level ?? nextLevel,
+      imageUrl,
+      markers: [],
+    };
     set((s) => ({
-      floorPlan: { imageUrl, markers: s.floorPlan?.markers ?? [] },
+      floorPlans: [...s.floorPlans, fp],
+      activeFloorPlanId: id,
       isFloorPlanEditing: true,
-    })),
+    }));
+    return id;
+  },
 
-  removeFloorPlan: () => set({ floorPlan: null }),
-
-  setFloorPlanMarker: (sceneId, x, y) =>
+  removeFloorPlan: (id) =>
     set((s) => {
-      if (!s.floorPlan) return {};
-      const markers: FloorPlanMarker[] = s.floorPlan.markers.filter(m => m.sceneId !== sceneId);
-      markers.push({ sceneId, x, y });
-      return { floorPlan: { ...s.floorPlan, markers } };
+      const remaining = s.floorPlans.filter(f => f.id !== id);
+      return {
+        floorPlans: remaining,
+        activeFloorPlanId:
+          s.activeFloorPlanId === id
+            ? (remaining[remaining.length - 1]?.id ?? null)
+            : s.activeFloorPlanId,
+      };
     }),
 
-  removeFloorPlanMarker: (sceneId) =>
+  updateFloorPlan: (id, updates) =>
     set((s) => ({
-      floorPlan: s.floorPlan
-        ? { ...s.floorPlan, markers: s.floorPlan.markers.filter(m => m.sceneId !== sceneId) }
-        : null,
+      floorPlans: s.floorPlans.map(fp => fp.id === id ? { ...fp, ...updates } : fp),
+    })),
+
+  setActiveFloorPlan: (id) => set({ activeFloorPlanId: id }),
+
+  setFloorPlanMarker: (floorPlanId, sceneId, x, y) =>
+    set((s) => ({
+      floorPlans: s.floorPlans.map(fp => {
+        if (fp.id !== floorPlanId) return fp;
+        const markers = fp.markers.filter(m => m.sceneId !== sceneId);
+        markers.push({ sceneId, x, y });
+        return { ...fp, markers };
+      }),
+    })),
+
+  removeFloorPlanMarker: (floorPlanId, sceneId) =>
+    set((s) => ({
+      floorPlans: s.floorPlans.map(fp =>
+        fp.id !== floorPlanId ? fp : { ...fp, markers: fp.markers.filter(m => m.sceneId !== sceneId) },
+      ),
     })),
 
   // ── UI actions ─────────────────────────────────────────────────────────────
@@ -635,7 +684,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
       projectName: state.projectName,
       scenes: state.scenes,
       folders: state.folders,
-      floorPlan: state.floorPlan,
+      floorPlans: state.floorPlans,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });

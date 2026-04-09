@@ -9,8 +9,8 @@ import FloorPlanEditor from './FloorPlanEditor';
 
 /* ─── Tab bar ───────────────────────────────────────────────────────────── */
 function PanelTabs() {
-  const { floorPlan, isFloorPlanEditing, setFloorPlanEditing } = useTourStore();
-  if (!floorPlan) return null;
+  const { floorPlans, isFloorPlanEditing, setFloorPlanEditing } = useTourStore();
+  if (floorPlans.length === 0) return null;
   return (
     <div className="flex flex-shrink-0 px-3 pt-3 gap-1">
       <TabBtn label="Scene"      icon={<Layers size={11} />} active={!isFloorPlanEditing} onClick={() => setFloorPlanEditing(false)} />
@@ -43,7 +43,7 @@ export default function PropertiesPanel() {
   const {
     scenes, activeSceneId,
     selectedElementId, selectedElementType,
-    floorPlan, activeTool, isFloorPlanEditing,
+    floorPlans, activeTool, isFloorPlanEditing,
   } = useTourStore();
 
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
@@ -77,7 +77,7 @@ export default function PropertiesPanel() {
     panelTitle = 'Audio';
     panelIcon  = <Music size={13} />;
     content    = activeScene ? <AudioProperties sceneId={activeScene.id} /> : null;
-  } else if (!isEditingElement && isFloorPlanEditing && floorPlan) {
+  } else if (!isEditingElement && isFloorPlanEditing && floorPlans.length > 0) {
     panelTitle = 'Floor Plan';
     panelIcon  = <Map size={13} />;
     content    = <FloorPlanEditor />;
@@ -86,7 +86,7 @@ export default function PropertiesPanel() {
     panelTitle = 'Scene';
     panelIcon  = <Layers size={13} />;
     content    = <SceneProperties scene={activeScene} />;
-    showTabs   = !!floorPlan;
+    showTabs   = floorPlans.length > 0;
   }
 
   return (
