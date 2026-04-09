@@ -314,7 +314,7 @@ function VideoControls({ videoEl }: { videoEl: HTMLVideoElement | null }) {
 /* ─── ZoomControls ────────────────────────────────────────────────────── */
 function ZoomControls({ onZoomIn, onZoomOut }: { onZoomIn: () => void; onZoomOut: () => void }) {
   return (
-    <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
+    <div className="absolute top-16 right-4 z-10 flex flex-col gap-1">
       <button onClick={onZoomIn} className="w-8 h-8 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:text-nm-accent hover:border-nm-accent/40 transition-colors">
         <ZoomIn size={14} />
       </button>
@@ -444,6 +444,9 @@ export default function PanoramaViewer({
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
   const [openVariantHotspotId, setOpenVariantHotspotId] = useState<string | null>(null);
+  const [transitioning, setTransitioning]               = useState(false);
+  const [compassYaw, setCompassYaw]                     = useState(0);
+  const [sceneHistory, setSceneHistory]                 = useState<string[]>([]);
 
   // ── Expose fisheye yaw rotation helper (for real-time slider feedback) ──
   useEffect(() => {
@@ -556,7 +559,10 @@ export default function PanoramaViewer({
           el.style.opacity = visible ? '1' : '0';
           el.style.pointerEvents = visible ? 'auto' : 'none';
         }
-        if (frame % 10 === 0) setMinimapYaw(yawRef.current);
+        if (frame % 10 === 0) {
+          setMinimapYaw(yawRef.current);
+          setCompassYaw(prev => Math.abs(yawRef.current - prev) > 0.02 ? yawRef.current : prev);
+        }
       }
 
       renderer.render(threeScene, cam);
@@ -707,6 +713,8 @@ export default function PanoramaViewer({
       mat.color.set(0xffffff);
       mat.side = THREE.BackSide;
       mat.needsUpdate = true;
+      // Crossfade: texture is ready, fade back in
+      setTransitioning(false);
     };
 
     if (scene.mediaType === 'panorama-video') {
@@ -735,6 +743,8 @@ export default function PanoramaViewer({
           mesh.material = shaderMat;
           shaderMatRef.current = shaderMat;
           textureRef.current   = vt;
+          // Crossfade: shader ready, fade back in
+          setTransitioning(false);
         } else {
           applyTexture(vt);
         }
@@ -797,6 +807,17 @@ export default function PanoramaViewer({
     yawRef.current   = scene.initialYaw;
     pitchRef.current = scene.initialPitch;
   }, [scene?.initialYaw, scene?.initialPitch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Crossfade transition: start fade-to-black when scene ID changes ───
+  useEffect(() => {
+    if (!scene?.id) return;
+    setTransitioning(true);
+    // Scene history: push new scene (max 5)
+    setSceneHistory(prev => {
+      const next = [...prev, scene.id];
+      return next.slice(-5);
+    });
+  }, [scene?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Event handlers ────────────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -989,15 +1010,31 @@ export default function PanoramaViewer({
     >
       {/* ── Three.js canvas is appended here by the renderer ── */}
 
+      {/* ── Crossfade transition overlay ── */}
+      <div
+        className="absolute inset-0 z-20 bg-black pointer-events-none transition-opacity duration-500"
+        style={{ opacity: transitioning ? 1 : 0 }}
+      />
+
       {/* ── Empty state overlay ── */}
       {!scene && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center" style={{ background: 'var(--nm-base)', pointerEvents: 'auto' }}>
+        <div className="absolute inset-0 z-[25] flex items-center justify-center" style={{ background: 'var(--nm-base)', pointerEvents: 'auto' }}>
           <EmptyViewer />
         </div>
       )}
 
       {scene && (
         <>
+          {/* ── Compass indicator (always visible) ── */}
+          <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 pointer-events-none select-none">
+            <span
+              className="text-[11px] font-bold text-white leading-none"
+              style={{ display: 'inline-block', transform: `rotate(${-compassYaw * (180 / Math.PI)}deg)`, transformOrigin: 'center', transition: 'transform 0.1s linear' }}
+            >
+              N
+            </span>
+          </div>
+
           {/* Hotspots overlay — positions updated imperatively every frame */}
           <div className="absolute inset-0 overflow-visible" style={{ zIndex: 5, pointerEvents: 'none' }}>
             {(scene.hotspots ?? []).map(hs => (
@@ -1259,6 +1296,32 @@ export default function PanoramaViewer({
               document.body,
             );
           })()}
+
+          {/* ── Scene history breadcrumb trail (preview mode) ── */}
+          {isPreviewMode && sceneHistory.length > 1 && createPortal(
+            <div className="fixed bottom-[72px] right-4 z-[100] flex flex-row gap-1.5 items-center max-w-[280px] overflow-x-auto pointer-events-auto">
+              {sceneHistory.map((sid, idx) => {
+                const s = scenes.find(sc => sc.id === sid);
+                const isCurrent = idx === sceneHistory.length - 1;
+                return (
+                  <button
+                    key={`${sid}-${idx}`}
+                    onClick={() => setActiveScene(sid)}
+                    title={s?.name ?? sid}
+                    className={[
+                      'flex-shrink-0 px-2.5 py-1 rounded-full text-[10px] font-medium max-w-[80px] truncate transition-all',
+                      isCurrent
+                        ? 'bg-nm-accent text-white border border-white/20'
+                        : 'bg-black/70 text-white/70 border border-white/10 hover:bg-black/90 hover:text-white',
+                    ].join(' ')}
+                  >
+                    {s?.name ?? sid}
+                  </button>
+                );
+              })}
+            </div>,
+            document.body,
+          )}
         </>
       )}
     </div>

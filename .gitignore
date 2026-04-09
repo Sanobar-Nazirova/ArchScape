@@ -30,3 +30,6 @@ Thumbs.db
 
 # Lock files (optional — keep package-lock if you want reproducible installs)
 # package-lock.json
+
+# Claude Code internal
+.claude/

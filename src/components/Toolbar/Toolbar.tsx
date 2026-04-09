@@ -2,9 +2,12 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import QRCode from 'qrcode';
 import {
   Upload, Plus, Image, Music, Map, Eye, Globe,
-  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle, Download,
+  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle, Download, QrCode, Code2,
 } from 'lucide-react';
 import HelpModal from '../HelpModal';
+import QRCodeModal from './QRCodeModal';
+import EmbedCodeModal from './EmbedCodeModal';
+import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import { useTourStore } from '../../store/useTourStore';
 import ThemeToggle from '../ThemeToggle';
 import { registerUploadTrigger } from '../../utils/uploadTrigger';
@@ -283,6 +286,16 @@ export default function Toolbar() {
     registerUploadTrigger(() => panoramaInputRef.current?.click());
   }, []);
 
+  // Keyboard shortcut: ? → open keyboard shortcuts modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === '?') setShowShortcuts(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // Fisheye dialog state
   const fisheyeResolveRef = useRef<((cfg: FisheyeConfig | null) => void) | null>(null);
   const [fisheyeDialogData, setFisheyeDialogData] = useState<{
@@ -292,6 +305,9 @@ export default function Toolbar() {
   const [processingMsg, setProcessingMsg] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const waitForFisheyeDialog = useCallback((result: PanoramaDetectionResult, file: File): Promise<FisheyeConfig | null> => {
     return new Promise(resolve => {
@@ -477,6 +493,35 @@ export default function Toolbar() {
         )}
 
         <button
+          onClick={() => setShowShortcuts(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Keyboard Shortcuts [?]"
+        >
+          ?
+        </button>
+
+        <button
+          onClick={() => setShowQRCode(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Share via QR Code"
+        >
+          <QrCode size={13} />
+          Share
+        </button>
+
+        <button
+          onClick={() => setShowEmbed(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Get Embed Code"
+        >
+          <Code2 size={13} />
+          Embed
+        </button>
+
+        <button
           onClick={() => setShowHelp(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
           style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
@@ -546,6 +591,9 @@ export default function Toolbar() {
 
       <PublishModal />
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+      {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} />}
+      {showEmbed && <EmbedCodeModal onClose={() => setShowEmbed(false)} />}
+      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
     </>
   );
 }
