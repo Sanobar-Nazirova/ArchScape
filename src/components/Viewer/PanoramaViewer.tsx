@@ -1054,8 +1054,8 @@ export default function PanoramaViewer({
             <MediaPanel media={activeMedia} onClose={() => setActiveMedia(null)} />
           )}
 
-          {/* ── Scene navigation arrows ── */}
-          {scenes.length > 1 && (
+          {/* ── Scene navigation arrows (editor only — preview uses PresentationHUD) ── */}
+          {scenes.length > 1 && !isPreviewMode && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
               <button
                 onClick={goToPrev}
