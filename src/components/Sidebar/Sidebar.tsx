@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Search, FolderPlus, X, Layers,
+  Search, X, Layers,
   ChevronDown, Pencil, Check,
   Plus, Image, Music, Map, Upload,
 } from 'lucide-react';
 import { triggerUpload } from '../../utils/uploadTrigger';
 import { useTourStore } from '../../store/useTourStore';
 import SceneList from './SceneList';
+import { ZONE_PRESET_COLORS } from './FolderItem';
 
 export default function Sidebar() {
   const {
@@ -17,8 +18,8 @@ export default function Sidebar() {
   const [searchQuery, setSearchQuery]       = useState('');
   const [editingProject, setEditingProject] = useState(false);
   const [projectDraft, setProjectDraft]     = useState(projectName);
-  const [showFolderMenu, setShowFolderMenu] = useState(false);
-  const projectInputRef = useRef<HTMLInputElement>(null);
+  const [zoneFilter, setZoneFilter]         = useState<string | null>(null);
+  const projectInputRef  = useRef<HTMLInputElement>(null);
   const floorPlanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,8 +34,26 @@ export default function Sidebar() {
     setEditingProject(false);
   };
 
+  const handleNewZone = () => {
+    // Auto-increment zone name
+    const existingZoneNums = folders
+      .map(f => {
+        const m = f.name.match(/^Zone (\d+)$/);
+        return m ? parseInt(m[1], 10) : 0;
+      })
+      .filter(n => n > 0);
+    const nextNum = existingZoneNums.length > 0 ? Math.max(...existingZoneNums) + 1 : 1;
+    const name = `Zone ${nextNum}`;
+
+    // Cycle through preset colors based on total folder count
+    const color = ZONE_PRESET_COLORS[folders.length % ZONE_PRESET_COLORS.length];
+
+    addFolder(name, null, color);
+  };
+
   const sceneCount  = scenes.length;
-  const folderCount = folders.length;
+  const rootFolders = folders.filter(f => !f.parentId);
+  const hasZones    = rootFolders.length > 0;
 
   return (
     <aside
@@ -82,14 +101,71 @@ export default function Sidebar() {
         {/* Stats row */}
         <div className="flex items-center gap-2 text-[10px] text-nm-muted">
           <span>{sceneCount} scene{sceneCount !== 1 ? 's' : ''}</span>
-          {folderCount > 0 && (
+          {rootFolders.length > 0 && (
             <>
               <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
-              <span>{folderCount} folder{folderCount !== 1 ? 's' : ''}</span>
+              <span>{rootFolders.length} zone{rootFolders.length !== 1 ? 's' : ''}</span>
             </>
           )}
         </div>
       </div>
+
+      {/* ── Zone Overview Panel ── */}
+      {hasZones && (
+        <div
+          className="flex-shrink-0 px-3 py-2"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+            {/* "All" pill */}
+            <button
+              onClick={() => setZoneFilter(null)}
+              className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-all"
+              style={zoneFilter === null
+                ? { background: 'rgba(255,255,255,0.12)', color: 'var(--nm-text)' }
+                : { background: 'transparent', color: 'var(--nm-muted)' }
+              }
+            >
+              All
+            </button>
+
+            {rootFolders.map(folder => {
+              const count = scenes.filter(s => s.folderId === folder.id).length;
+              const active = zoneFilter === folder.id;
+              return (
+                <button
+                  key={folder.id}
+                  onClick={() => setZoneFilter(active ? null : folder.id)}
+                  title={`${folder.name} (${count} scenes)`}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium transition-all"
+                  style={active
+                    ? {
+                        background: folder.color ? `${folder.color}22` : 'rgba(255,255,255,0.1)',
+                        color: folder.color ?? 'var(--nm-text)',
+                        outline: `1px solid ${folder.color ?? 'rgba(255,255,255,0.2)'}`,
+                        outlineOffset: '-1px',
+                      }
+                    : { background: 'transparent', color: 'var(--nm-muted)' }
+                  }
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: folder.color ?? 'rgba(255,255,255,0.3)' }}
+                  />
+                  <span className="max-w-[80px] truncate">{folder.name}</span>
+                  {count > 0 && (
+                    <span
+                      className="text-[9px] opacity-70"
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Search bar ── */}
       <div
@@ -117,56 +193,17 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* ── Section label + add folder ── */}
+      {/* ── Section label + toolbar ── */}
       <div
         className="flex-shrink-0 flex items-center justify-between px-3 py-1.5"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
       >
         <span className="text-[10px] text-nm-muted uppercase tracking-widest font-medium">
-          {searchQuery ? 'Results' : 'Scenes'}
+          {searchQuery ? 'Results' : zoneFilter ? (folders.find(f => f.id === zoneFilter)?.name ?? 'Zone') : 'Scenes'}
         </span>
-        <div className="relative">
-          <button
-            onClick={() => setShowFolderMenu(v => !v)}
-            className="flex items-center gap-0.5 text-nm-muted hover:text-nm-text transition-colors p-1 rounded"
-            title="Add folder"
-          >
-            <FolderPlus size={13} />
-            <ChevronDown size={9} />
-          </button>
-
-          {showFolderMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowFolderMenu(false)} />
-              <div
-                className="absolute right-0 top-full mt-1 z-20 rounded-nm-sm w-48 py-1.5 overflow-hidden"
-                style={{ background: 'var(--nm-base)', boxShadow: '8px 8px 20px var(--sh-d), -4px -4px 12px var(--sh-l)' }}
-              >
-                <div
-                  className="px-3 py-1 text-[10px] text-nm-muted uppercase tracking-widest font-medium mb-1"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  Add folder
-                </div>
-                {[
-                  { label: 'New Group',    emoji: '📁' },
-                  { label: 'New Building', emoji: '🏢' },
-                  { label: 'New Floor',    emoji: '🪜' },
-                  { label: 'New Zone',     emoji: '🗺' },
-                  { label: 'New Room',     emoji: '🚪' },
-                ].map(({ label, emoji }) => (
-                  <button
-                    key={label}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-nm-muted hover:text-nm-text transition-colors"
-                    onClick={() => { addFolder(label); setShowFolderMenu(false); }}
-                  >
-                    <span>{emoji}</span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+        <div className="flex items-center gap-1">
+          {/* New Zone quick-create */}
+          <NewZoneButton onNewZone={handleNewZone} />
         </div>
       </div>
 
@@ -175,7 +212,7 @@ export default function Sidebar() {
         {scenes.length === 0 && !folders.length ? (
           <EmptyState />
         ) : (
-          <SceneList searchQuery={searchQuery} />
+          <SceneList searchQuery={searchQuery} zoneFilter={zoneFilter} />
         )}
       </div>
 
@@ -247,6 +284,22 @@ export default function Sidebar() {
   );
 }
 
+// ── New Zone Button ──────────────────────────────────────────────────────────
+function NewZoneButton({ onNewZone }: { onNewZone: () => void }) {
+  return (
+    <button
+      onClick={onNewZone}
+      title="Create a new zone"
+      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-nm-muted hover:text-nm-text transition-colors"
+      style={{ background: 'rgba(255,255,255,0.04)' }}
+    >
+      <Plus size={10} />
+      New Zone
+    </button>
+  );
+}
+
+// ── Edit Tool Button ─────────────────────────────────────────────────────────
 function EditToolBtn({
   icon, label, active, disabled, onClick, title,
 }: {
@@ -275,6 +328,7 @@ function EditToolBtn({
   );
 }
 
+// ── Empty State ──────────────────────────────────────────────────────────────
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center gap-3">
