@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Plus, FolderOpen, Trash2, X, Camera, HelpCircle } from 'lucide-react';
 import { useTourStore } from '../store/useTourStore';
+import { generateThumbnail } from '../utils/panoramaGenerator';
 import ThemeToggle from '../components/ThemeToggle';
 import HelpModal from '../components/HelpModal';
 import type { Project } from '../types';
@@ -94,9 +95,11 @@ function ProjectCard({ project }: { project: Project }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
+    reader.onload = async ev => {
       const dataUrl = ev.target?.result as string;
-      updateProject(project.id, { thumbnail: dataUrl });
+      // Compress to ~480×270 before storing to avoid localStorage quota issues
+      const compressed = await generateThumbnail(dataUrl, 480, 270);
+      updateProject(project.id, { thumbnail: compressed || dataUrl });
     };
     reader.readAsDataURL(file);
     e.target.value = '';

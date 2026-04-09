@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useTourStore } from '../store/useTourStore';
+import { generateThumbnail } from '../utils/panoramaGenerator';
 import ThemeToggle from '../components/ThemeToggle';
 import HelpModal from '../components/HelpModal';
 import type { Tour } from '../types';
@@ -242,8 +243,11 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      updateTour(projectId, tour.id, { thumbUrl: reader.result as string });
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      // Compress to ~480×270 before storing to avoid localStorage quota issues
+      const compressed = await generateThumbnail(dataUrl, 480, 270);
+      updateTour(projectId, tour.id, { thumbUrl: compressed || dataUrl });
     };
     reader.readAsDataURL(file);
     e.target.value = '';
