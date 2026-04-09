@@ -28,7 +28,7 @@ export interface Hotspot {
   targetSceneId: string;
   label: string;
   iconStyle: HotspotIconStyle;
-  type?: 'navigation' | 'variants' | 'info' | 'comparison' | 'gallery';   // defaults to 'navigation'
+  type?: 'navigation' | 'variants' | 'info' | 'comparison' | 'gallery' | 'room';   // defaults to 'navigation'
   variantSceneIds?: string[];          // for variants type: all variant scene IDs (incl. current)
   infoTitle?: string;                  // for info type: card title
   infoBody?: string;                   // for info type: card body text
@@ -37,6 +37,10 @@ export interface Hotspot {
   compareLabel?: string;               // for comparison type: label for "before" side
   compareLabel2?: string;              // for comparison type: label for "after" side
   galleryImages?: string[];            // for gallery type: array of image URLs / data URLs
+  roomName?: string;                   // for room type: room name
+  roomArea?: number;                   // for room type: floor area in m²
+  roomHeight?: number;                 // for room type: ceiling height in m
+  roomMaterials?: { name: string; finish: string }[];  // for room type: material list
 }
 
 export interface MediaPoint {

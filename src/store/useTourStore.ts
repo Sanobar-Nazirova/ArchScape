@@ -7,6 +7,7 @@ import type {
   AppScreen, Project, Tour,
 } from '../types';
 import { saveImage, loadImage, deleteImage } from '../utils/imageDB';
+import { saveSnapshot, getSnapshotData } from '../utils/snapshots';
 
 let _idCounter = 0;
 const genId = (prefix = 'id') => `${prefix}_${++_idCounter}_${Math.random().toString(36).slice(2, 7)}`;
@@ -119,6 +120,10 @@ interface TourState {
   publish: () => void;
   closePublishModal: () => void;
   setFloorPlanEditing: (v: boolean) => void;
+
+  // ── Snapshot actions ──────────────────────────────────────────────────────
+  createSnapshot: (name: string) => void;
+  restoreSnapshot: (id: string) => void;
 
   // ── Selectors (helpers, not reactive) ────────────────────────────────────
   getActiveScene: () => Scene | null;
@@ -762,6 +767,31 @@ export const useTourStore = create<TourState>()((set, get) => ({
   closePublishModal: () => set({ showPublishModal: false }),
 
   setFloorPlanEditing: (v) => set({ isFloorPlanEditing: v }),
+
+  // ── Snapshot actions ───────────────────────────────────────────────────────
+  createSnapshot: (name) => {
+    const s = get();
+    // Capture serializable tour state — exclude blob imageUrls (they won't survive)
+    const state = {
+      projectName: s.projectName,
+      scenes: s.scenes.map(sc => ({ ...sc, imageUrl: '' })),
+      folders: s.folders,
+      floorPlans: s.floorPlans,
+    };
+    saveSnapshot(name, state);
+  },
+
+  restoreSnapshot: (id) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = getSnapshotData(id) as any;
+    if (!data) return;
+    set({
+      projectName: data.projectName ?? get().projectName,
+      scenes: data.scenes ?? get().scenes,
+      folders: data.folders ?? get().folders,
+      floorPlans: data.floorPlans ?? get().floorPlans,
+    });
+  },
 
   // ── Selectors ──────────────────────────────────────────────────────────────
   getActiveScene: () => {

@@ -18,7 +18,7 @@ import {
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
   ChevronLeft, ChevronRight, Layers, Star, Check, X,
-  Columns2, Images,
+  Columns2, Images, Glasses,
 } from 'lucide-react';
 
 function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
@@ -507,6 +507,7 @@ export default function PanoramaViewer({
   const videoElRef    = useRef<HTMLVideoElement | null>(null);
   const shaderMatRef  = useRef<THREE.ShaderMaterial | null>(null);
   const rafRef        = useRef<number>(0);
+  const xrActiveRef   = useRef(false);
 
   // ── Camera state refs (avoid stale closures in rAF) ─────────────────
   const yawRef        = useRef(0);
@@ -547,6 +548,7 @@ export default function PanoramaViewer({
   const [galleryIndex, setGalleryIndex]                     = useState(0);
   const [transitioning, setTransitioning]                   = useState(false);
   const [compassYaw, setCompassYaw]                     = useState(0);
+  const [vrSupported, setVrSupported]                   = useState(false);
   const [sceneHistory, setSceneHistory]                 = useState<string[]>([]);
 
   // ── Expose fisheye yaw rotation helper (for real-time slider feedback) ──
@@ -577,6 +579,13 @@ export default function PanoramaViewer({
     return () => { delete (window as unknown as Record<string, unknown>)['__sphera_getCameraView']; };
   }, []);
 
+  // ── Check WebXR availability on mount ────────────────────────────────
+  useEffect(() => {
+    navigator.xr?.isSessionSupported('immersive-vr').then(supported => {
+      setVrSupported(!!supported);
+    }).catch(() => setVrSupported(false));
+  }, []);
+
   // ── Three.js init (once) ──────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
@@ -592,6 +601,7 @@ export default function PanoramaViewer({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth || 800, container.clientHeight || 600);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -612,6 +622,7 @@ export default function PanoramaViewer({
     // Animation loop
     let frame = 0;
     const animate = () => {
+      if (xrActiveRef.current) return;
       rafRef.current = requestAnimationFrame(animate);
       frame++;
 
@@ -669,6 +680,38 @@ export default function PanoramaViewer({
       renderer.render(threeScene, cam);
     };
     animate();
+
+    // ── WebXR session lifecycle ──────────────────────────────────────
+    renderer.xr.addEventListener('sessionstart', () => {
+      xrActiveRef.current = true;
+      cancelAnimationFrame(rafRef.current);
+      renderer.setAnimationLoop((_time: number, _frame: XRFrame) => {
+        const cam = cameraRef.current!;
+        // In XR the HMD pose overrides manual yaw/pitch, but we still update
+        // video textures and hotspot overlays (2D overlays won't be visible in
+        // the HMD anyway — they're for the monitor window).
+        if (videoElRef.current && textureRef.current) {
+          (textureRef.current as THREE.VideoTexture).needsUpdate = true;
+        }
+        renderer.render(threeScene, cam);
+      });
+      // Attach trigger-select → advance scene
+      const session = renderer.xr.getSession();
+      session?.addEventListener('select', () => {
+        const store = useTourStore.getState();
+        const idx = store.scenes.findIndex(s => s.id === sceneRef.current?.id);
+        if (idx >= 0 && idx < store.scenes.length - 1) {
+          store.setActiveScene(store.scenes[idx + 1].id);
+        }
+      });
+    });
+
+    renderer.xr.addEventListener('sessionend', () => {
+      xrActiveRef.current = false;
+      renderer.setAnimationLoop(null);
+      // Restart the manual rAF loop
+      animate();
+    });
 
     // Resize observer
     const ro = new ResizeObserver(() => {
