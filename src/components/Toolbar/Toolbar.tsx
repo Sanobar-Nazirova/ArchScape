@@ -166,7 +166,7 @@ function PublishModal() {
   useEffect(() => {
     if (!showPublishModal || !publishUrl) return;
     QRCode.toDataURL(publishUrl, {
-      width: 160, margin: 1,
+      width: 360, margin: 1,
       color: { dark: '#e0ddd8', light: '#1e1e26' },
     }).then(setQrDataUrl).catch(() => setQrDataUrl(null));
   }, [showPublishModal, publishUrl]);
@@ -204,19 +204,19 @@ function PublishModal() {
 
         {publishUrl ? (
           <>
-            <div className="flex gap-4 mb-4">
-              {/* QR code */}
-              <div className="flex-shrink-0 bg-[#1e1e26] border border-nm-border rounded-xl p-2 flex items-center justify-center" style={{ width: 80, height: 80 }}>
+            {/* QR code */}
+            <div className="flex justify-center mb-4">
+              <div className="bg-[#1e1e26] border border-nm-border rounded-xl p-3 flex items-center justify-center" style={{ width: 180, height: 180 }}>
                 {qrDataUrl
                   ? <img src={qrDataUrl} alt="QR code" className="w-full h-full" />
                   : <div className="w-full h-full animate-pulse bg-nm-surface rounded" />}
               </div>
+            </div>
 
-              {/* URL box */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-nm-muted mb-1">Presentation link (this device)</p>
-                <p className="text-[11px] text-nm-text font-mono break-all leading-relaxed line-clamp-3">{publishUrl}</p>
-              </div>
+            {/* URL box */}
+            <div className="bg-nm-surface border border-nm-border rounded-xl px-3 py-2.5 mb-3">
+              <p className="text-[10px] text-nm-muted mb-1">Presentation link (this device)</p>
+              <p className="text-[11px] text-nm-text font-mono break-all leading-relaxed">{publishUrl}</p>
             </div>
 
             <p className="text-[11px] text-nm-muted mb-4 leading-relaxed">
