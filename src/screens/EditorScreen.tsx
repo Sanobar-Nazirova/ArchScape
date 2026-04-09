@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useTransition } from 'react';
 import Toolbar from '../components/Toolbar/Toolbar';
 import Sidebar from '../components/Sidebar/Sidebar';
 import PanoramaViewer from '../components/Viewer/PanoramaViewer';
@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Maximize2, Play } from 'lucide-react';
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD() {
   const { scenes, activeSceneId, setActiveScene, togglePreviewMode } = useTourStore();
+  const [, startTransition] = useTransition();
   const idx  = scenes.findIndex(s => s.id === activeSceneId);
   const prev = scenes[idx - 1];
   const next = scenes[idx + 1];
@@ -24,7 +25,7 @@ function PresentationHUD() {
     <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/70 to-transparent px-5 py-4 flex items-center justify-between gap-3">
       {/* Exit */}
       <button
-        onClick={togglePreviewMode}
+        onClick={() => startTransition(() => togglePreviewMode())}
         className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs text-white/80 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
       >
         ✕ Exit
