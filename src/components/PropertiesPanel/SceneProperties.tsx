@@ -187,36 +187,48 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
 
   return (
     <div className="space-y-5">
-      {/* Thumbnail + Replace — label wraps input for reliable file dialog */}
-      <label
-        htmlFor={replaceInputId}
-        className="relative rounded-xl overflow-hidden border border-nm-border group/thumb cursor-pointer block"
-        title="Click to replace panorama image"
-      >
-        {scene.thumbnail
-          ? <img src={scene.thumbnail} alt="" className="w-full object-cover" style={{ height: 80 }} />
-          : <div className="w-full flex items-center justify-center bg-nm-surface" style={{ height: 80 }}>
-              <Camera size={20} className="text-nm-muted opacity-40" />
-            </div>
-        }
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
-          {replacing
-            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            : <div className="flex flex-col items-center gap-1 text-white/90">
-                <RefreshCw size={14} />
-                <span className="text-[9px] font-medium">Replace Image</span>
+      {/* Thumbnail + Replace */}
+      <div>
+        <label
+          htmlFor={replaceInputId}
+          className="relative rounded-xl overflow-hidden border border-nm-border group/thumb cursor-pointer block"
+          title="Click to replace panorama image"
+        >
+          {scene.thumbnail
+            ? <img src={scene.thumbnail} alt="" className="w-full object-cover" style={{ height: 80 }} />
+            : <div className="w-full flex items-center justify-center bg-nm-surface" style={{ height: 80 }}>
+                <Camera size={20} className="text-nm-muted opacity-40" />
               </div>
           }
-        </div>
-        <input
-          id={replaceInputId}
-          ref={replaceInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={handleReplaceImage}
-        />
-      </label>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+            {replacing
+              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <div className="flex flex-col items-center gap-1 text-white/90">
+                  <RefreshCw size={14} />
+                  <span className="text-[9px] font-medium">Replace</span>
+                </div>
+            }
+          </div>
+          <input
+            id={replaceInputId}
+            ref={replaceInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handleReplaceImage}
+          />
+        </label>
+        {/* Always-visible replace button */}
+        <label
+          htmlFor={replaceInputId}
+          className="mt-1.5 flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-[11px] text-nm-muted hover:text-nm-accent border border-nm-border hover:border-nm-accent/40 cursor-pointer transition-colors"
+        >
+          {replacing
+            ? <><div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> Replacing…</>
+            : <><RefreshCw size={11} /> Replace Panorama</>
+          }
+        </label>
+      </div>
 
       {/* Name */}
       <Field label="Scene Name">
