@@ -1024,9 +1024,10 @@ export default function PanoramaViewer({
                   }
                   draggingHotspotRef.current = null;
                   if (hs.type === 'variants') {
-                    if (isPreviewModeRef.current) {
-                      setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
-                    } else {
+                    // Toggle variant panel in both preview and editor mode
+                    setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+                    if (!isPreviewModeRef.current) {
+                      // Also select in editor so properties panel shows
                       onHotspotSelectRef.current(hs.id);
                     }
                   } else {
@@ -1098,9 +1099,11 @@ export default function PanoramaViewer({
                         onClick={() => {
                           if (!isCurrent) {
                             setPendingStartView({ yaw: yawRef.current, pitch: pitchRef.current });
+                            // Auto-sync the hotspot to all variant scenes (same ID) so it's found after navigation
+                            useTourStore.getState().syncVariantHotspot(scene!.id, hs.id);
                             setActiveScene(sid);
+                            // Keep panel open — hotspot with same ID now exists in the new scene
                           }
-                          setOpenVariantHotspotId(null);
                         }}
                         className={['flex flex-col items-center gap-1 rounded-xl overflow-hidden transition-all', isCurrent ? 'ring-2 ring-nm-teal scale-105' : 'opacity-70 hover:opacity-100 hover:scale-105'].join(' ')}
                         style={{ width: 80 }}

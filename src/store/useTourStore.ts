@@ -706,7 +706,8 @@ export const useTourStore = create<TourState>()((set, get) => ({
       if (sc.id === fromSceneId) return sc;
       if (!srcHotspot.variantSceneIds!.includes(sc.id)) return sc;
       const existingIdx = sc.hotspots.findIndex(h => h.variantSceneIds && h.variantSceneIds.join() === srcHotspot.variantSceneIds!.join());
-      const newHotspot: Hotspot = { ...srcHotspot, id: existingIdx >= 0 ? sc.hotspots[existingIdx].id : `hs_v_${sc.id.slice(-6)}` };
+      // Always use the source hotspot's ID so the variant panel can find it by the same ID after navigation
+      const newHotspot: Hotspot = { ...srcHotspot };
       if (existingIdx >= 0) {
         return { ...sc, hotspots: sc.hotspots.map((h, i) => i === existingIdx ? newHotspot : h) };
       }
