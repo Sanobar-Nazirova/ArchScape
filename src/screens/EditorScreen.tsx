@@ -21,66 +21,55 @@ function PresentationHUD() {
   };
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/70 to-transparent pb-4 pt-10 px-4">
-      {/* Current scene name — centered above the nav row */}
-      {scenes[idx] && (
-        <p className="text-center text-white/80 text-xs font-medium mb-2 truncate px-20 pointer-events-none">
-          {scenes[idx].name}
-        </p>
-      )}
+    <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/70 to-transparent px-5 py-4 flex items-center justify-between gap-3">
+      {/* Exit */}
+      <button
+        onClick={togglePreviewMode}
+        className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs text-white/80 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
+      >
+        ✕ Exit
+      </button>
 
-      {/* Nav row: Exit | ← prev · dots · next → | Fullscreen */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Exit */}
+      {/* ← dots → */}
+      <div className="flex items-center gap-2">
         <button
-          onClick={togglePreviewMode}
-          className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs text-white/80 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
+          onClick={() => prev && setActiveScene(prev.id)}
+          disabled={!prev}
+          className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
         >
-          ✕ Exit
+          <ChevronLeft size={14} />
         </button>
 
-        {/* Prev · dots · next */}
-        <div className="flex items-center gap-2 min-w-0">
-          <button
-            onClick={() => prev && setActiveScene(prev.id)}
-            disabled={!prev}
-            className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
-          >
-            <ChevronLeft size={14} />
-          </button>
-
-          {/* Dots — max 12 shown, scroll through */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-center max-w-[200px]">
-            {scenes.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => setActiveScene(s.id)}
-                title={s.name}
-                className={`rounded-full transition-all flex-shrink-0 ${
-                  i === idx ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/70'
-                }`}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={() => next && setActiveScene(next.id)}
-            disabled={!next}
-            className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
-          >
-            <ChevronRight size={14} />
-          </button>
+        <div className="flex items-center gap-1.5">
+          {scenes.map((s, i) => (
+            <button
+              key={s.id}
+              onClick={() => setActiveScene(s.id)}
+              title={s.name}
+              className={`rounded-full transition-all ${
+                i === idx ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/70'
+              }`}
+            />
+          ))}
         </div>
 
-        {/* Fullscreen */}
         <button
-          onClick={toggleFullscreen}
-          className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-white/70 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
-          title="Fullscreen"
+          onClick={() => next && setActiveScene(next.id)}
+          disabled={!next}
+          className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
         >
-          <Maximize2 size={14} />
+          <ChevronRight size={14} />
         </button>
       </div>
+
+      {/* Fullscreen */}
+      <button
+        onClick={toggleFullscreen}
+        className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-white/70 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
+        title="Fullscreen"
+      >
+        <Maximize2 size={14} />
+      </button>
     </div>
   );
 }
