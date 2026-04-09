@@ -33,6 +33,7 @@ interface TourState {
   activeTool: ToolMode;
   isPreviewMode: boolean;
   publishUrl: string | null;
+  publishJsonUrl: string | null;
   showPublishModal: boolean;
   isFloorPlanEditing: boolean;
 
@@ -137,6 +138,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
   activeTool: 'none',
   isPreviewMode: false,
   publishUrl: null,
+  publishJsonUrl: null,
   showPublishModal: false,
   isFloorPlanEditing: false,
 
@@ -637,8 +639,15 @@ export const useTourStore = create<TourState>()((set, get) => ({
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    set({ publishUrl: url, showPublishModal: true });
+    const jsonUrl = URL.createObjectURL(blob);
+
+    // Build a real shareable presentation URL (works on this device/browser)
+    const { currentProjectId, currentTourId } = state;
+    const presentUrl = currentProjectId && currentTourId
+      ? `${window.location.origin}${window.location.pathname}?project=${currentProjectId}&tour=${currentTourId}&mode=present`
+      : null;
+
+    set({ publishUrl: presentUrl, publishJsonUrl: jsonUrl, showPublishModal: true });
   },
 
   closePublishModal: () => set({ showPublishModal: false }),

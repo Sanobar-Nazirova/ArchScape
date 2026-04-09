@@ -1,7 +1,8 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+import QRCode from 'qrcode';
 import {
   Upload, Plus, Image, Music, Map, Eye, Globe,
-  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle,
+  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle, Download,
 } from 'lucide-react';
 import HelpModal from '../HelpModal';
 import { useTourStore } from '../../store/useTourStore';
@@ -158,18 +159,30 @@ function FisheyeConversionDialog({ result, file, onConfirm, onSkip, onCancel }: 
 
 /* ─── Publish Modal ───────────────────────────────────────────────────── */
 function PublishModal() {
-  const { publishUrl, showPublishModal, closePublishModal, projectName } = useTourStore();
+  const { publishUrl, publishJsonUrl, showPublishModal, closePublishModal, projectName } = useTourStore();
   const [copied, setCopied] = useState(false);
-  if (!showPublishModal || !publishUrl) return null;
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
-  const download = () => {
+  useEffect(() => {
+    if (!showPublishModal || !publishUrl) return;
+    QRCode.toDataURL(publishUrl, {
+      width: 160, margin: 1,
+      color: { dark: '#e0ddd8', light: '#1e1e26' },
+    }).then(setQrDataUrl).catch(() => setQrDataUrl(null));
+  }, [showPublishModal, publishUrl]);
+
+  if (!showPublishModal) return null;
+
+  const downloadJson = () => {
+    if (!publishJsonUrl) return;
     const a = document.createElement('a');
-    a.href = publishUrl;
+    a.href = publishJsonUrl;
     a.download = `${projectName.replace(/\s+/g, '-').toLowerCase()}-tour.json`;
     a.click();
   };
 
   const copy = () => {
+    if (!publishUrl) return;
     navigator.clipboard.writeText(publishUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -178,39 +191,67 @@ function PublishModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
-      <div className="bg-nm-base border border-nm-border rounded-2xl p-6 w-[500px] max-w-[95vw] shadow-2xl">
+      <div className="bg-nm-base border border-nm-border rounded-2xl p-6 w-[520px] max-w-[95vw] shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Globe size={18} className="text-nm-accent" />
-            <h3 className="text-white font-semibold">Tour Published</h3>
+            <h3 className="text-white font-semibold">Share Tour</h3>
           </div>
           <button onClick={closePublishModal} className="text-nm-muted hover:text-white p-1 transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        <div className="bg-green-900/20 border border-green-700/30 rounded-xl px-4 py-3 mb-4">
-          <p className="text-green-400 text-sm font-medium">✓ Tour exported successfully</p>
-          <p className="text-green-300/60 text-xs mt-0.5">
-            Your tour data is packaged as JSON. Host it alongside the Sphera viewer to share.
-          </p>
-        </div>
+        {publishUrl ? (
+          <>
+            <div className="flex gap-4 mb-4">
+              {/* QR code */}
+              <div className="flex-shrink-0 bg-[#1e1e26] border border-nm-border rounded-xl p-2 flex items-center justify-center" style={{ width: 80, height: 80 }}>
+                {qrDataUrl
+                  ? <img src={qrDataUrl} alt="QR code" className="w-full h-full" />
+                  : <div className="w-full h-full animate-pulse bg-nm-surface rounded" />}
+              </div>
 
-        <div className="bg-nm-base border border-nm-border rounded-xl px-3 py-2.5 mb-5">
-          <p className="text-[10px] text-nm-muted mb-1">Tour data URL (blob)</p>
-          <p className="text-[11px] text-nm-text font-mono break-all line-clamp-2">{publishUrl.slice(0, 80)}…</p>
-        </div>
+              {/* URL box */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-nm-muted mb-1">Presentation link (this device)</p>
+                <p className="text-[11px] text-nm-text font-mono break-all leading-relaxed line-clamp-3">{publishUrl}</p>
+              </div>
+            </div>
 
-        <div className="flex gap-2">
-          <button onClick={copy}
-            className="flex-1 py-2.5 text-sm border border-nm-border rounded-xl text-nm-text hover:border-nm-accent hover:text-white transition-colors">
-            {copied ? '✓ Copied!' : 'Copy URL'}
-          </button>
-          <button onClick={download}
-            className="flex-1 py-2.5 text-sm bg-nm-accent hover:bg-nm-accent-hover text-white rounded-xl font-medium transition-colors">
-            Download JSON
-          </button>
-        </div>
+            <p className="text-[11px] text-nm-muted mb-4 leading-relaxed">
+              This link opens your tour in presentation mode on <strong className="text-nm-text">this browser</strong>.
+              Scan the QR code on any device connected to the same network, or share the JSON file for others to import.
+            </p>
+
+            <div className="flex gap-2">
+              <button onClick={copy}
+                className="flex-1 py-2.5 text-sm border border-nm-border rounded-xl text-nm-text hover:border-nm-accent hover:text-white transition-colors">
+                {copied ? '✓ Copied!' : 'Copy Link'}
+              </button>
+              <button onClick={downloadJson}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm bg-nm-accent hover:bg-nm-accent-hover text-white rounded-xl font-medium transition-colors">
+                <Download size={14} />
+                Download JSON
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bg-nm-surface border border-nm-border rounded-xl px-4 py-3 mb-4">
+              <p className="text-nm-text text-sm">
+                Open a tour first, then click Publish to generate a shareable link.
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button onClick={downloadJson} disabled={!publishJsonUrl}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm bg-nm-accent hover:bg-nm-accent-hover text-white rounded-xl font-medium transition-colors disabled:opacity-40">
+                <Download size={14} />
+                Download JSON
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
