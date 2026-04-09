@@ -1111,6 +1111,15 @@ export default function PanoramaViewer({
   const zoomIn  = useCallback(() => { fovRef.current = Math.max(30, fovRef.current - 10); }, []);
   const zoomOut = useCallback(() => { fovRef.current = Math.min(120, fovRef.current + 10); }, []);
 
+  // ── Enter VR ──────────────────────────────────────────────────────────
+  const enterVR = useCallback(async () => {
+    if (!rendererRef.current || !navigator.xr) return;
+    const session = await navigator.xr.requestSession('immersive-vr', {
+      optionalFeatures: ['local-floor', 'bounded-floor'],
+    });
+    rendererRef.current.xr.setSession(session);
+  }, []);
+
   // ── Scene navigation (keyboard + arrows) ─────────────────────────────
   const sceneIdx  = scenes.findIndex(s => s.id === scene?.id);
   const prevScene = sceneIdx > 0 ? scenes[sceneIdx - 1] : null;
@@ -1596,6 +1605,17 @@ export default function PanoramaViewer({
 
           {/* ── Zoom controls ── */}
           <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} />
+
+          {/* ── VR button (preview mode + WebXR supported) ── */}
+          {isPreviewMode && vrSupported && (
+            <button
+              onClick={enterVR}
+              className="absolute bottom-20 right-4 z-20 px-3 py-2 bg-black/70 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xs flex items-center gap-2 hover:bg-white/10 transition-colors"
+            >
+              <Glasses size={14} />
+              Enter VR
+            </button>
+          )}
 
           {/* ── Video controls ── */}
           {scene.mediaType === 'panorama-video' && (
