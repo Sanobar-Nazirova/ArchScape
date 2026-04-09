@@ -2,13 +2,14 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import QRCode from 'qrcode';
 import {
   Upload, Plus, Image, Music, Map, Eye, Globe,
-  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle, Download, QrCode, Code2,
+  X, Layers, MonitorPlay, ChevronLeft, Save, HelpCircle, Download, QrCode, Code2, History,
 } from 'lucide-react';
 import HelpModal from '../HelpModal';
 import QRCodeModal from './QRCodeModal';
 import EmbedCodeModal from './EmbedCodeModal';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import ExportModal from './ExportModal';
+import SnapshotsModal from './SnapshotsModal';
 import { useTourStore } from '../../store/useTourStore';
 import ThemeToggle from '../ThemeToggle';
 import { registerUploadTrigger } from '../../utils/uploadTrigger';
@@ -315,6 +316,7 @@ export default function Toolbar() {
   const [showEmbed, setShowEmbed] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [showSnapshots, setShowSnapshots] = useState(false);
 
   const waitForFisheyeDialog = useCallback((result: PanoramaDetectionResult, file: File): Promise<FisheyeConfig | null> => {
     return new Promise(resolve => {
@@ -561,6 +563,16 @@ export default function Toolbar() {
         </button>
 
         <button
+          onClick={() => setShowSnapshots(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm ml-1"
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Version Snapshots"
+        >
+          <History size={13} />
+          Snapshots
+        </button>
+
+        <button
           onClick={() => setShowExport(true)}
           disabled={scenes.length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm ml-1"
@@ -618,6 +630,7 @@ export default function Toolbar() {
           onClose={() => setShowExport(false)}
         />
       )}
+      {showSnapshots && <SnapshotsModal onClose={() => setShowSnapshots(false)} />}
     </>
   );
 }
