@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Map, X, MapPin, Minimize2, Maximize2 } from 'lucide-react';
 import type { FloorPlan } from '../../types';
 import { useTourStore } from '../../store/useTourStore';
@@ -46,18 +47,24 @@ export default function FloorPlanMinimap({
 
   const sorted = [...floorPlans].sort((a, b) => a.level - b.level);
 
-  // ── Hidden state: just a small pill to restore ──────────────────────────
+  // ── Hidden state: small pill to restore ─────────────────────────────────
   if (hidden) {
-    return (
+    // In preview mode PanoramaViewer has overflow:hidden + PresentationHUD sits
+    // above it at z-30. Portal the pill to document.body so it clears the HUD.
+    const pill = (
       <button
         onClick={() => setHidden(false)}
-        className="absolute bottom-4 left-4 z-10 flex items-center gap-1.5 px-3 py-2 bg-nm-base/90 backdrop-blur-sm border border-nm-border rounded-xl shadow-xl text-nm-muted hover:text-nm-accent transition-colors"
+        className={[
+          'flex items-center gap-1.5 px-3 py-2 bg-nm-base/90 backdrop-blur-sm border border-nm-border rounded-xl shadow-xl text-nm-muted hover:text-nm-accent transition-colors',
+          isEditMode ? 'absolute bottom-4 left-4 z-10' : 'fixed bottom-20 left-4 z-[200]',
+        ].join(' ')}
       >
         <Map size={13} className="text-nm-accent" />
         <span className="text-[10px] font-medium">{floorPlan.name}</span>
         <Maximize2 size={10} className="ml-0.5 opacity-60" />
       </button>
     );
+    return isEditMode ? pill : createPortal(pill, document.body);
   }
 
   return (
