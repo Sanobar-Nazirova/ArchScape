@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Toolbar from '../components/Toolbar/Toolbar';
 import Sidebar from '../components/Sidebar/Sidebar';
 import PanoramaViewer from '../components/Viewer/PanoramaViewer';
@@ -6,7 +6,7 @@ import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel';
 import ScenePicker from '../components/ScenePicker';
 import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
-import { ChevronLeft, ChevronRight, Maximize2, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Play, Pause } from 'lucide-react';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD() {
@@ -82,7 +82,7 @@ export default function EditorScreen() {
     selectedElementId, setSelectedElement,
     activeTool, setActiveTool,
     addHotspot, addMediaPoint, updateHotspot,
-    isPreviewMode, restoreSceneImages,
+    isPreviewMode, togglePreviewMode, restoreSceneImages,
   } = useTourStore();
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
@@ -119,10 +119,22 @@ export default function EditorScreen() {
       if (e.key === 'Escape') setActiveTool('none');
       if (e.key === 'h')      setActiveTool('hotspot');
       if (e.key === 'm')      setActiveTool('media');
+      if (e.key === ' ') {
+        e.preventDefault();
+        togglePreviewMode();
+      }
+      if (e.key === 'ArrowLeft') {
+        const idx = scenes.findIndex(s => s.id === activeSceneId);
+        if (idx > 0) setActiveScene(scenes[idx - 1].id);
+      }
+      if (e.key === 'ArrowRight') {
+        const idx = scenes.findIndex(s => s.id === activeSceneId);
+        if (idx < scenes.length - 1) setActiveScene(scenes[idx + 1].id);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setActiveTool]);
+  }, [setActiveTool, togglePreviewMode, scenes, activeSceneId, setActiveScene]);
 
   /* ── Presentation (preview) mode — full screen viewer ── */
   if (isPreviewMode) {
