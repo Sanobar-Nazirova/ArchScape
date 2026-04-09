@@ -6,7 +6,7 @@ import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel';
 import ScenePicker from '../components/ScenePicker';
 import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
-import { ChevronLeft, ChevronRight, Maximize2, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Lock } from 'lucide-react';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD() {
@@ -153,14 +153,24 @@ export default function EditorScreen() {
     activeTool, setActiveTool,
     addHotspot, addMediaPoint, updateHotspot,
     isPreviewMode, togglePreviewMode, restoreSceneImages,
-    projectName,
+    projectName, currentProjectId, currentTourId, projects,
   } = useTourStore();
+
+  // Derive the current tour's password from the store
+  const tourPassword = (currentProjectId && currentTourId)
+    ? projects[currentProjectId]?.tours[currentTourId]?.password
+    : undefined;
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
 
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
   const [pendingHotspotId, setPendingHotspotId] = useState<string | null>(null);
+
+  // ── Password gate state ──────────────────────────────────────────────────
+  const [passwordUnlocked, setPasswordUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput]       = useState('');
+  const [passwordError, setPasswordError]       = useState(false);
 
   // ── Splash screen state ─────────────────────────────────────────────────
   const [splashDone, setSplashDone] = useState(false);
@@ -171,6 +181,11 @@ export default function EditorScreen() {
     if (isPreviewMode) {
       setSplashDone(false);
       setCountdown(8);
+    } else {
+      setPasswordUnlocked(false);
+      setPasswordInput('');
+      setPasswordError(false);
+      setSplashDone(false);
     }
   }, [isPreviewMode]);
 
@@ -239,6 +254,51 @@ export default function EditorScreen() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [setActiveTool, togglePreviewMode, scenes, activeSceneId, setActiveScene]);
+
+  /* ── Password gate ── */
+  if (isPreviewMode && tourPassword && !passwordUnlocked) {
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (passwordInput === tourPassword) {
+        setPasswordUnlocked(true);
+        setPasswordError(false);
+      } else {
+        setPasswordError(true);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-6">
+        <Lock size={40} className="text-white/40" />
+        <h1 className="text-2xl font-bold text-white">This tour is password protected</h1>
+        <form onSubmit={handleSubmit} className="flex flex-col items-center gap-3 w-full max-w-xs">
+          <input
+            autoFocus
+            type="password"
+            value={passwordInput}
+            onChange={e => { setPasswordInput(e.target.value); setPasswordError(false); }}
+            placeholder="Enter password…"
+            className="w-full px-4 py-3 rounded-xl text-sm text-white bg-white/10 border border-white/20 outline-none placeholder:text-white/30 focus:border-white/50 transition-colors"
+          />
+          {passwordError && (
+            <p className="text-red-400 text-sm">Incorrect password</p>
+          )}
+          <button
+            type="submit"
+            className="w-full px-6 py-3 bg-nm-accent text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
+          >
+            Unlock Tour
+          </button>
+        </form>
+        <button
+          onClick={togglePreviewMode}
+          className="text-white/40 hover:text-white/70 text-sm transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
 
   /* ── Splash screen ── */
   if (isPreviewMode && !splashDone) {

@@ -28,11 +28,15 @@ export interface Hotspot {
   targetSceneId: string;
   label: string;
   iconStyle: HotspotIconStyle;
-  type?: 'navigation' | 'variants' | 'info';   // defaults to 'navigation'
+  type?: 'navigation' | 'variants' | 'info' | 'comparison' | 'gallery';   // defaults to 'navigation'
   variantSceneIds?: string[];          // for variants type: all variant scene IDs (incl. current)
   infoTitle?: string;                  // for info type: card title
   infoBody?: string;                   // for info type: card body text
   infoIcon?: 'info' | 'star' | 'warning' | 'check'; // for info type: icon choice
+  compareSceneId?: string;             // for comparison type: scene to compare against
+  compareLabel?: string;               // for comparison type: label for "before" side
+  compareLabel2?: string;              // for comparison type: label for "after" side
+  galleryImages?: string[];            // for gallery type: array of image URLs / data URLs
 }
 
 export interface MediaPoint {
