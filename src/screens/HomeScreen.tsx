@@ -134,7 +134,9 @@ function ProjectCard({ project }: { project: Project }) {
             <span className="text-[10px] font-medium">Set thumbnail</span>
           </div>
         </button>
-        <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
+        <input ref={thumbInputRef} type="file" accept="image/*" className="hidden"
+          onClick={e => e.stopPropagation()}
+          onChange={handleThumbnailUpload} />
       </div>
 
       <div className="flex items-start justify-between gap-2">

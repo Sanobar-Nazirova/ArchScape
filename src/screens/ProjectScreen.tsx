@@ -334,6 +334,7 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
           {/* Hidden thumbnail file input */}
           <input
             ref={thumbInputRef} type="file" accept="image/*" className="hidden"
+            onClick={e => e.stopPropagation()}
             onChange={handleThumbUpload}
           />
 
