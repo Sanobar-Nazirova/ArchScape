@@ -8,6 +8,7 @@ import HelpModal from '../HelpModal';
 import QRCodeModal from './QRCodeModal';
 import EmbedCodeModal from './EmbedCodeModal';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import ExportModal from './ExportModal';
 import { useTourStore } from '../../store/useTourStore';
 import ThemeToggle from '../ThemeToggle';
 import { registerUploadTrigger } from '../../utils/uploadTrigger';
@@ -275,8 +276,13 @@ export default function Toolbar() {
   const {
     scenes, activeTool, setActiveTool, isPreviewMode, togglePreviewMode,
     addScene, publish, projectName, setProjectName, addFloorPlan,
-    goBack, goHome, saveTour,
+    goBack, goHome, saveTour, floorPlans,
+    currentProjectId, currentTourId, projects,
   } = useTourStore();
+
+  const tourPassword = (currentProjectId && currentTourId)
+    ? projects[currentProjectId]?.tours[currentTourId]?.password
+    : undefined;
 
   const panoramaInputRef = useRef<HTMLInputElement>(null);
   const floorPlanInputRef = useRef<HTMLInputElement>(null);
@@ -308,6 +314,7 @@ export default function Toolbar() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   const waitForFisheyeDialog = useCallback((result: PanoramaDetectionResult, file: File): Promise<FisheyeConfig | null> => {
     return new Promise(resolve => {
@@ -554,6 +561,17 @@ export default function Toolbar() {
         </button>
 
         <button
+          onClick={() => setShowExport(true)}
+          disabled={scenes.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm ml-1"
+          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Export as self-contained HTML file"
+        >
+          <Download size={13} />
+          Export
+        </button>
+
+        <button
           onClick={publish}
           disabled={scenes.length === 0}
           className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-nm-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all ml-1 hover:scale-[1.02] active:scale-[0.98]"
@@ -594,6 +612,12 @@ export default function Toolbar() {
       {showQRCode && <QRCodeModal onClose={() => setShowQRCode(false)} />}
       {showEmbed && <EmbedCodeModal onClose={() => setShowEmbed(false)} />}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showExport && (
+        <ExportModal
+          store={{ projectName, scenes, floorPlans, password: tourPassword }}
+          onClose={() => setShowExport(false)}
+        />
+      )}
     </>
   );
 }
