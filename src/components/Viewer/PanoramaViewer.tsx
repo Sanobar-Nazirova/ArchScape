@@ -18,6 +18,7 @@ import {
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
   ChevronLeft, ChevronRight, Layers, Star, Check, X,
+  Columns2, Images,
 } from 'lucide-react';
 
 function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
@@ -283,6 +284,64 @@ function InfoHotspotMarker({ hotspot, isSelected, isPreview, isOpen }: {
   );
 }
 
+/* ─── ComparisonHotspotMarker ─────────────────────────────────────────── */
+function ComparisonHotspotMarker({ hotspot, isSelected, isPreview, isOpen }: {
+  hotspot: Hotspot; isSelected: boolean; isPreview: boolean; isOpen: boolean;
+}) {
+  const label = hotspot.label || 'Before / After';
+  return (
+    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
+      <div className={[
+        'w-10 h-10 rounded-full flex items-center justify-center transition-all border-2 shadow-lg backdrop-blur-sm',
+        isSelected || isOpen
+          ? 'bg-purple-600 border-white text-white scale-110'
+          : isPreview
+          ? 'bg-black/60 border-white/30 text-purple-400 hover:scale-110 hover:bg-purple-600/80 hover:border-white hotspot-pulse'
+          : 'bg-purple-600/80 border-white/30 text-white hover:scale-110 hover:bg-purple-600 hover:text-white hotspot-pulse',
+      ].join(' ')}>
+        <Columns2 size={16} />
+      </div>
+      <span className={[
+        'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
+        isSelected || isOpen
+          ? 'bg-purple-600 text-white border-white/30 opacity-100'
+          : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
+      ].join(' ')}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/* ─── GalleryHotspotMarker ────────────────────────────────────────────── */
+function GalleryHotspotMarker({ hotspot, isSelected, isPreview, isOpen }: {
+  hotspot: Hotspot; isSelected: boolean; isPreview: boolean; isOpen: boolean;
+}) {
+  const label = hotspot.label || 'Photo Gallery';
+  return (
+    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
+      <div className={[
+        'w-10 h-10 rounded-full flex items-center justify-center transition-all border-2 shadow-lg backdrop-blur-sm',
+        isSelected || isOpen
+          ? 'bg-amber-500 border-white text-white scale-110'
+          : isPreview
+          ? 'bg-black/60 border-white/30 text-amber-400 hover:scale-110 hover:bg-amber-500/80 hover:border-white hotspot-pulse'
+          : 'bg-amber-500/80 border-white/30 text-white hover:scale-110 hover:bg-amber-500 hover:text-white hotspot-pulse',
+      ].join(' ')}>
+        <Images size={16} />
+      </div>
+      <span className={[
+        'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
+        isSelected || isOpen
+          ? 'bg-amber-500 text-white border-white/30 opacity-100'
+          : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
+      ].join(' ')}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /* ─── MediaMarker ─────────────────────────────────────────────────────── */
 const MEDIA_ICONS: Record<string, React.ReactNode> = {
   image: <Image   size={13} />,
@@ -480,9 +539,13 @@ export default function PanoramaViewer({
   // ── UI state ──────────────────────────────────────────────────────────
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
-  const [openVariantHotspotId, setOpenVariantHotspotId] = useState<string | null>(null);
-  const [openInfoHotspotId, setOpenInfoHotspotId]       = useState<string | null>(null);
-  const [transitioning, setTransitioning]               = useState(false);
+  const [openVariantHotspotId, setOpenVariantHotspotId]     = useState<string | null>(null);
+  const [openInfoHotspotId, setOpenInfoHotspotId]           = useState<string | null>(null);
+  const [openComparisonHotspotId, setOpenComparisonHotspotId] = useState<string | null>(null);
+  const [comparisonDividerX, setComparisonDividerX]         = useState(50);
+  const [openGalleryHotspotId, setOpenGalleryHotspotId]     = useState<string | null>(null);
+  const [galleryIndex, setGalleryIndex]                     = useState(0);
+  const [transitioning, setTransitioning]                   = useState(false);
   const [compassYaw, setCompassYaw]                     = useState(0);
   const [sceneHistory, setSceneHistory]                 = useState<string[]>([]);
 
@@ -660,6 +723,11 @@ export default function PanoramaViewer({
       pitchRef.current = scene.initialPitch;
     }
     setActiveMedia(null);
+    setOpenVariantHotspotId(null);
+    setOpenInfoHotspotId(null);
+    setOpenComparisonHotspotId(null);
+    setOpenGalleryHotspotId(null);
+    setGalleryIndex(0);
 
     // Cap image to WebGL max texture size to avoid silent GPU failures on large SBS/TB panoramas
     const capImageSize = (img: HTMLImageElement): HTMLImageElement | HTMLCanvasElement => {
@@ -1041,7 +1109,7 @@ export default function PanoramaViewer({
       onMouseUp={scene ? handleMouseUp : undefined}
       onMouseLeave={scene ? handleMouseLeave : undefined}
       onWheel={scene ? handleWheel : undefined}
-      onClick={scene ? (e => { handleClick(e); setOpenVariantHotspotId(null); setOpenInfoHotspotId(null); }) : undefined}
+      onClick={scene ? (e => { handleClick(e); setOpenVariantHotspotId(null); setOpenInfoHotspotId(null); setOpenComparisonHotspotId(null); }) : undefined}
       onTouchStart={scene ? handleTouchStart : undefined}
       onTouchMove={scene ? handleTouchMove : undefined}
       onTouchEnd={scene ? handleMouseUp : undefined}
@@ -1119,6 +1187,8 @@ export default function PanoramaViewer({
                     // Toggle variant panel in both preview and editor mode
                     setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
                     setOpenInfoHotspotId(null);
+                    setOpenComparisonHotspotId(null);
+                    setOpenGalleryHotspotId(null);
                     if (!isPreviewModeRef.current) {
                       // Also select in editor so properties panel shows
                       onHotspotSelectRef.current(hs.id);
@@ -1127,6 +1197,26 @@ export default function PanoramaViewer({
                     // Toggle info panel in both preview and editor mode
                     setOpenInfoHotspotId(id => id === hs.id ? null : hs.id);
                     setOpenVariantHotspotId(null);
+                    setOpenComparisonHotspotId(null);
+                    setOpenGalleryHotspotId(null);
+                    if (!isPreviewModeRef.current) {
+                      onHotspotSelectRef.current(hs.id);
+                    }
+                  } else if (hs.type === 'comparison') {
+                    setOpenComparisonHotspotId(id => id === hs.id ? null : hs.id);
+                    setComparisonDividerX(50);
+                    setOpenVariantHotspotId(null);
+                    setOpenInfoHotspotId(null);
+                    setOpenGalleryHotspotId(null);
+                    if (!isPreviewModeRef.current) {
+                      onHotspotSelectRef.current(hs.id);
+                    }
+                  } else if (hs.type === 'gallery') {
+                    setOpenGalleryHotspotId(id => id === hs.id ? null : hs.id);
+                    setGalleryIndex(0);
+                    setOpenVariantHotspotId(null);
+                    setOpenInfoHotspotId(null);
+                    setOpenComparisonHotspotId(null);
                     if (!isPreviewModeRef.current) {
                       onHotspotSelectRef.current(hs.id);
                     }

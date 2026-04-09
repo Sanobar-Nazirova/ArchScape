@@ -71,11 +71,12 @@ interface TourState {
   updateSceneImage: (sceneId: string, imageUrl: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string, aspectRatio?: number) => void;
 
   // ── Folder actions ────────────────────────────────────────────────────────
-  addFolder: (name: string, parentId?: string | null) => string;
+  addFolder: (name: string, parentId?: string | null, color?: string) => string;
   removeFolder: (id: string) => void;
   renameFolder: (id: string, name: string) => void;
   toggleFolder: (id: string) => void;
   moveFolderTo: (folderId: string, newParentId: string | null) => void;
+  updateFolderColor: (id: string, color: string) => void;
 
   // ── Scene extras ──────────────────────────────────────────────────────────
   duplicateScene: (sceneId: string) => string;
@@ -459,9 +460,9 @@ export const useTourStore = create<TourState>()((set, get) => ({
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, fisheyeConfig: config } : sc) })),
 
   // ── Folder actions ─────────────────────────────────────────────────────────
-  addFolder: (name, parentId = null) => {
+  addFolder: (name, parentId = null, color) => {
     const id = genId('folder');
-    const folder: Folder = { id, name, isExpanded: true, parentId };
+    const folder: Folder = { id, name, isExpanded: true, parentId, color };
     set((s) => ({ folders: [...s.folders, folder] }));
     return id;
   },
@@ -489,6 +490,9 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   moveFolderTo: (folderId, newParentId) =>
     set((s) => ({ folders: s.folders.map(f => f.id === folderId ? { ...f, parentId: newParentId } : f) })),
+
+  updateFolderColor: (id, color) =>
+    set((s) => ({ folders: s.folders.map(f => f.id === id ? { ...f, color } : f) })),
 
   // ── Scene extras ──────────────────────────────────────────────────────────
   duplicateScene: (sceneId) => {
