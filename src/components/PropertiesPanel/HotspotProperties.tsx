@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Trash2, Layers, RefreshCw, Plus, X, Info, Star, AlertTriangle, Check, Columns2, Images } from 'lucide-react';
+import { Trash2, Layers, RefreshCw, Plus, X, Info, Star, AlertTriangle, Check, Columns2, Images, DoorOpen } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import type { Hotspot, HotspotIconStyle } from '../../types';
 import ScenePicker from '../ScenePicker';
@@ -28,11 +28,12 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
       <Field label="Hotspot Type">
         <div className="flex rounded-xl overflow-hidden border border-nm-border flex-wrap">
           {([
-            { value: 'navigation', icon: '→',                    label: 'Nav'        },
-            { value: 'variants',   icon: <Layers size={11} />,   label: 'Variants'   },
-            { value: 'info',       icon: <Info size={11} />,     label: 'Info'       },
-            { value: 'comparison', icon: <Columns2 size={11} />, label: 'Compare'    },
-            { value: 'gallery',    icon: <Images size={11} />,   label: 'Gallery'    },
+            { value: 'navigation', icon: '→',                      label: 'Nav'        },
+            { value: 'variants',   icon: <Layers size={11} />,     label: 'Variants'   },
+            { value: 'info',       icon: <Info size={11} />,       label: 'Info'       },
+            { value: 'comparison', icon: <Columns2 size={11} />,   label: 'Compare'    },
+            { value: 'gallery',    icon: <Images size={11} />,     label: 'Gallery'    },
+            { value: 'room',       icon: <DoorOpen size={11} />,   label: 'Room'       },
           ] as const).map(t => (
             <button key={t.value} onClick={() => update({ type: t.value })}
               className={['flex-1 py-1.5 text-xs flex items-center justify-center gap-1 transition-colors',
@@ -381,6 +382,99 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
             )}
 
             <p className="text-[10px] text-nm-muted mt-1.5">Images display in the order added.</p>
+          </Field>
+        </>
+      )}
+
+      {/* Room data fields */}
+      {hotspot.type === 'room' && (
+        <>
+          <Field label="Room Name">
+            <input
+              type="text"
+              value={hotspot.roomName ?? ''}
+              placeholder="Living Room"
+              onChange={e => update({ roomName: e.target.value })}
+              className="input-base"
+            />
+          </Field>
+
+          <Field label="Floor Area">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={hotspot.roomArea ?? ''}
+                placeholder="0"
+                min={0}
+                step={0.1}
+                onChange={e => update({ roomArea: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="input-base flex-1"
+              />
+              <span className="text-xs text-nm-muted flex-shrink-0">m²</span>
+            </div>
+          </Field>
+
+          <Field label="Ceiling Height">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={hotspot.roomHeight ?? ''}
+                placeholder="0"
+                min={0}
+                step={0.1}
+                onChange={e => update({ roomHeight: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="input-base flex-1"
+              />
+              <span className="text-xs text-nm-muted flex-shrink-0">m</span>
+            </div>
+          </Field>
+
+          <Field label="Materials">
+            {(hotspot.roomMaterials ?? []).length > 0 && (
+              <div className="space-y-2 mb-2">
+                {(hotspot.roomMaterials ?? []).map((mat, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={mat.name}
+                      placeholder="Floor"
+                      onChange={e => {
+                        const updated = [...(hotspot.roomMaterials ?? [])];
+                        updated[idx] = { ...updated[idx], name: e.target.value };
+                        update({ roomMaterials: updated });
+                      }}
+                      className="input-base flex-1"
+                    />
+                    <input
+                      type="text"
+                      value={mat.finish}
+                      placeholder="Oak parquet"
+                      onChange={e => {
+                        const updated = [...(hotspot.roomMaterials ?? [])];
+                        updated[idx] = { ...updated[idx], finish: e.target.value };
+                        update({ roomMaterials: updated });
+                      }}
+                      className="input-base flex-1"
+                    />
+                    <button
+                      onClick={() => {
+                        const updated = (hotspot.roomMaterials ?? []).filter((_, i) => i !== idx);
+                        update({ roomMaterials: updated });
+                      }}
+                      className="text-nm-muted hover:text-red-400 p-1 transition-colors flex-shrink-0"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => update({ roomMaterials: [...(hotspot.roomMaterials ?? []), { name: '', finish: '' }] })}
+              className="w-full py-2 rounded-xl text-xs text-nm-muted hover:text-nm-accent border border-nm-border hover:border-nm-accent/40 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Plus size={11} /> Add Material
+            </button>
           </Field>
         </>
       )}

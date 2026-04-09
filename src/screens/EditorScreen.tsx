@@ -7,6 +7,7 @@ import ScenePicker from '../components/ScenePicker';
 import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
 import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Lock } from 'lucide-react';
+import { saveSession, SceneVisit, AnalyticsSession } from '../utils/analytics';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD() {
@@ -164,6 +165,10 @@ export default function EditorScreen() {
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
 
+  // ── Analytics tracking refs ─────────────────────────────────────────────
+  const sessionRef   = useRef<AnalyticsSession | null>(null);
+  const sceneEntryRef = useRef<{ sceneId: string; sceneName: string; enteredAt: number } | null>(null);
+
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
   const [pendingHotspotId, setPendingHotspotId] = useState<string | null>(null);
 
@@ -188,6 +193,53 @@ export default function EditorScreen() {
       setSplashDone(false);
     }
   }, [isPreviewMode]);
+
+  // ── Analytics: track scene visits during preview ────────────────────────
+  useEffect(() => {
+    if (isPreviewMode) {
+      // Preview started: create a new session
+      if (!sessionRef.current) {
+        sessionRef.current = { id: Date.now().toString(), startedAt: Date.now(), endedAt: 0, visits: [] };
+      }
+      // Record entry for the current scene
+      if (activeSceneId) {
+        const sceneName = scenes.find(s => s.id === activeSceneId)?.name ?? activeSceneId;
+        if (sceneEntryRef.current && sceneEntryRef.current.sceneId !== activeSceneId) {
+          // Scene changed — record duration of previous scene
+          const durationMs = Date.now() - sceneEntryRef.current.enteredAt;
+          sessionRef.current.visits.push({
+            sceneId: sceneEntryRef.current.sceneId,
+            sceneName: sceneEntryRef.current.sceneName,
+            enteredAt: sceneEntryRef.current.enteredAt,
+            durationMs,
+          });
+        }
+        if (!sceneEntryRef.current || sceneEntryRef.current.sceneId !== activeSceneId) {
+          sceneEntryRef.current = { sceneId: activeSceneId, sceneName, enteredAt: Date.now() };
+        }
+      }
+    } else {
+      // Preview ended — finalize session
+      if (sessionRef.current) {
+        if (sceneEntryRef.current) {
+          const durationMs = Date.now() - sceneEntryRef.current.enteredAt;
+          sessionRef.current.visits.push({
+            sceneId: sceneEntryRef.current.sceneId,
+            sceneName: sceneEntryRef.current.sceneName,
+            enteredAt: sceneEntryRef.current.enteredAt,
+            durationMs,
+          });
+          sceneEntryRef.current = null;
+        }
+        // Only save if at least one scene was visited
+        if (sessionRef.current.visits.length > 0) {
+          sessionRef.current.endedAt = Date.now();
+          saveSession(sessionRef.current);
+        }
+        sessionRef.current = null;
+      }
+    }
+  }, [isPreviewMode, activeSceneId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-enter after 8 seconds when splash is showing
   useEffect(() => {
