@@ -65,6 +65,7 @@ interface TourState {
   setActiveScene: (id: string | null) => void;
   setSceneFolderId: (sceneId: string, folderId: string | null) => void;
   updateSceneInitialView: (sceneId: string, yaw: number, pitch: number) => void;
+  updateSceneNorthOffset: (sceneId: string, offset: number) => void;
   updateSceneFormat: (sceneId: string, format: PanoramaFormat) => void;
   updateSceneStereoEye: (sceneId: string, eye: 'left' | 'right') => void;
   updateSceneImage: (sceneId: string, imageUrl: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string, aspectRatio?: number) => void;
@@ -429,6 +430,9 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   updateSceneInitialView: (sceneId, yaw, pitch) =>
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, initialYaw: yaw, initialPitch: pitch } : sc) })),
+
+  updateSceneNorthOffset: (sceneId, offset) =>
+    set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, northOffset: offset } : sc) })),
 
   updateSceneFormat: (sceneId, format) =>
     set((s) => ({ scenes: s.scenes.map(sc => sc.id === sceneId ? { ...sc, format } : sc) })),

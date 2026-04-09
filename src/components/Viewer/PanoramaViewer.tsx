@@ -435,7 +435,7 @@ export default function PanoramaViewer({
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
   onHotspotReposition,
 }: PanoramaViewerProps) {
-  const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes, setPendingStartView } = useTourStore();
+  const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes, setPendingStartView, updateSceneNorthOffset } = useTourStore();
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
   // ── Three.js refs ──────────────────────────────────────────────────────
@@ -1063,14 +1063,30 @@ export default function PanoramaViewer({
 
       {scene && (
         <>
-          {/* ── Compass indicator (always visible) ── */}
-          <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 pointer-events-none select-none">
-            <span
-              className="text-[11px] font-bold text-white leading-none"
-              style={{ display: 'inline-block', transform: `rotate(${-compassYaw * (180 / Math.PI)}deg)`, transformOrigin: 'center', transition: 'transform 0.1s linear' }}
-            >
-              N
-            </span>
+          {/* ── Compass indicator ── */}
+          <div className="absolute top-4 right-4 z-20 flex flex-col items-center gap-1">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/10 select-none pointer-events-none">
+              <span
+                className="text-[11px] font-bold text-white leading-none"
+                style={{
+                  display: 'inline-block',
+                  transform: `rotate(${-(compassYaw - (scene.northOffset ?? 0)) * (180 / Math.PI)}deg)`,
+                  transformOrigin: 'center',
+                  transition: 'transform 0.1s linear',
+                }}
+              >
+                N
+              </span>
+            </div>
+            {!isPreviewMode && (
+              <button
+                onClick={() => updateSceneNorthOffset(scene.id, yawRef.current)}
+                className="text-[9px] px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm border border-white/10 text-white/60 hover:text-white hover:border-nm-accent/50 transition-colors whitespace-nowrap"
+                title="Set current view direction as North"
+              >
+                Set N
+              </button>
+            )}
           </div>
 
           {/* Hotspots overlay — positions updated imperatively every frame */}

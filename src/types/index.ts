@@ -72,6 +72,7 @@ export interface Scene {
   tags?: string[];
   stereoEye?: 'left' | 'right';    // which eye to show for SBS/TB stereo
   fisheyeConfig?: FisheyeConfig;   // user-saved adjustments for fisheye scenes
+  northOffset?: number;            // yaw (radians) that corresponds to geographic north
 }
 
 export interface Folder {

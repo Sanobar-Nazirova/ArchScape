@@ -17,7 +17,7 @@ function PresentationHUD() {
   const next = scenes[idx + 1];
 
   // ── Guided tour (auto-advance) state ────────────────────────────────────
-  const INTERVAL_MS = 5000;
+  const INTERVAL_MS = 10000;
   const [isPlaying, setIsPlaying]   = useState(false);
   const [progress, setProgress]     = useState(0); // 0–1
   const intervalRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -105,7 +105,7 @@ function PresentationHUD() {
           <button
             onClick={() => isPlaying ? stopPlayback() : setIsPlaying(true)}
             className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white transition-all"
-            title={isPlaying ? 'Pause auto-advance' : 'Play guided tour (5s per scene)'}
+            title={isPlaying ? 'Pause auto-advance' : 'Play guided tour (10s per scene)'}
           >
             {isPlaying ? <Pause size={12} /> : <Play size={12} />}
           </button>
