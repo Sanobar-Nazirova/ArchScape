@@ -1086,6 +1086,7 @@ export default function PanoramaViewer({
               currentSceneId={scene.id}
               currentYaw={minimapYaw}
               onSceneChange={setActiveScene}
+              isEditMode={!isPreviewMode}
             />
           )}
         </>
