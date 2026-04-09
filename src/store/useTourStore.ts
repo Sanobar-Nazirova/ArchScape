@@ -100,6 +100,7 @@ interface TourState {
   addFloorPlan: (imageUrl: string, name?: string, level?: number) => string;
   removeFloorPlan: (id: string) => void;
   updateFloorPlan: (id: string, updates: { name?: string; level?: number }) => void;
+  updateFloorPlanImage: (id: string, imageUrl: string) => void;
   setActiveFloorPlan: (id: string | null) => void;
   setFloorPlanMarker: (floorPlanId: string, sceneId: string, x: number, y: number) => void;
   removeFloorPlanMarker: (floorPlanId: string, sceneId: string) => void;
@@ -660,6 +661,13 @@ export const useTourStore = create<TourState>()((set, get) => ({
     set((s) => ({
       floorPlans: s.floorPlans.map(fp => fp.id === id ? { ...fp, ...updates } : fp),
     })),
+
+  updateFloorPlanImage: (id, imageUrl) => {
+    saveImage(`fp_${id}`, imageUrl);
+    set((s) => ({
+      floorPlans: s.floorPlans.map(fp => fp.id === id ? { ...fp, imageUrl } : fp),
+    }));
+  },
 
   setActiveFloorPlan: (id) => set({ activeFloorPlanId: id }),
 

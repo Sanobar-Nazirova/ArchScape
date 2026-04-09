@@ -1,5 +1,5 @@
-import React, { useRef, useCallback, useState } from 'react';
-import { X, Trash2, MapPin, Plus, Pencil, Check, ChevronUp, ChevronDown, Maximize2 } from 'lucide-react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
+import { X, Trash2, MapPin, Plus, Pencil, Check, ChevronUp, ChevronDown, Maximize2, Upload } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 
 const fileToDataUrl = (file: File): Promise<string> =>
@@ -13,7 +13,7 @@ const fileToDataUrl = (file: File): Promise<string> =>
 export default function FloorPlanEditor() {
   const {
     scenes, floorPlans, activeFloorPlanId,
-    addFloorPlan, removeFloorPlan, updateFloorPlan,
+    addFloorPlan, removeFloorPlan, updateFloorPlan, updateFloorPlanImage,
     setActiveFloorPlan, setFloorPlanMarker, removeFloorPlanMarker,
     activeSceneId,
   } = useTourStore();
@@ -21,11 +21,23 @@ export default function FloorPlanEditor() {
   const imgRef      = useRef<HTMLImageElement>(null);
   const modalImgRef = useRef<HTMLImageElement>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
-  const [editingId,  setEditingId]  = useState<string | null>(null);
-  const [editName,   setEditName]   = useState('');
-  const [editLevel,  setEditLevel]  = useState(0);
-  const [expanded,   setExpanded]   = useState(false);
+  const [editingId,      setEditingId]      = useState<string | null>(null);
+  const [editName,       setEditName]       = useState('');
+  const [editLevel,      setEditLevel]      = useState(0);
+  const [expanded,       setExpanded]       = useState(false);
+  const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  // sceneId being dragged, or null
+  const [draggingMarker, setDraggingMarker] = useState<string | null>(null);
+
+  // Release drag if pointer released anywhere outside container
+  useEffect(() => {
+    if (!draggingMarker) return;
+    const up = () => setDraggingMarker(null);
+    window.addEventListener('pointerup', up);
+    return () => window.removeEventListener('pointerup', up);
+  }, [draggingMarker]);
 
   const sorted   = [...floorPlans].sort((a, b) => a.level - b.level);
   const activeFp = floorPlans.find(f => f.id === activeFloorPlanId) ?? sorted[0] ?? null;
@@ -38,6 +50,18 @@ export default function FloorPlanEditor() {
     setFloorPlanMarker(activeFp.id, activeSceneId, Math.max(0, Math.min(1, x)), Math.max(0, Math.min(1, y)));
   }, [activeSceneId, activeFp, setFloorPlanMarker]);
 
+  const handleMarkerDragMove = useCallback((
+    e: React.PointerEvent<HTMLDivElement>,
+    ref: React.RefObject<HTMLImageElement | null>,
+    fpId: string,
+  ) => {
+    if (!draggingMarker || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top)  / rect.height));
+    setFloorPlanMarker(fpId, draggingMarker, x, y);
+  }, [draggingMarker, setFloorPlanMarker]);
+
   const startEdit = (fp: typeof floorPlans[0], e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(fp.id);
@@ -49,6 +73,11 @@ export default function FloorPlanEditor() {
     if (!editingId) return;
     updateFloorPlan(editingId, { name: editName.trim() || 'Untitled', level: editLevel });
     setEditingId(null);
+  };
+
+  const triggerReplace = (fpId: string) => {
+    setReplaceTargetId(fpId);
+    replaceInputRef.current?.click();
   };
 
   return (
@@ -65,6 +94,16 @@ export default function FloorPlanEditor() {
         </button>
         <input ref={addInputRef} type="file" accept="image/*" className="hidden"
           onChange={e => { if (e.target.files?.[0]) fileToDataUrl(e.target.files[0]).then(url => addFloorPlan(url)); e.target.value = ''; }}
+        />
+        {/* Hidden input for replacing a floor plan image */}
+        <input ref={replaceInputRef} type="file" accept="image/*" className="hidden"
+          onChange={e => {
+            if (e.target.files?.[0] && replaceTargetId) {
+              fileToDataUrl(e.target.files[0]).then(url => updateFloorPlanImage(replaceTargetId, url));
+            }
+            e.target.value = '';
+            setReplaceTargetId(null);
+          }}
         />
       </div>
 
@@ -117,25 +156,36 @@ export default function FloorPlanEditor() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] text-nm-muted uppercase tracking-wide font-medium">{activeFp.name}</p>
-                <button onClick={() => setExpanded(true)}
-                  className="flex items-center gap-1 text-[10px] text-nm-accent hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-nm-accent/10"
-                  title="Expand for accurate placement">
-                  <Maximize2 size={10} /> Expand
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => triggerReplace(activeFp.id)}
+                    className="flex items-center gap-1 text-[10px] text-nm-muted hover:text-nm-text transition-colors px-1.5 py-0.5 rounded hover:bg-nm-surface"
+                    title="Replace floor plan image (keeps all markers)">
+                    <Upload size={10} /> Replace
+                  </button>
+                  <button onClick={() => setExpanded(true)}
+                    className="flex items-center gap-1 text-[10px] text-nm-accent hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-nm-accent/10"
+                    title="Expand for accurate placement">
+                    <Maximize2 size={10} /> Expand
+                  </button>
+                </div>
               </div>
 
               {activeSceneId ? (
                 <p className="text-[11px] text-nm-muted leading-snug">
                   Click the map to place{' '}
                   <span className="text-nm-text font-medium">"{scenes.find(s => s.id === activeSceneId)?.name}"</span>
+                  {activeFp.markers.length > 0 && <span className="text-nm-muted/70"> · drag pins to reposition</span>}
                 </p>
               ) : (
                 <p className="text-[11px] text-nm-muted">Select a scene first, then click the map.</p>
               )}
 
               <div
-                className="relative rounded-xl overflow-hidden border border-nm-border cursor-crosshair"
-                onClick={e => handleImageClick(e, imgRef)}
+                className="relative rounded-xl overflow-hidden border border-nm-border"
+                style={{ cursor: draggingMarker ? 'grabbing' : 'crosshair' }}
+                onClick={e => { if (!draggingMarker) handleImageClick(e, imgRef); }}
+                onPointerMove={e => activeFp && handleMarkerDragMove(e, imgRef, activeFp.id)}
+                onPointerUp={() => setDraggingMarker(null)}
               >
                 <img
                   ref={imgRef}
@@ -147,10 +197,17 @@ export default function FloorPlanEditor() {
                 {activeFp.markers.map(m => {
                   const sc = scenes.find(s => s.id === m.sceneId);
                   const isCurrentScene = m.sceneId === activeSceneId;
+                  const isDragging = m.sceneId === draggingMarker;
                   return (
                     <div key={m.sceneId} className="absolute group"
-                      style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, transform: 'translate(-50%, -100%)' }}
+                      style={{
+                        left: `${m.x * 100}%`, top: `${m.y * 100}%`,
+                        transform: 'translate(-50%, -100%)',
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                        touchAction: 'none',
+                      }}
                       title={sc?.name}
+                      onPointerDown={e => { e.stopPropagation(); setDraggingMarker(m.sceneId); }}
                       onClick={e => e.stopPropagation()}
                     >
                       <MapPin size={18}
@@ -188,7 +245,7 @@ export default function FloorPlanEditor() {
             </div>
           )}
 
-          {/* ── Manage floors (rename / delete) ── */}
+          {/* ── Manage floors (rename / delete / replace) ── */}
           <div className="border-t border-nm-border pt-3 space-y-1.5">
             <p className="text-[9px] text-nm-muted uppercase tracking-wide mb-1.5">Manage floors</p>
             {sorted.map(fp => {
@@ -218,6 +275,7 @@ export default function FloorPlanEditor() {
                   ) : (
                     <>
                       <span className="flex-1 text-xs text-nm-text truncate">{fp.name}</span>
+                      <button onClick={() => triggerReplace(fp.id)} title="Replace image" className="text-nm-muted hover:text-nm-accent p-0.5 transition-colors"><Upload size={10} /></button>
                       <button onClick={e => startEdit(fp, e)} className="text-nm-muted hover:text-nm-accent p-0.5 transition-colors"><Pencil size={10} /></button>
                       <button onClick={() => removeFloorPlan(fp.id)} className="text-nm-muted hover:text-red-400 p-0.5 transition-colors"><Trash2 size={10} /></button>
                     </>
@@ -240,24 +298,33 @@ export default function FloorPlanEditor() {
               <p className="text-white font-semibold text-sm">{activeFp.name} — Place Markers</p>
               {activeSceneId
                 ? <p className="text-[11px] text-white/60 mt-0.5">
-                    Click the map to place <span className="text-nm-accent">"{scenes.find(s => s.id === activeSceneId)?.name}"</span>
+                    Click to place <span className="text-nm-accent">"{scenes.find(s => s.id === activeSceneId)?.name}"</span>
+                    {activeFp.markers.length > 0 && <span> · drag pins to reposition</span>}
                   </p>
                 : <p className="text-[11px] text-white/60 mt-0.5">Select a scene in the sidebar first.</p>
               }
             </div>
-            <button onClick={() => setExpanded(false)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => triggerReplace(activeFp.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs transition-colors">
+                <Upload size={13} /> Replace Image
+              </button>
+              <button onClick={() => setExpanded(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Floor plan image — fills remaining space */}
           <div className="flex-1 overflow-hidden flex items-center justify-center p-4"
             onClick={e => e.stopPropagation()}>
             <div
-              className="relative cursor-crosshair rounded-xl overflow-hidden border border-white/20 max-h-full"
-              style={{ maxWidth: '100%' }}
-              onClick={e => handleImageClick(e, modalImgRef)}
+              className="relative rounded-xl overflow-hidden border border-white/20 max-h-full"
+              style={{ maxWidth: '100%', cursor: draggingMarker ? 'grabbing' : 'crosshair' }}
+              onClick={e => { if (!draggingMarker) handleImageClick(e, modalImgRef); }}
+              onPointerMove={e => activeFp && handleMarkerDragMove(e, modalImgRef, activeFp.id)}
+              onPointerUp={() => setDraggingMarker(null)}
             >
               <img
                 ref={modalImgRef}
@@ -269,10 +336,17 @@ export default function FloorPlanEditor() {
               {activeFp.markers.map(m => {
                 const sc = scenes.find(s => s.id === m.sceneId);
                 const isCurrentScene = m.sceneId === activeSceneId;
+                const isDragging = m.sceneId === draggingMarker;
                 return (
                   <div key={m.sceneId} className="absolute group"
-                    style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, transform: 'translate(-50%, -100%)' }}
+                    style={{
+                      left: `${m.x * 100}%`, top: `${m.y * 100}%`,
+                      transform: 'translate(-50%, -100%)',
+                      cursor: isDragging ? 'grabbing' : 'grab',
+                      touchAction: 'none',
+                    }}
                     title={sc?.name}
+                    onPointerDown={e => { e.stopPropagation(); setDraggingMarker(m.sceneId); }}
                     onClick={e => e.stopPropagation()}
                   >
                     <MapPin size={24}
