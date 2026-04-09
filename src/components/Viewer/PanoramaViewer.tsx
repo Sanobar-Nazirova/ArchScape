@@ -1242,6 +1242,20 @@ export default function PanoramaViewer({
                       isPreview={isPreviewMode}
                       isOpen={openInfoHotspotId === hs.id}
                     />
+                  ) : hs.type === 'comparison' ? (
+                    <ComparisonHotspotMarker
+                      hotspot={hs}
+                      isSelected={selectedElementId === hs.id}
+                      isPreview={isPreviewMode}
+                      isOpen={openComparisonHotspotId === hs.id}
+                    />
+                  ) : hs.type === 'gallery' ? (
+                    <GalleryHotspotMarker
+                      hotspot={hs}
+                      isSelected={selectedElementId === hs.id}
+                      isPreview={isPreviewMode}
+                      isOpen={openGalleryHotspotId === hs.id}
+                    />
                   ) : (
                     <HotspotMarker
                       hotspot={hs}
@@ -1356,6 +1370,152 @@ export default function PanoramaViewer({
                   <p className="text-white/30 text-xs italic">No content yet. Edit this hotspot in the Properties panel.</p>
                 )}
               </div>
+            );
+          })()}
+
+          {/* ── Comparison overlay ── */}
+          {openComparisonHotspotId && (() => {
+            const hs = scene?.hotspots.find(h => h.id === openComparisonHotspotId);
+            if (!hs) return null;
+            const compareScene = scenes.find(s => s.id === hs.compareSceneId);
+            const beforeLabel = hs.compareLabel || scene.name;
+            const afterLabel  = hs.compareLabel2 || compareScene?.name || 'Compare Scene';
+            return createPortal(
+              <div
+                className="fixed inset-0 z-[300] bg-black flex items-center justify-center"
+                onPointerMove={e => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  const pct  = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+                  setComparisonDividerX(pct);
+                }}
+                onPointerUp={() => { /* no-op, pointer is already released */ }}
+              >
+                {/* Left panel — "before" (current scene) */}
+                <div className="absolute inset-0 overflow-hidden" style={{ width: `${comparisonDividerX}%` }}>
+                  {scene.thumbnail
+                    ? <img src={scene.thumbnail} alt={beforeLabel} className="absolute inset-0 w-full h-full object-cover" style={{ minWidth: `${10000 / comparisonDividerX}%` }} />
+                    : <div className="absolute inset-0 bg-neutral-800 flex items-center justify-center text-white/30 text-sm">No preview</div>
+                  }
+                  <span className="absolute bottom-4 left-4 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 font-medium">
+                    {beforeLabel}
+                  </span>
+                </div>
+
+                {/* Right panel — "after" (compare scene) */}
+                <div className="absolute inset-0 overflow-hidden" style={{ left: `${comparisonDividerX}%` }}>
+                  {compareScene?.thumbnail
+                    ? <img src={compareScene.thumbnail} alt={afterLabel} className="absolute inset-0 w-full h-full object-cover" style={{ minWidth: `${10000 / Math.max(1, 100 - comparisonDividerX)}%`, right: 0, left: 'auto' }} />
+                    : <div className="absolute inset-0 bg-neutral-700 flex items-center justify-center text-white/30 text-sm">
+                        {hs.compareSceneId ? 'No preview' : 'No scene selected'}
+                      </div>
+                  }
+                  <span className="absolute bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 font-medium">
+                    {afterLabel}
+                  </span>
+                </div>
+
+                {/* Draggable divider */}
+                <div
+                  className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-10 flex items-center justify-center"
+                  style={{ left: `${comparisonDividerX}%`, transform: 'translateX(-50%)' }}
+                  onPointerDown={e => { e.stopPropagation(); (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId); }}
+                >
+                  <div className="w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center">
+                    <Columns2 size={14} className="text-neutral-700" />
+                  </div>
+                </div>
+
+                {/* Close button */}
+                <button
+                  className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center bg-black/70 backdrop-blur-sm border border-white/20 rounded-full text-white hover:text-white hover:bg-black/90 transition-colors z-20"
+                  onClick={e => { e.stopPropagation(); setOpenComparisonHotspotId(null); }}
+                >
+                  <X size={16} />
+                </button>
+              </div>,
+              document.body,
+            );
+          })()}
+
+          {/* ── Gallery lightbox ── */}
+          {openGalleryHotspotId && (() => {
+            const hs = scene?.hotspots.find(h => h.id === openGalleryHotspotId);
+            if (!hs) return null;
+            const images = hs.galleryImages ?? [];
+            const total  = images.length;
+            const safeIdx = total > 0 ? Math.max(0, Math.min(galleryIndex, total - 1)) : 0;
+            return createPortal(
+              <div
+                className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center"
+                onClick={e => { if (e.target === e.currentTarget) setOpenGalleryHotspotId(null); }}
+              >
+                {/* Counter */}
+                {total > 0 && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-black/70 backdrop-blur-sm border border-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium">
+                    {safeIdx + 1} / {total}
+                  </div>
+                )}
+
+                {/* Close button */}
+                <button
+                  className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center bg-black/70 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-black/90 transition-colors z-10"
+                  onClick={() => setOpenGalleryHotspotId(null)}
+                >
+                  <X size={16} />
+                </button>
+
+                {/* Main image area */}
+                <div className="flex-1 flex items-center justify-center w-full h-full px-16 pb-24">
+                  {total === 0 ? (
+                    <div className="text-white/30 text-sm">No images added yet</div>
+                  ) : (
+                    <img
+                      src={images[safeIdx]}
+                      alt={`Gallery image ${safeIdx + 1}`}
+                      className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                      style={{ maxHeight: 'calc(100vh - 160px)' }}
+                    />
+                  )}
+                </div>
+
+                {/* Prev / Next arrows */}
+                {total > 1 && (
+                  <>
+                    <button
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-black/90 transition-colors z-10"
+                      onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i - 1 + total) % total); }}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/60 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-black/90 transition-colors z-10"
+                      onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i + 1) % total); }}
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </>
+                )}
+
+                {/* Thumbnail strip */}
+                {total > 0 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-1.5 items-center px-3 py-2 bg-black/70 backdrop-blur-sm border border-white/10 rounded-2xl max-w-[90vw] overflow-x-auto">
+                    {images.map((src, idx) => (
+                      <button
+                        key={idx}
+                        onClick={e => { e.stopPropagation(); setGalleryIndex(idx); }}
+                        className={[
+                          'flex-shrink-0 rounded overflow-hidden transition-all',
+                          idx === safeIdx ? 'ring-2 ring-white scale-110' : 'opacity-50 hover:opacity-100',
+                        ].join(' ')}
+                        style={{ width: 60, height: 40 }}
+                      >
+                        <img src={src} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>,
+              document.body,
             );
           })()}
 

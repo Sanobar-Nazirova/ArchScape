@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Trash2, Layers, RefreshCw, Plus, X, Info, Star, AlertTriangle, Check } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Trash2, Layers, RefreshCw, Plus, X, Info, Star, AlertTriangle, Check, Columns2, Images } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import type { Hotspot, HotspotIconStyle } from '../../types';
 import ScenePicker from '../ScenePicker';
@@ -18,20 +18,24 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
   const otherScenes = scenes.filter(s => s.id !== sceneId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
+  const [comparePickerOpen, setComparePickerOpen] = useState(false);
+  const galleryFileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-5">
 
       {/* Hotspot Type */}
       <Field label="Hotspot Type">
-        <div className="flex rounded-xl overflow-hidden border border-nm-border">
+        <div className="flex rounded-xl overflow-hidden border border-nm-border flex-wrap">
           {([
-            { value: 'navigation', icon: '→',             label: 'Navigation'   },
-            { value: 'variants',   icon: <Layers size={11} />, label: 'Design Options' },
-            { value: 'info',       icon: <Info size={11} />,   label: 'Info Card'   },
+            { value: 'navigation', icon: '→',                    label: 'Nav'        },
+            { value: 'variants',   icon: <Layers size={11} />,   label: 'Variants'   },
+            { value: 'info',       icon: <Info size={11} />,     label: 'Info'       },
+            { value: 'comparison', icon: <Columns2 size={11} />, label: 'Compare'    },
+            { value: 'gallery',    icon: <Images size={11} />,   label: 'Gallery'    },
           ] as const).map(t => (
             <button key={t.value} onClick={() => update({ type: t.value })}
-              className={['flex-1 py-1.5 text-xs flex items-center justify-center gap-1.5 transition-colors capitalize',
+              className={['flex-1 py-1.5 text-xs flex items-center justify-center gap-1 transition-colors',
                 (hotspot.type ?? 'navigation') === t.value ? 'bg-nm-accent text-white' : 'text-nm-muted hover:text-nm-text',
               ].join(' ')}>
               {t.icon}
@@ -223,6 +227,160 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
                 </button>
               ))}
             </div>
+          </Field>
+        </>
+      )}
+
+      {/* Comparison fields */}
+      {hotspot.type === 'comparison' && (
+        <>
+          <Field label="Compare Scene">
+            {hotspot.compareSceneId ? (
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
+              >
+                {(() => {
+                  const linked = scenes.find(s => s.id === hotspot.compareSceneId);
+                  return (
+                    <>
+                      {linked?.thumbnail ? (
+                        <img src={linked.thumbnail} alt={linked?.name} className="w-full object-cover" style={{ height: 64 }} />
+                      ) : (
+                        <div className="w-full flex items-center justify-center text-2xl"
+                          style={{ height: 64, background: 'var(--nm-surface, #2a2a36)' }}>🌐</div>
+                      )}
+                      <div className="flex items-center justify-between px-3 py-2"
+                        style={{ background: 'var(--nm-surface, #2a2a36)' }}>
+                        <div>
+                          <p className="text-xs text-nm-text font-medium truncate max-w-[140px]">{linked?.name ?? 'Unknown'}</p>
+                          <p className="text-[10px] text-purple-400">Linked ✓</p>
+                        </div>
+                        <button
+                          onClick={() => setComparePickerOpen(true)}
+                          className="text-[11px] text-nm-muted hover:text-nm-text px-2 py-1 rounded-lg transition-colors"
+                          style={{ boxShadow: '2px 2px 5px var(--sh-d), -1px -1px 3px var(--sh-l)' }}
+                        >
+                          Change
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : (
+              <button
+                onClick={() => setComparePickerOpen(true)}
+                className="w-full py-3 rounded-xl text-sm text-nm-muted hover:text-nm-text transition-all flex items-center justify-center gap-2"
+                style={{ boxShadow: '4px 4px 10px var(--sh-d), -2px -2px 6px var(--sh-l)' }}
+              >
+                <Columns2 size={14} />
+                Select comparison scene
+              </button>
+            )}
+          </Field>
+
+          {comparePickerOpen && (
+            <ScenePicker
+              scenes={scenes}
+              currentSceneId={sceneId}
+              linkedSceneId={hotspot.compareSceneId}
+              onSelect={(id) => { update({ compareSceneId: id }); setComparePickerOpen(false); }}
+              onClose={() => setComparePickerOpen(false)}
+            />
+          )}
+
+          <Field label="Before Label">
+            <input
+              type="text"
+              value={hotspot.compareLabel ?? ''}
+              placeholder="Before"
+              onChange={e => update({ compareLabel: e.target.value })}
+              className="input-base"
+            />
+          </Field>
+
+          <Field label="After Label">
+            <input
+              type="text"
+              value={hotspot.compareLabel2 ?? ''}
+              placeholder="After"
+              onChange={e => update({ compareLabel2: e.target.value })}
+              className="input-base"
+            />
+          </Field>
+        </>
+      )}
+
+      {/* Gallery fields */}
+      {hotspot.type === 'gallery' && (
+        <>
+          <Field label="Gallery Images">
+            {(hotspot.galleryImages ?? []).length === 0 ? (
+              <p className="text-[11px] text-nm-muted italic mb-2">No images added yet.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(hotspot.galleryImages ?? []).map((src, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={src}
+                      alt={`Gallery ${idx + 1}`}
+                      className="w-14 h-10 object-cover rounded-lg border border-nm-border"
+                    />
+                    <button
+                      onClick={() => {
+                        const updated = (hotspot.galleryImages ?? []).filter((_, i) => i !== idx);
+                        update({ galleryImages: updated });
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={8} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(hotspot.galleryImages ?? []).length >= 20 && (
+              <p className="text-[10px] text-amber-400 mb-2">Maximum of 20 images reached.</p>
+            )}
+
+            {(hotspot.galleryImages ?? []).length < 20 && (
+              <>
+                <button
+                  onClick={() => galleryFileRef.current?.click()}
+                  className="w-full py-2 rounded-xl text-xs text-nm-muted hover:text-nm-accent border border-nm-border hover:border-nm-accent/40 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={11} /> Add Image
+                </button>
+                <input
+                  ref={galleryFileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={e => {
+                    const files = Array.from(e.target.files ?? []);
+                    const existing = hotspot.galleryImages ?? [];
+                    const remaining = 20 - existing.length;
+                    const toAdd = files.slice(0, remaining);
+                    Promise.all(
+                      toAdd.map(f => new Promise<string>((res) => {
+                        const reader = new FileReader();
+                        reader.onload = () => res(reader.result as string);
+                        reader.readAsDataURL(f);
+                      }))
+                    ).then(dataUrls => {
+                      update({ galleryImages: [...existing, ...dataUrls] });
+                    });
+                    // Reset the input so the same file can be re-added if removed
+                    e.target.value = '';
+                  }}
+                />
+              </>
+            )}
+
+            <p className="text-[10px] text-nm-muted mt-1.5">Images display in the order added.</p>
           </Field>
         </>
       )}
