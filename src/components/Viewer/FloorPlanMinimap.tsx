@@ -144,7 +144,7 @@ export default function FloorPlanMinimap({
             >
               {isCurrent && (
                 <div className="absolute rounded-full border-2 border-nm-accent animate-ping opacity-60"
-                  style={{ width: dotSize + 8, height: dotSize + 8, left: -(dotSize / 2 + 4), top: -(dotSize / 2 + 4) }} />
+                  style={{ width: dotSize + 8, height: dotSize + 8, left: -4, top: -4 }} />
               )}
               <div className={[
                 'rounded-full border-2 flex items-center justify-center transition-transform group-hover:scale-125',
