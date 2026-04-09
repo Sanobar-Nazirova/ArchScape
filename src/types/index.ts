@@ -28,8 +28,11 @@ export interface Hotspot {
   targetSceneId: string;
   label: string;
   iconStyle: HotspotIconStyle;
-  type?: 'navigation' | 'variants';   // defaults to 'navigation'
+  type?: 'navigation' | 'variants' | 'info';   // defaults to 'navigation'
   variantSceneIds?: string[];          // for variants type: all variant scene IDs (incl. current)
+  infoTitle?: string;                  // for info type: card title
+  infoBody?: string;                   // for info type: card body text
+  infoIcon?: 'info' | 'star' | 'warning' | 'check'; // for info type: icon choice
 }
 
 export interface MediaPoint {

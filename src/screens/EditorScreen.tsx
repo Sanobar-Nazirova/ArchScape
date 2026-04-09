@@ -16,62 +16,132 @@ function PresentationHUD() {
   const prev = scenes[idx - 1];
   const next = scenes[idx + 1];
 
+  // ── Guided tour (auto-advance) state ────────────────────────────────────
+  const INTERVAL_MS = 5000;
+  const [isPlaying, setIsPlaying]   = useState(false);
+  const [progress, setProgress]     = useState(0); // 0–1
+  const intervalRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rafRef                      = useRef<number>(0);
+  const startTimeRef                = useRef<number>(0);
+
+  const stopPlayback = useCallback(() => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    cancelAnimationFrame(rafRef.current);
+    setIsPlaying(false);
+    setProgress(0);
+  }, []);
+
+  const advanceScene = useCallback(() => {
+    const state = useTourStore.getState();
+    const currentIdx = state.scenes.findIndex(s => s.id === state.activeSceneId);
+    const nextIdx = (currentIdx + 1) % state.scenes.length;
+    setActiveScene(state.scenes[nextIdx].id);
+    startTimeRef.current = performance.now();
+  }, [setActiveScene]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    startTimeRef.current = performance.now();
+
+    // rAF loop for smooth progress bar
+    const tick = () => {
+      const elapsed = performance.now() - startTimeRef.current;
+      setProgress(Math.min(elapsed / INTERVAL_MS, 1));
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    intervalRef.current = setInterval(advanceScene, INTERVAL_MS);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [isPlaying, advanceScene]);
+
+  // Stop playback when user manually navigates
+  const navigate = (id: string) => {
+    stopPlayback();
+    setActiveScene(id);
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
     else document.exitFullscreen().catch(() => {});
   };
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/70 to-transparent px-5 py-4 flex items-center justify-between gap-3">
-      {/* Exit */}
-      <button
-        onClick={() => startTransition(() => togglePreviewMode())}
-        className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs text-white/80 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
-      >
-        ✕ Exit
-      </button>
+    <>
+      {/* ── Progress bar (visible only when playing) ── */}
+      {isPlaying && (
+        <div className="absolute bottom-[56px] left-0 right-0 z-30 h-0.5 bg-white/10">
+          <div
+            className="h-full bg-white"
+            style={{ width: `${progress * 100}%`, transition: 'none' }}
+          />
+        </div>
+      )}
 
-      {/* ← dots → */}
-      <div className="flex items-center gap-2">
+      <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/70 to-transparent px-5 py-4 flex items-center justify-between gap-3">
+        {/* Exit */}
         <button
-          onClick={() => prev && setActiveScene(prev.id)}
-          disabled={!prev}
-          className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
+          onClick={() => { stopPlayback(); startTransition(() => togglePreviewMode()); }}
+          className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs text-white/80 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
         >
-          <ChevronLeft size={14} />
+          ✕ Exit
         </button>
 
-        <div className="flex items-center gap-1.5">
-          {scenes.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => setActiveScene(s.id)}
-              title={s.name}
-              className={`rounded-full transition-all ${
-                i === idx ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/70'
-              }`}
-            />
-          ))}
+        {/* ← Play/Pause dots → */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { stopPlayback(); prev && setActiveScene(prev.id); }}
+            disabled={!prev}
+            className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          {/* Play / Pause button */}
+          <button
+            onClick={() => isPlaying ? stopPlayback() : setIsPlaying(true)}
+            className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white transition-all"
+            title={isPlaying ? 'Pause auto-advance' : 'Play guided tour (5s per scene)'}
+          >
+            {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            {scenes.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => navigate(s.id)}
+                title={s.name}
+                className={`rounded-full transition-all ${
+                  i === idx ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/70'
+                }`}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={() => { stopPlayback(); next && setActiveScene(next.id); }}
+            disabled={!next}
+            className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
+          >
+            <ChevronRight size={14} />
+          </button>
         </div>
 
+        {/* Fullscreen */}
         <button
-          onClick={() => next && setActiveScene(next.id)}
-          disabled={!next}
-          className="w-7 h-7 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full text-white/70 hover:text-white disabled:opacity-20 transition-all"
+          onClick={toggleFullscreen}
+          className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-white/70 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
+          title="Fullscreen"
         >
-          <ChevronRight size={14} />
+          <Maximize2 size={14} />
         </button>
       </div>
-
-      {/* Fullscreen */}
-      <button
-        onClick={toggleFullscreen}
-        className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-white/70 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
-        title="Fullscreen"
-      >
-        <Maximize2 size={14} />
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -83,6 +153,7 @@ export default function EditorScreen() {
     activeTool, setActiveTool,
     addHotspot, addMediaPoint, updateHotspot,
     isPreviewMode, togglePreviewMode, restoreSceneImages,
+    projectName,
   } = useTourStore();
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
@@ -90,6 +161,39 @@ export default function EditorScreen() {
 
   const activeScene = scenes.find(s => s.id === activeSceneId) ?? null;
   const [pendingHotspotId, setPendingHotspotId] = useState<string | null>(null);
+
+  // ── Splash screen state ─────────────────────────────────────────────────
+  const [splashDone, setSplashDone] = useState(false);
+  const [countdown, setCountdown]   = useState(8);
+  const countdownRef                = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isPreviewMode) {
+      setSplashDone(false);
+      setCountdown(8);
+    }
+  }, [isPreviewMode]);
+
+  // Auto-enter after 8 seconds when splash is showing
+  useEffect(() => {
+    if (!isPreviewMode || splashDone) {
+      if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+      return;
+    }
+    countdownRef.current = setInterval(() => {
+      setCountdown(c => {
+        if (c <= 1) {
+          setSplashDone(true);
+          if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => {
+      if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    };
+  }, [isPreviewMode, splashDone]);
 
   const handleHotspotClick = useCallback((hs: Hotspot) => {
     if (hs.targetSceneId) setActiveScene(hs.targetSceneId);
@@ -124,17 +228,47 @@ export default function EditorScreen() {
         togglePreviewMode();
       }
       if (e.key === 'ArrowLeft') {
-        const idx = scenes.findIndex(s => s.id === activeSceneId);
-        if (idx > 0) setActiveScene(scenes[idx - 1].id);
+        const i = scenes.findIndex(s => s.id === activeSceneId);
+        if (i > 0) setActiveScene(scenes[i - 1].id);
       }
       if (e.key === 'ArrowRight') {
-        const idx = scenes.findIndex(s => s.id === activeSceneId);
-        if (idx < scenes.length - 1) setActiveScene(scenes[idx + 1].id);
+        const i = scenes.findIndex(s => s.id === activeSceneId);
+        if (i < scenes.length - 1) setActiveScene(scenes[i + 1].id);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [setActiveTool, togglePreviewMode, scenes, activeSceneId, setActiveScene]);
+
+  /* ── Splash screen ── */
+  if (isPreviewMode && !splashDone) {
+    const dots = Array.from({ length: 8 }, (_, i) => i);
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-black gap-6">
+        <div className="text-white/20 text-xs uppercase tracking-widest">Virtual Tour</div>
+        <h1 className="text-4xl font-bold text-white">{projectName}</h1>
+        <p className="text-white/50 text-sm max-w-md text-center">{scenes.length} scene{scenes.length !== 1 ? 's' : ''}</p>
+        <button
+          onClick={() => setSplashDone(true)}
+          className="mt-4 px-8 py-3 bg-nm-accent text-white rounded-full font-medium hover:opacity-90 transition-opacity"
+        >
+          Enter Tour →
+        </button>
+        {/* Countdown dot animation */}
+        <div className="flex items-center gap-1.5 mt-2">
+          {dots.map(i => (
+            <div
+              key={i}
+              className={`rounded-full transition-all duration-500 ${
+                i < countdown ? 'w-2 h-2 bg-white/60' : 'w-1.5 h-1.5 bg-white/15'
+              }`}
+            />
+          ))}
+        </div>
+        <p className="text-white/25 text-xs">Auto-entering in {countdown}s</p>
+      </div>
+    );
+  }
 
   /* ── Presentation (preview) mode — full screen viewer ── */
   if (isPreviewMode) {

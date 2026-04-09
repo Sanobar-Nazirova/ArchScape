@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Layers, RefreshCw, Plus, X } from 'lucide-react';
+import { Trash2, Layers, RefreshCw, Plus, X, Info, Star, AlertTriangle, Check } from 'lucide-react';
 import { useTourStore } from '../../store/useTourStore';
 import type { Hotspot, HotspotIconStyle } from '../../types';
 import ScenePicker from '../ScenePicker';
@@ -25,13 +25,17 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
       {/* Hotspot Type */}
       <Field label="Hotspot Type">
         <div className="flex rounded-xl overflow-hidden border border-nm-border">
-          {(['navigation', 'variants'] as const).map(t => (
-            <button key={t} onClick={() => update({ type: t })}
+          {([
+            { value: 'navigation', icon: '→',             label: 'Navigation'   },
+            { value: 'variants',   icon: <Layers size={11} />, label: 'Design Options' },
+            { value: 'info',       icon: <Info size={11} />,   label: 'Info Card'   },
+          ] as const).map(t => (
+            <button key={t.value} onClick={() => update({ type: t.value })}
               className={['flex-1 py-1.5 text-xs flex items-center justify-center gap-1.5 transition-colors capitalize',
-                (hotspot.type ?? 'navigation') === t ? 'bg-nm-accent text-white' : 'text-nm-muted hover:text-nm-text',
+                (hotspot.type ?? 'navigation') === t.value ? 'bg-nm-accent text-white' : 'text-nm-muted hover:text-nm-text',
               ].join(' ')}>
-              {t === 'navigation' ? '→' : <Layers size={11} />}
-              {t === 'navigation' ? 'Navigation' : 'Design Options'}
+              {t.icon}
+              {t.label}
             </button>
           ))}
         </div>
@@ -171,6 +175,56 @@ export default function HotspotProperties({ sceneId, hotspot }: HotspotPropertie
           }}
           onClose={() => setVariantPickerOpen(false)}
         />
+      )}
+
+      {/* Info card fields */}
+      {hotspot.type === 'info' && (
+        <>
+          <Field label="Info Title">
+            <input
+              type="text"
+              value={hotspot.infoTitle ?? ''}
+              placeholder="e.g. Living Room"
+              onChange={e => update({ infoTitle: e.target.value })}
+              className="input-base"
+            />
+          </Field>
+
+          <Field label="Info Body">
+            <textarea
+              value={hotspot.infoBody ?? ''}
+              placeholder="Describe this location…"
+              rows={4}
+              onChange={e => update({ infoBody: e.target.value })}
+              className="input-base resize-none"
+            />
+          </Field>
+
+          <Field label="Icon Style">
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { value: 'info',    icon: <Info size={13} />,          label: 'Info'    },
+                { value: 'star',    icon: <Star size={13} />,          label: 'Star'    },
+                { value: 'warning', icon: <AlertTriangle size={13} />, label: 'Warning' },
+                { value: 'check',   icon: <Check size={13} />,         label: 'Check'   },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => update({ infoIcon: opt.value })}
+                  className={[
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all',
+                    (hotspot.infoIcon ?? 'info') === opt.value
+                      ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
+                      : 'bg-nm-surface border-nm-border text-nm-muted hover:text-white hover:border-nm-border',
+                  ].join(' ')}
+                >
+                  {opt.icon}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </>
       )}
 
       {/* Label override */}

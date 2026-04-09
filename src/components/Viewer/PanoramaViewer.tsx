@@ -17,7 +17,7 @@ import {
   ArrowRight, DoorOpen, Circle, ArrowUpRight, LogOut,
   Info, Image, Video, FileText, FileArchive,
   Play, Pause, Volume2, ZoomIn, ZoomOut, Upload, AlertTriangle,
-  ChevronLeft, ChevronRight, Layers,
+  ChevronLeft, ChevronRight, Layers, Star, Check, X,
 } from 'lucide-react';
 
 function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
@@ -246,6 +246,43 @@ function VariantHotspotMarker({ hotspot, isSelected, isPreview, isOpen, currentS
   );
 }
 
+/* ─── InfoHotspotMarker ───────────────────────────────────────────────── */
+const INFO_ICONS = {
+  info:    <Info size={15} />,
+  star:    <Star size={15} />,
+  warning: <AlertTriangle size={15} />,
+  check:   <Check size={15} />,
+} as const;
+
+function InfoHotspotMarker({ hotspot, isSelected, isPreview, isOpen }: {
+  hotspot: Hotspot; isSelected: boolean; isPreview: boolean; isOpen: boolean;
+}) {
+  const label     = hotspot.label || hotspot.infoTitle || 'Info';
+  const iconEl    = INFO_ICONS[hotspot.infoIcon ?? 'info'];
+  return (
+    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
+      <div className={[
+        'w-10 h-10 rounded-full flex items-center justify-center transition-all border-2 shadow-lg backdrop-blur-sm',
+        isSelected || isOpen
+          ? 'bg-blue-500 border-white text-white scale-110'
+          : isPreview
+          ? 'bg-black/60 border-blue-400/70 text-blue-400 hover:scale-110 hover:bg-blue-500 hover:border-white hotspot-pulse'
+          : 'bg-black/50 border-blue-400/70 text-blue-400 hover:scale-110 hover:bg-blue-500 hover:text-white hotspot-pulse',
+      ].join(' ')}>
+        {iconEl}
+      </div>
+      <span className={[
+        'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
+        isSelected || isOpen
+          ? 'bg-blue-500 text-white border-white/30 opacity-100'
+          : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
+      ].join(' ')}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /* ─── MediaMarker ─────────────────────────────────────────────────────── */
 const MEDIA_ICONS: Record<string, React.ReactNode> = {
   image: <Image   size={13} />,
@@ -444,6 +481,7 @@ export default function PanoramaViewer({
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
   const [openVariantHotspotId, setOpenVariantHotspotId] = useState<string | null>(null);
+  const [openInfoHotspotId, setOpenInfoHotspotId]       = useState<string | null>(null);
   const [transitioning, setTransitioning]               = useState(false);
   const [compassYaw, setCompassYaw]                     = useState(0);
   const [sceneHistory, setSceneHistory]                 = useState<string[]>([]);
@@ -1003,7 +1041,7 @@ export default function PanoramaViewer({
       onMouseUp={scene ? handleMouseUp : undefined}
       onMouseLeave={scene ? handleMouseLeave : undefined}
       onWheel={scene ? handleWheel : undefined}
-      onClick={scene ? (e => { handleClick(e); setOpenVariantHotspotId(null); }) : undefined}
+      onClick={scene ? (e => { handleClick(e); setOpenVariantHotspotId(null); setOpenInfoHotspotId(null); }) : undefined}
       onTouchStart={scene ? handleTouchStart : undefined}
       onTouchMove={scene ? handleTouchMove : undefined}
       onTouchEnd={scene ? handleMouseUp : undefined}
@@ -1064,8 +1102,16 @@ export default function PanoramaViewer({
                   if (hs.type === 'variants') {
                     // Toggle variant panel in both preview and editor mode
                     setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+                    setOpenInfoHotspotId(null);
                     if (!isPreviewModeRef.current) {
                       // Also select in editor so properties panel shows
+                      onHotspotSelectRef.current(hs.id);
+                    }
+                  } else if (hs.type === 'info') {
+                    // Toggle info panel in both preview and editor mode
+                    setOpenInfoHotspotId(id => id === hs.id ? null : hs.id);
+                    setOpenVariantHotspotId(null);
+                    if (!isPreviewModeRef.current) {
                       onHotspotSelectRef.current(hs.id);
                     }
                   } else {
@@ -1082,6 +1128,13 @@ export default function PanoramaViewer({
                       isOpen={openVariantHotspotId === hs.id}
                       currentSceneId={scene.id}
                       scenes={scenes}
+                    />
+                  ) : hs.type === 'info' ? (
+                    <InfoHotspotMarker
+                      hotspot={hs}
+                      isSelected={selectedElementId === hs.id}
+                      isPreview={isPreviewMode}
+                      isOpen={openInfoHotspotId === hs.id}
                     />
                   ) : (
                     <HotspotMarker
@@ -1157,6 +1210,45 @@ export default function PanoramaViewer({
                     );
                   })}
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Info card panel ── */}
+          {openInfoHotspotId && (() => {
+            const hs = scene?.hotspots.find(h => h.id === openInfoHotspotId);
+            if (!hs) return null;
+            const iconEl = INFO_ICONS[hs.infoIcon ?? 'info'];
+            return (
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-black/90 backdrop-blur-md rounded-2xl p-5 shadow-2xl border border-white/10 min-w-[240px] max-w-[320px]"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Close button */}
+                <button
+                  onClick={() => setOpenInfoHotspotId(null)}
+                  className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-colors rounded-full"
+                >
+                  <X size={13} />
+                </button>
+                {/* Icon + Title */}
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 flex-shrink-0">
+                    {iconEl}
+                  </div>
+                  <h3 className="text-white font-semibold text-sm leading-snug pr-6">
+                    {hs.infoTitle || hs.label || 'Information'}
+                  </h3>
+                </div>
+                {/* Body */}
+                {hs.infoBody && (
+                  <p className="text-white/65 text-xs leading-relaxed whitespace-pre-wrap">
+                    {hs.infoBody}
+                  </p>
+                )}
+                {!hs.infoTitle && !hs.infoBody && (
+                  <p className="text-white/30 text-xs italic">No content yet. Edit this hotspot in the Properties panel.</p>
+                )}
               </div>
             );
           })()}
