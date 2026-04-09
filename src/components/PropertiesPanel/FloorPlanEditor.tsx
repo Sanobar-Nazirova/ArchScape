@@ -27,7 +27,8 @@ export default function FloorPlanEditor() {
   const [editName,       setEditName]       = useState('');
   const [editLevel,      setEditLevel]      = useState(0);
   const [expanded,       setExpanded]       = useState(false);
-  const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  // Use a ref so the value is always current when onChange fires (no async state issue)
+  const replaceTargetIdRef = useRef<string | null>(null);
   // sceneId being dragged, or null
   const [draggingMarker, setDraggingMarker] = useState<string | null>(null);
 
@@ -76,7 +77,7 @@ export default function FloorPlanEditor() {
   };
 
   const triggerReplace = (fpId: string) => {
-    setReplaceTargetId(fpId);
+    replaceTargetIdRef.current = fpId;
     replaceInputRef.current?.click();
   };
 
@@ -98,11 +99,13 @@ export default function FloorPlanEditor() {
         {/* Hidden input for replacing a floor plan image */}
         <input ref={replaceInputRef} type="file" accept="image/*" className="hidden"
           onChange={e => {
-            if (e.target.files?.[0] && replaceTargetId) {
-              fileToDataUrl(e.target.files[0]).then(url => updateFloorPlanImage(replaceTargetId, url));
-            }
+            const targetId = replaceTargetIdRef.current;
+            replaceTargetIdRef.current = null;
+            const file = e.target.files?.[0];
             e.target.value = '';
-            setReplaceTargetId(null);
+            if (file && targetId) {
+              fileToDataUrl(file).then(url => updateFloorPlanImage(targetId, url));
+            }
           }}
         />
       </div>

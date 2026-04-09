@@ -57,6 +57,8 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
       const thumbnail = await generateThumbnail(imageUrl);
       clearFisheyeCache(scene.id);
       updateSceneImage(scene.id, imageUrl, detection.format, detection.mediaType, thumbnail, detection.aspectRatio);
+    } catch (err) {
+      console.error('[Replace panorama] failed:', err);
     } finally {
       setReplacing(false);
     }
@@ -181,11 +183,14 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
   };
 
   /* ── Render ──────────────────────────────────────────────────────────────── */
+  const replaceInputId = `replace-scene-${scene.id}`;
+
   return (
     <div className="space-y-5">
-      {/* Thumbnail + Replace */}
-      <div className="relative rounded-xl overflow-hidden border border-nm-border group/thumb cursor-pointer"
-        onClick={() => replaceInputRef.current?.click()}
+      {/* Thumbnail + Replace — label wraps input for reliable file dialog */}
+      <label
+        htmlFor={replaceInputId}
+        className="relative rounded-xl overflow-hidden border border-nm-border group/thumb cursor-pointer block"
         title="Click to replace panorama image"
       >
         {scene.thumbnail
@@ -203,10 +208,15 @@ export default function SceneProperties({ scene }: ScenePropertiesProps) {
               </div>
           }
         </div>
-        <input ref={replaceInputRef} type="file" accept="image/*,video/*" className="hidden"
-          onClick={e => e.stopPropagation()}
-          onChange={handleReplaceImage} />
-      </div>
+        <input
+          id={replaceInputId}
+          ref={replaceInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={handleReplaceImage}
+        />
+      </label>
 
       {/* Name */}
       <Field label="Scene Name">
