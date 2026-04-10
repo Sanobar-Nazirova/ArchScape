@@ -134,7 +134,7 @@ export default function FloorPlanMinimap({
         {floorPlan.markers.map(marker => {
           const scene = scenes.find(s => s.id === marker.sceneId);
           const isCurrent = marker.sceneId === currentSceneId;
-          const dotSize  = isEditMode ? (isCurrent ? 16 : 12) : (isCurrent ? 20 : 14);
+          const dotSize  = isEditMode ? (isCurrent ? 18 : 16) : (isCurrent ? 22 : 18);
           return (
             <div
               key={marker.sceneId}

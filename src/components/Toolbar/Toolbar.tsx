@@ -497,58 +497,31 @@ export default function Toolbar() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {scenes.length > 0 && (
-          <span className="text-xs text-nm-muted mr-2 hidden md:block">
-            {scenes.length} scene{scenes.length !== 1 ? 's' : ''}
-          </span>
-        )}
-
-        <button
-          onClick={() => setShowShortcuts(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Keyboard Shortcuts [?]"
-        >
-          ?
-        </button>
-
-        <button
-          onClick={() => setShowQRCode(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Share via QR Code"
-        >
-          <QrCode size={13} />
-          Share
-        </button>
-
-        <button
-          onClick={() => setShowEmbed(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Get Embed Code"
-        >
-          <Code2 size={13} />
-          Embed
-        </button>
-
-        <button
-          onClick={() => setShowHelp(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Help & Tutorial"
-        >
-          <HelpCircle size={13} />
-          Help
-        </button>
+        {/* ── Utility icons (icon-only, tooltip on hover) ── */}
+        <div className="flex items-center gap-0.5">
+          {scenes.length > 0 && (
+            <span className="text-[11px] text-nm-muted px-2 hidden md:block">
+              {scenes.length} scene{scenes.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <IconBtn icon={<HelpCircle size={14} />} tooltip="Help & Tutorial [?]"         onClick={() => setShowHelp(true)} />
+          <IconBtn icon={<QrCode size={14} />}     tooltip="Share via QR Code"            onClick={() => setShowQRCode(true)} />
+          <IconBtn icon={<Code2 size={14} />}      tooltip="Get Embed Code"               onClick={() => setShowEmbed(true)} />
+          <IconBtn icon={<History size={14} />}    tooltip="Version Snapshots"            onClick={() => setShowSnapshots(true)} />
+          <IconBtn icon={<BarChart2 size={14} />}  tooltip="Session Analytics"            onClick={() => setShowAnalytics(true)} />
+          <IconBtn icon={<Download size={14} />}   tooltip="Export as self-contained HTML" onClick={() => setShowExport(true)} disabled={scenes.length === 0} />
+        </div>
 
         <ThemeToggle />
+        <Divider />
 
+        {/* ── Primary actions ── */}
         <button
           onClick={togglePreviewMode}
           disabled={scenes.length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm"
           style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Preview tour [Space]"
         >
           <Eye size={13} />
           Preview
@@ -557,49 +530,22 @@ export default function Toolbar() {
         <button
           onClick={() => saveTour()}
           disabled={scenes.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm ml-1"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm"
           style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
+          title="Save tour"
         >
           <Save size={13} />
           Save
         </button>
 
-        <button
-          onClick={() => setShowSnapshots(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm ml-1"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Version Snapshots"
-        >
-          <History size={13} />
-          Snapshots
-        </button>
-
-        <button
-          onClick={() => setShowAnalytics(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text transition-colors rounded-nm-sm ml-1"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Session Analytics"
-        >
-          <BarChart2 size={13} />
-          Analytics
-        </button>
-
-        <button
-          onClick={() => setShowExport(true)}
-          disabled={scenes.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors rounded-nm-sm ml-1"
-          style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}
-          title="Export as self-contained HTML file"
-        >
-          <Download size={13} />
-          Export
-        </button>
+        <Divider />
 
         <button
           onClick={publish}
           disabled={scenes.length === 0}
-          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-nm-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all ml-1 hover:scale-[1.02] active:scale-[0.98]"
+          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold text-white rounded-nm-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98]"
           style={{ background: 'var(--nm-accent)', boxShadow: '3px 3px 10px rgba(224,123,63,.45)' }}
+          title="Publish & share tour"
         >
           <Globe size={13} />
           Publish
@@ -650,7 +596,21 @@ export default function Toolbar() {
 
 /* ─── Helpers ─────────────────────────────────────────────────────────── */
 function Divider() {
-  return <div className="w-px h-6 mx-1 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }} />;
+  return <div className="w-px h-6 mx-1.5 flex-shrink-0" style={{ background: 'rgba(255,255,255,0.07)' }} />;
+}
+
+interface IconBtnProps { icon: React.ReactNode; tooltip: string; onClick?: () => void; disabled?: boolean; }
+function IconBtn({ icon, tooltip, onClick, disabled }: IconBtnProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={tooltip}
+      className="w-8 h-8 flex items-center justify-center rounded-lg text-nm-muted hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+    >
+      {icon}
+    </button>
+  );
 }
 
 interface ToolBtnProps {
