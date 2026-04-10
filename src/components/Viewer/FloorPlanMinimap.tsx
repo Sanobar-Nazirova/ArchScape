@@ -29,6 +29,15 @@ export default function FloorPlanMinimap({
 
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
+  // Auto-switch to the floor plan that has the current scene tagged
+  useEffect(() => {
+    if (!currentSceneId || floorPlans.length < 2) return;
+    const tagged = floorPlans.filter(fp => fp.markers.some(m => m.sceneId === currentSceneId));
+    if (tagged.length === 0) return; // not tagged anywhere — keep current view
+    const alreadyCorrect = tagged.some(fp => fp.id === activeFloorPlanId);
+    if (!alreadyCorrect) onFloorPlanChange(tagged[0].id);
+  }, [currentSceneId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { setTagging(false); }, [currentSceneId, activeFloorPlanId]);
 
   const currentMarker = floorPlan?.markers.find(m => m.sceneId === currentSceneId);
@@ -88,24 +97,57 @@ export default function FloorPlanMinimap({
       </div>
 
       {/* ── Floor tabs (multiple floors) ── */}
-      {sorted.length > 1 && (
-        <div className="flex border-y border-nm-border overflow-x-auto">
-          {sorted.map(fp => (
-            <button
-              key={fp.id}
-              onClick={() => onFloorPlanChange(fp.id)}
-              className={[
-                'flex-shrink-0 px-2 py-1 text-[9px] font-medium transition-colors whitespace-nowrap',
-                fp.id === floorPlan.id
-                  ? 'text-nm-accent border-b-2 border-nm-accent -mb-px bg-nm-accent/5'
-                  : 'text-nm-muted hover:text-nm-text',
-              ].join(' ')}
-            >
-              {fp.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {sorted.length > 1 && (() => {
+        const taggedIds = new Set(
+          floorPlans.filter(fp => fp.markers.some(m => m.sceneId === currentSceneId)).map(fp => fp.id)
+        );
+        const otherTagged = sorted.filter(fp => fp.id !== floorPlan.id && taggedIds.has(fp.id));
+        return (
+          <>
+            <div className="flex border-y border-nm-border overflow-x-auto">
+              {sorted.map(fp => {
+                const hasScene = taggedIds.has(fp.id);
+                return (
+                  <button
+                    key={fp.id}
+                    onClick={() => onFloorPlanChange(fp.id)}
+                    className={[
+                      'flex-shrink-0 px-2 py-1 text-[9px] font-medium transition-colors whitespace-nowrap flex items-center gap-1',
+                      fp.id === floorPlan.id
+                        ? 'text-nm-accent border-b-2 border-nm-accent -mb-px bg-nm-accent/5'
+                        : 'text-nm-muted hover:text-nm-text',
+                    ].join(' ')}
+                  >
+                    {fp.name}
+                    {hasScene && (
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ background: 'var(--nm-accent)' }}
+                        title="Current scene is on this floor"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {/* "Also on" nudge when scene is tagged on other floors too */}
+            {otherTagged.length > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 border-b border-nm-border bg-nm-accent/5">
+                <span className="text-[9px] text-nm-muted">Also on:</span>
+                {otherTagged.map(fp => (
+                  <button
+                    key={fp.id}
+                    onClick={() => onFloorPlanChange(fp.id)}
+                    className="text-[9px] text-nm-accent hover:underline font-medium"
+                  >
+                    {fp.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* ── Map image ── */}
       <div
