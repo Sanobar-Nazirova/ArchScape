@@ -802,155 +802,228 @@ const STEPS = [
   },
   {
     id: 11,
-    title: 'Compare & Gallery Hotspots',
+    title: 'Compare Hotspot',
     icon: <Image size={18} />,
-    summary: 'Overlay before/after scenes or open a full-screen photo lightbox.',
-    description: 'Compare hotspot: links a second scene — clicking opens a full-screen split view with a draggable vertical divider. Drag it left or right to reveal more of either scene. Perfect for before/after renovations, furnished vs unfurnished, or day vs night.\n\nGallery hotspot: holds a list of images — clicking opens a full-screen lightbox with previous/next arrows, a thumbnail strip at the bottom, and a photo counter. Ideal for material swatches, mood boards, or construction progress.',
-    tip: 'The Compare divider position is remembered while the overlay is open — release anywhere. In Gallery, press Esc or click the backdrop to close. Both types work equally well on touch screens.',
+    summary: 'Overlay two scenes with a draggable before/after divider.',
+    description: 'A Compare hotspot links a second scene. Clicking it opens a full-screen split view with a draggable vertical divider — pull it left or right to reveal more of either side.\n\nPerfect for: before/after renovations, furnished vs unfurnished, or day vs night lighting. The divider returns to centre each time the overlay opens.',
+    tip: 'The Compare overlay works on touch screens — swipe the divider handle sideways. Press Esc or tap the backdrop to close.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
         <defs>
-          <marker id="s11m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
-          <linearGradient id="s11g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="100%" stopColor="#1a2a3a"/></linearGradient>
-          <linearGradient id="s11g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#3a2a1a"/><stop offset="100%" stopColor="#2a3a2a"/></linearGradient>
+          <marker id="s11am" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <linearGradient id="s11ag1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#1a2a3a"/><stop offset="100%" stopColor="#2a3a4a"/></linearGradient>
+          <linearGradient id="s11ag2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#2a1a0a"/><stop offset="100%" stopColor="#1a2a1a"/></linearGradient>
         </defs>
-        {/* Background */}
         <rect width="480" height="260" rx="10" fill="#0a0c14"/>
-        {/* ── LEFT HALF: Before/After Compare ── */}
-        <rect x="0" y="0" width="238" height="260" rx="10" fill="url(#s11g1)"/>
-        {/* Divider line */}
-        <rect x="118" y="0" width="2" height="260" fill="white" opacity="0.9"/>
-        {/* Drag handle */}
-        <circle cx="119" cy="130" r="16" fill="white"/>
-        <text x="110" y="133" fontSize="11" fill="#333" fontWeight="bold">‹</text>
-        <text x="120" y="133" fontSize="11" fill="#333" fontWeight="bold">›</text>
+        {/* Before scene — left of divider */}
+        <rect x="0" y="0" width="240" height="260" rx="10" fill="url(#s11ag1)"/>
+        {/* Interior perspective lines (before — empty room) */}
+        <line x1="120" y1="80" x2="0" y2="260" stroke="#4a6a8a" strokeWidth="0.6" opacity="0.3"/>
+        <line x1="120" y1="80" x2="240" y2="260" stroke="#4a6a8a" strokeWidth="0.6" opacity="0.3"/>
+        <line x1="120" y1="80" x2="0" y2="160" stroke="#4a6a8a" strokeWidth="0.4" opacity="0.25"/>
+        <line x1="120" y1="80" x2="240" y2="160" stroke="#4a6a8a" strokeWidth="0.4" opacity="0.25"/>
+        {/* Floor line */}
+        <line x1="0" y1="195" x2="240" y2="195" stroke="#4a6a8a" strokeWidth="0.5" opacity="0.2"/>
         {/* Before label */}
-        <rect x="8" y="220" width="52" height="18" rx="6" fill="#00000077"/>
-        <text x="34" y="233" textAnchor="middle" fontSize="8" fill="white">◀ Before</text>
+        <rect x="10" y="222" width="60" height="20" rx="7" fill="#00000088"/>
+        <text x="40" y="236" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)">◀ Before</text>
+        {/* After scene — right of divider */}
+        <rect x="240" y="0" width="240" height="260" rx="10" fill="url(#s11ag2)"/>
+        {/* Interior with furniture */}
+        <line x1="360" y1="80" x2="240" y2="260" stroke="#8a6a4a" strokeWidth="0.6" opacity="0.3"/>
+        <line x1="360" y1="80" x2="480" y2="260" stroke="#8a6a4a" strokeWidth="0.6" opacity="0.3"/>
+        <rect x="280" y="160" width="80" height="35" rx="4" fill="#3a2a1a" opacity="0.7"/>
+        <rect x="340" y="145" width="50" height="50" rx="4" fill="#2a3a1a" opacity="0.6"/>
         {/* After label */}
-        <rect x="160" y="220" width="50" height="18" rx="6" fill="#00000077"/>
-        <text x="185" y="233" textAnchor="middle" fontSize="8" fill="white">After ▶</text>
+        <rect x="408" y="222" width="60" height="20" rx="7" fill="#00000088"/>
+        <text x="438" y="236" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.8)">After ▶</text>
+        {/* Divider line */}
+        <rect x="238" y="0" width="4" height="260" fill="white" fillOpacity="0.85"/>
+        {/* Drag handle */}
+        <circle cx="240" cy="130" r="22" fill="white" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))' }}/>
+        <text x="228" y="135" fontSize="14" fill="#333" fontWeight="bold">‹</text>
+        <text x="241" y="135" fontSize="14" fill="#333" fontWeight="bold">›</text>
         {/* Panel label */}
-        <rect x="6" y="6" width="66" height="18" rx="6" fill="#1e1e2699"/>
-        <text x="39" y="19" textAnchor="middle" fontSize="8" fill="#e07b3f" fontWeight="600">⇔ Compare</text>
-        {/* Annotation */}
-        <text x="50" y="250" textAnchor="middle" fontSize="7" fill="#f0a060">drag divider</text>
-        {/* ── DIVIDING GUTTER ── */}
-        <rect x="238" y="0" width="4" height="260" fill="#3a3a48"/>
-        {/* ── RIGHT HALF: Gallery Lightbox ── */}
-        <rect x="242" y="0" width="238" height="260" rx="10" fill="#0e0e18"/>
-        {/* Gallery label */}
-        <rect x="248" y="6" width="58" height="18" rx="6" fill="#1e1e2699"/>
-        <text x="277" y="19" textAnchor="middle" fontSize="8" fill="#a060e0" fontWeight="600">⊟ Gallery</text>
-        {/* Counter */}
-        <rect x="400" y="6" width="34" height="18" rx="6" fill="#1e1e2699"/>
-        <text x="417" y="19" textAnchor="middle" fontSize="8" fill="#9a9ab0">3 / 8</text>
-        {/* Main photo */}
-        <rect x="256" y="28" width="208" height="148" rx="8" fill="#2a3a2a"/>
-        <line x1="260" y1="32" x2="360" y2="172" stroke="#3a5a3a" strokeWidth="0.6" opacity="0.4"/>
-        <line x1="360" y1="32" x2="260" y2="172" stroke="#3a5a3a" strokeWidth="0.6" opacity="0.4"/>
-        <text x="360" y="104" textAnchor="middle" fontSize="8" fill="#6b7094">Oak parquet</text>
-        <text x="360" y="118" textAnchor="middle" fontSize="7" fill="#4a4a5a">gallery photo 3</text>
-        {/* Prev/Next arrows */}
-        <circle cx="268" cy="102" r="16" fill="#00000077"/>
-        <text x="268" y="107" textAnchor="middle" fontSize="14" fill="white">‹</text>
-        <circle cx="452" cy="102" r="16" fill="#00000077"/>
-        <text x="452" y="107" textAnchor="middle" fontSize="14" fill="white">›</text>
-        {/* Thumbnail strip */}
-        <rect x="256" y="182" width="208" height="50" rx="6" fill="#1e1e2699"/>
-        {[0,1,2,3,4].map(i=>(
-          <g key={i}>
-            <rect x={258+i*42} y={186} width={36} height={42} rx="4"
-              fill={i===2 ? '#2a3a2a' : '#25252f'}
-              stroke={i===2 ? '#a060e0' : '#3a3a48'} strokeWidth={i===2 ? 2 : 1}/>
-          </g>
-        ))}
+        <rect x="8" y="8" width="72" height="20" rx="7" fill="#1e1e2699"/>
+        <text x="44" y="22" textAnchor="middle" fontSize="8.5" fill="#e07b3f" fontWeight="600">⇔ Compare</text>
         {/* Annotations */}
-        <path d="M 119 30 Q 100 55 80 70" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s11m)" strokeDasharray="3,2"/>
-        <text x="10" y="70" fontSize="7" fill="#f0a060">Drag to</text>
-        <text x="10" y="80" fontSize="7" fill="#f0a060">reveal</text>
-        <path d="M 360 182 L 360 175" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s11m)" strokeDasharray="3,2"/>
-        <text x="290" y="240" fontSize="7" fill="#f0a060">Thumbnail strip</text>
+        <path d="M 240 108 Q 260 90 310 82" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s11am)" strokeDasharray="3,2"/>
+        <text x="314" y="80" fontSize="8" fill="#f0a060">Drag to reveal</text>
+        <path d="M 240 152 Q 210 168 170 178" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s11am)" strokeDasharray="3,2"/>
+        <text x="60" y="200" fontSize="8" fill="#f0a060">Full-screen overlay</text>
       </svg>
     ),
   },
   {
     id: 12,
-    title: 'Splash Screen & Guided Tour',
-    icon: <Eye size={18} />,
-    summary: 'Brand the entry experience and automate scene progression for clients.',
-    description: 'Splash screen: before the tour starts viewers see a branded intro card showing the project name, an optional 8-second countdown, and an "Enter Tour" button. Optionally set a password — the prompt appears on the splash and only viewers with the correct code can proceed.\n\nGuided Tour: press Play (▶) in the top-left HUD to start auto-advancing through scenes every 10 seconds. A progress bar fills at the top of the screen. The order follows your sidebar sequence. Press Space or ▶/⏸ to pause and resume at any time.',
-    tip: 'The splash screen and password gate only appear in Preview and published tours — never in the editor. Use guided tour when presenting to clients on a large screen so scenes advance hands-free without you touching the keyboard.',
+    title: 'Gallery Hotspot',
+    icon: <Image size={18} />,
+    summary: 'Open a full-screen photo lightbox from any hotspot.',
+    description: 'A Gallery hotspot holds a list of images. Clicking it opens a full-screen lightbox with previous/next arrows, a scrollable thumbnail strip at the bottom, and a photo counter (e.g. "3 / 8").\n\nIdeal for: material swatches, mood boards, construction progress photos, or any collection of reference images you want viewers to browse.',
+    tip: 'Press Esc or click the dark backdrop to close the Gallery. On mobile, swipe left/right to navigate photos.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
         <defs>
-          <marker id="s12m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
-          <radialGradient id="s12bg" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#1a2a3a"/><stop offset="100%" stopColor="#060810"/></radialGradient>
-          <radialGradient id="s12sg" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="100%" stopColor="#0a0c14"/></radialGradient>
+          <marker id="s11bm" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
         </defs>
-        <rect width="480" height="260" rx="10" fill="#060810"/>
-        {/* ── LEFT HALF: Splash Screen ── */}
-        <rect x="0" y="0" width="236" height="260" rx="10" fill="url(#s12bg)"/>
-        <rect x="238" y="0" width="4" height="260" fill="#3a3a48"/>
-        {/* Splash card */}
-        <rect x="18" y="24" width="200" height="210" rx="14" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
-        <rect x="18" y="24" width="200" height="54" rx="14" fill="#2e2e3a"/>
-        <rect x="18" y="64" width="200" height="14" fill="#2e2e3a"/>
-        <circle cx="88" cy="50" r="18" fill="#e07b3f"/>
-        <text x="88" y="57" textAnchor="middle" fontSize="17" fill="white" fontWeight="bold">A</text>
-        <text x="143" y="52" fontSize="9" fill="#e0ddd8" fontWeight="700">ArchScape</text>
-        <text x="118" y="96" textAnchor="middle" fontSize="11" fill="#e0ddd8" fontWeight="bold">Luxury Villa Tour</text>
-        <text x="118" y="110" textAnchor="middle" fontSize="7.5" fill="#6b7094">4 scenes · Ground + First Floor</text>
-        <text x="32" y="126" fontSize="7" fill="#6b7094">Password</text>
-        <rect x="30" y="130" width="176" height="20" rx="6" fill="#1e1e26" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="44" y="144" fontSize="8" fill="#6b7094">••••••••</text>
-        <rect x="187" y="132" width="15" height="16" rx="3" fill="#2e2e3a"/>
-        <text x="194" y="143" textAnchor="middle" fontSize="8" fill="#6b7094">👁</text>
+        <rect width="480" height="260" rx="10" fill="#0e0e18"/>
+        {/* Header bar */}
+        <rect width="480" height="36" rx="10" fill="#00000066"/>
+        <rect y="26" width="480" height="10" fill="#00000066"/>
+        {/* Gallery label */}
+        <rect x="8" y="8" width="64" height="20" rx="7" fill="#1e1e2699"/>
+        <text x="40" y="22" textAnchor="middle" fontSize="8.5" fill="#a060e0" fontWeight="600">⊟ Gallery</text>
+        {/* Title */}
+        <text x="240" y="22" textAnchor="middle" fontSize="9" fill="#9a9ab0">Material Swatches</text>
+        {/* Counter pill */}
+        <rect x="404" y="8" width="38" height="20" rx="7" fill="#1e1e2699"/>
+        <text x="423" y="22" textAnchor="middle" fontSize="8.5" fill="#9a9ab0">3 / 8</text>
+        {/* Close button */}
+        <circle cx="460" cy="18" r="12" fill="#3a3a4888"/>
+        <text x="460" y="23" textAnchor="middle" fontSize="11" fill="#9a9ab0">✕</text>
+        {/* Main photo */}
+        <rect x="30" y="44" width="420" height="166" rx="10" fill="#1e2a1e"/>
+        <line x1="34" y1="48" x2="230" y2="206" stroke="#3a5a3a" strokeWidth="0.7" opacity="0.35"/>
+        <line x1="230" y1="48" x2="34" y2="206" stroke="#3a5a3a" strokeWidth="0.7" opacity="0.25"/>
+        <line x1="230" y1="48" x2="446" y2="206" stroke="#3a5a3a" strokeWidth="0.7" opacity="0.25"/>
+        <line x1="446" y1="48" x2="230" y2="206" stroke="#3a5a3a" strokeWidth="0.7" opacity="0.35"/>
+        {/* Photo label */}
+        <text x="240" y="128" textAnchor="middle" fontSize="11" fill="#4a6a4a">Oak Parquet</text>
+        <text x="240" y="144" textAnchor="middle" fontSize="8" fill="#3a4a3a">Photo 3 of 8</text>
+        {/* Prev arrow */}
+        <circle cx="58" cy="127" r="20" fill="#00000088"/>
+        <text x="58" y="133" textAnchor="middle" fontSize="16" fill="white">‹</text>
+        {/* Next arrow */}
+        <circle cx="422" cy="127" r="20" fill="#00000088"/>
+        <text x="422" y="133" textAnchor="middle" fontSize="16" fill="white">›</text>
+        {/* Thumbnail strip */}
+        <rect x="30" y="218" width="420" height="36" rx="8" fill="#1e1e2699"/>
+        {[0,1,2,3,4,5,6].map(i=>(
+          <rect key={i} x={36+i*60} y={222} width={52} height={28} rx="5"
+            fill={i===2 ? '#1e2a1e' : '#25252f'}
+            stroke={i===2 ? '#a060e0' : '#3a3a48'} strokeWidth={i===2 ? 2 : 1}/>
+        ))}
+        {/* Annotations */}
+        <path d="M 240 44 Q 240 30 280 18" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s11bm)" strokeDasharray="3,2"/>
+        <text x="12" y="14" fontSize="8" fill="#f0a060">Photo counter</text>
+        <path d="M 120 222 Q 110 210 96 204" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s11bm)" strokeDasharray="3,2"/>
+        <text x="30" y="258" fontSize="8" fill="#f0a060">Thumbnail strip — click to jump</text>
+      </svg>
+    ),
+  },
+  {
+    id: 13,
+    title: 'Splash Screen',
+    icon: <Eye size={18} />,
+    summary: 'Brand the tour entry with a logo, password gate, and countdown.',
+    description: 'Before the tour opens, viewers see a branded intro card with your project name and logo. You can optionally:\n\n• Set a password — viewers must enter the correct code to proceed.\n• Enable an 8-second countdown — the tour auto-enters when it reaches zero.\n• Customise the intro text and button label.\n\nThe splash screen only appears in Preview and published tours, never in the editor.',
+    tip: 'Use the password gate when sharing a draft tour with a client before it is ready for public release.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s13am" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <radialGradient id="s13abg" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#1a2a3a"/><stop offset="100%" stopColor="#060810"/></radialGradient>
+        </defs>
+        <rect width="480" height="260" rx="10" fill="url(#s13abg)"/>
+        {/* Centered splash card */}
+        <rect x="100" y="20" width="280" height="224" rx="16" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Card header band */}
+        <rect x="100" y="20" width="280" height="60" rx="16" fill="#2e2e3a"/>
+        <rect x="100" y="64" width="280" height="16" fill="#2e2e3a"/>
+        {/* Logo circle */}
+        <circle cx="174" cy="50" r="22" fill="#e07b3f"/>
+        <text x="174" y="57" textAnchor="middle" fontSize="20" fill="white" fontWeight="bold">A</text>
+        {/* Brand name */}
+        <text x="210" y="43" fontSize="11" fill="#e0ddd8" fontWeight="700">ArchScape</text>
+        <text x="210" y="58" fontSize="8" fill="#9a9ab0">Virtual Tour Platform</text>
+        {/* Project name */}
+        <text x="240" y="106" textAnchor="middle" fontSize="13" fill="#e0ddd8" fontWeight="bold">Luxury Villa Tour</text>
+        <text x="240" y="121" textAnchor="middle" fontSize="8" fill="#6b7094">4 scenes · Ground Floor + First Floor</text>
+        {/* Divider */}
+        <line x1="120" y1="132" x2="360" y2="132" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Password field */}
+        <text x="114" y="150" fontSize="8" fill="#6b7094">Password</text>
+        <rect x="112" y="155" width="256" height="26" rx="8" fill="#1e1e26" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="126" y="172" fontSize="9" fill="#6b7094">••••••••</text>
+        <rect x="348" y="158" width="16" height="20" rx="4" fill="#2e2e3a"/>
+        <text x="356" y="171" textAnchor="middle" fontSize="9" fill="#6b7094">👁</text>
         {/* Countdown ring */}
-        <circle cx="118" cy="180" r="24" fill="none" stroke="#3a3a48" strokeWidth="3"/>
-        <circle cx="118" cy="180" r="24" fill="none" stroke="#e07b3f" strokeWidth="3"
-          strokeDasharray="90 61" strokeLinecap="round"/>
-        <text x="118" y="177" textAnchor="middle" fontSize="12" fill="#e0ddd8" fontWeight="bold">00</text>
-        <text x="118" y="191" textAnchor="middle" fontSize="7" fill="#6b7094">:05 sec</text>
-        <rect x="30" y="210" width="176" height="26" rx="8" fill="#e07b3f"/>
-        <text x="118" y="227" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">Enter Tour →</text>
-        <rect x="22" y="6" width="84" height="14" rx="5" fill="#1e1e2699"/>
-        <text x="64" y="17" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="600">Splash Screen</text>
-        {/* ── RIGHT HALF: Preview HUD ── */}
-        <rect x="242" y="0" width="238" height="260" rx="10" fill="url(#s12sg)"/>
-        <rect x="246" y="6" width="88" height="14" rx="5" fill="#1e1e2699"/>
-        <text x="290" y="17" textAnchor="middle" fontSize="7" fill="#60a0e0" fontWeight="600">Guided Tour HUD</text>
-        {/* Progress bar */}
-        <rect x="242" y="22" width="238" height="4" fill="#3a3a4855"/>
-        <rect x="242" y="22" width="142" height="4" fill="#e07b3f"/>
-        <circle cx="384" cy="24" r="5" fill="#f0a060"/>
+        <circle cx="200" cy="214" r="0" fill="none"/>
+        <circle cx="240" cy="206" r="0" fill="none"/>
+        {/* Enter button */}
+        <rect x="112" y="188" width="256" height="34" rx="10" fill="#e07b3f"/>
+        <text x="240" y="209" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">Enter Tour →</text>
+        {/* Annotations */}
+        <path d="M 240 155 Q 300 140 340 128" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s13am)" strokeDasharray="3,2"/>
+        <text x="344" y="125" fontSize="8" fill="#f0a060">Password gate</text>
+        <path d="M 240 188 Q 290 175 330 165" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s13am)" strokeDasharray="3,2"/>
+        <text x="334" y="163" fontSize="8" fill="#f0a060">CTA button</text>
+        <path d="M 240 106 Q 180 88 150 78" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s13am)" strokeDasharray="3,2"/>
+        <text x="70" y="76" fontSize="8" fill="#f0a060">Project name</text>
+      </svg>
+    ),
+  },
+  {
+    id: 14,
+    title: 'Guided Tour Playback',
+    icon: <Eye size={18} />,
+    summary: 'Auto-advance scenes for hands-free client presentations.',
+    description: 'Press Play (▶) in the top-left HUD to start the guided tour. Scenes advance automatically every 10 seconds. A progress bar fills across the top of the screen showing how much time remains before the next scene.\n\nControls:\n• ▶ / ⏸ — play / pause (or press Space)\n• ✕ — exit the guided tour\n• Counter "3 / 5 · 4s" — current scene, total, and seconds remaining\n• Scene dots at the bottom — click any dot to jump to that scene directly',
+    tip: 'Use guided tour when presenting on a large screen — scenes advance hands-free. The tour loops back to the first scene after the last.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s14m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <radialGradient id="s14bg" cx="50%" cy="50%" r="60%"><stop offset="0%" stopColor="#2a3a5a"/><stop offset="100%" stopColor="#0a0c18"/></radialGradient>
+          <linearGradient id="s14fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#00000066"/><stop offset="100%" stopColor="transparent"/></linearGradient>
+          <linearGradient id="s14fade2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="transparent"/><stop offset="100%" stopColor="#00000066"/></linearGradient>
+        </defs>
+        {/* Panorama background */}
+        <rect width="480" height="260" rx="10" fill="url(#s14bg)"/>
+        {/* Subtle horizon */}
+        <line x1="0" y1="155" x2="480" y2="155" stroke="#ffffff05" strokeWidth="1"/>
+        {/* Top overlay fade */}
+        <rect width="480" height="60" rx="10" fill="url(#s14fade)"/>
+        {/* Progress bar track */}
+        <rect width="480" height="5" fill="#3a3a4855"/>
+        {/* Progress bar fill — 60% */}
+        <rect width="288" height="5" fill="#e07b3f"/>
+        {/* Scrubber dot */}
+        <circle cx="288" cy="2.5" r="6" fill="#f0a060" stroke="white" strokeWidth="1"/>
         {/* HUD strip */}
-        <rect x="242" y="26" width="238" height="34" fill="#00000033"/>
-        <rect x="250" y="32" width="24" height="20" rx="6" fill="#25252f99"/>
-        <text x="262" y="46" textAnchor="middle" fontSize="9" fill="#9a9ab0">✕</text>
-        <rect x="280" y="32" width="24" height="20" rx="6" fill="#e07b3f22" stroke="#e07b3f88" strokeWidth="1"/>
-        <text x="292" y="46" textAnchor="middle" fontSize="12" fill="#e07b3f">⏸</text>
-        <rect x="310" y="32" width="68" height="20" rx="6" fill="#25252f99"/>
-        <text x="344" y="46" textAnchor="middle" fontSize="8" fill="#9a9ab0">3 / 5  ·  4s</text>
-        {/* Scene in viewer */}
-        <text x="361" y="118" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.4)">Bedroom</text>
-        <circle cx="350" cy="152" r="16" fill="#00000055" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
-        <text x="350" y="157" textAnchor="middle" fontSize="10" fill="white">→</text>
+        <rect width="480" height="42" fill="#00000033"/>
+        {/* Exit button */}
+        <rect x="10" y="10" width="30" height="24" rx="7" fill="#25252f99" stroke="#3a3a4866" strokeWidth="1"/>
+        <text x="25" y="26" textAnchor="middle" fontSize="10" fill="#9a9ab0">✕</text>
+        {/* Play/Pause button — highlighted */}
+        <rect x="48" y="10" width="30" height="24" rx="7" fill="#e07b3f33" stroke="#e07b3f" strokeWidth="1.5"/>
+        <text x="63" y="27" textAnchor="middle" fontSize="13" fill="#e07b3f">⏸</text>
+        {/* Counter pill */}
+        <rect x="86" y="10" width="76" height="24" rx="7" fill="#25252f99" stroke="#3a3a4866" strokeWidth="1"/>
+        <text x="124" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">3 / 5  ·  4s</text>
+        {/* Scene name in viewer */}
+        <text x="240" y="130" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.35)">Master Bedroom</text>
+        {/* Navigation hotspot */}
+        <circle cx="340" cy="150" r="18" fill="#00000055" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+        <text x="340" y="156" textAnchor="middle" fontSize="12" fill="white">→</text>
+        {/* Bottom fade */}
+        <rect y="200" width="480" height="60" rx="10" fill="url(#s14fade2)"/>
         {/* Scene dots */}
-        {[0,1,2,3,4].map(i=>(
-          <circle key={i} cx={344+i*13} cy={234} r={i===2?5:3.5}
-            fill={i===2 ? '#e07b3f' : 'rgba(255,255,255,0.3)'}/>
+        <rect x="186" y="228" width="108" height="22" rx="8" fill="#25252f55"/>
+        {[0,1,2,3,4].map(i => (
+          <circle key={i} cx={210 + i * 16} cy={239} r={i === 2 ? 6 : 4}
+            fill={i === 2 ? '#e07b3f' : 'rgba(255,255,255,0.28)'}/>
         ))}
         {/* Breadcrumb */}
-        <rect x="290" y="242" width="184" height="14" rx="5" fill="#25252f88"/>
-        <text x="382" y="253" textAnchor="middle" fontSize="6.5" fill="#9a9ab0">Lobby › Living Rm › Bedroom</text>
+        <rect x="150" y="252" width="180" height="6" rx="3" fill="#25252f44"/>
+        <text x="240" y="257" textAnchor="middle" fontSize="6" fill="#6b7094">Lobby  ›  Living Room  ›  Bedroom</text>
         {/* Annotations */}
-        <path d="M 118 210 L 118 218" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s12m)" strokeDasharray="3,2"/>
-        <text x="20" y="248" fontSize="7" fill="#f0a060">① Password entry + countdown</text>
-        <path d="M 384 22 Q 400 12 420 8" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s12m)" strokeDasharray="3,2"/>
-        <text x="330" y="6" fontSize="7" fill="#f0a060">10s bar</text>
-        <path d="M 292 32 L 292 26" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s12m)" strokeDasharray="3,2"/>
-        <text x="252" y="76" fontSize="7" fill="#f0a060">⏸ Pause / resume</text>
+        <path d="M 288 0 Q 310 15 360 20" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s14m)" strokeDasharray="3,2"/>
+        <text x="364" y="18" fontSize="8" fill="#f0a060">10 s progress bar</text>
+        <path d="M 63 34 Q 63 56 90 72" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s14m)" strokeDasharray="3,2"/>
+        <text x="94" y="74" fontSize="8" fill="#f0a060">Pause / resume (Space)</text>
+        <path d="M 240 228 Q 240 215 280 205" stroke="#f0a060" strokeWidth="1.3" fill="none" markerEnd="url(#s14m)" strokeDasharray="3,2"/>
+        <text x="284" y="203" fontSize="8" fill="#f0a060">Scene dots — click to jump</text>
       </svg>
     ),
   },
@@ -1049,7 +1122,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
       onMouseDown={onClose}
     >
       <div
-        className="relative w-full max-w-2xl mx-4 rounded-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-4xl mx-4 rounded-2xl overflow-hidden flex flex-col"
         style={{
           background: 'var(--nm-base)',
           boxShadow: '16px 16px 40px rgba(0,0,0,.8), -8px -8px 20px rgba(255,255,255,.04)',
@@ -1071,63 +1144,81 @@ export default function HelpModal({ onClose }: HelpModalProps) {
           </button>
         </div>
 
-        {/* Step tabs */}
-        <div className="flex gap-1 px-4 pt-3 flex-shrink-0 overflow-x-auto">
-          {STEPS.map((s, i) => (
-            <button key={s.id} onClick={() => setStep(i)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-all"
-              style={i === step ? {
-                background: 'rgba(224,123,63,0.15)',
-                color: 'var(--nm-accent)',
-                boxShadow: 'inset 2px 2px 5px rgba(0,0,0,.4)',
-              } : { color: 'var(--nm-muted)' }}>
-              <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold"
-                style={{ background: i === step ? 'var(--nm-accent)' : 'var(--nm-border)', color: i === step ? 'white' : 'var(--nm-muted)' }}>
-                {s.id}
-              </span>
-              <span className="hidden sm:block">{s.title}</span>
-            </button>
-          ))}
-        </div>
+        {/* Body: sidebar + content */}
+        <div className="flex flex-1 min-h-0">
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Step header */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(224,123,63,0.15)', color: 'var(--nm-accent)', boxShadow: '3px 3px 8px rgba(0,0,0,.35)' }}>
-              {current.icon}
+          {/* Left sidebar — step navigator */}
+          <nav className="w-52 flex-shrink-0 overflow-y-auto py-2 flex flex-col"
+            style={{ borderRight: '1px solid var(--nm-border)', background: 'rgba(0,0,0,0.18)' }}>
+            {STEPS.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => setStep(i)}
+                className="flex items-center gap-2.5 py-2.5 pr-3 text-left transition-all"
+                style={i === step ? {
+                  paddingLeft: 10,
+                  borderLeft: '3px solid var(--nm-accent)',
+                  background: 'rgba(224,123,63,0.12)',
+                } : {
+                  paddingLeft: 12,
+                  borderLeft: '3px solid transparent',
+                }}>
+                <span
+                  className="w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold flex-shrink-0"
+                  style={{
+                    background: i === step ? 'var(--nm-accent)' : 'var(--nm-border)',
+                    color: i === step ? 'white' : 'var(--nm-muted)',
+                  }}>
+                  {i + 1}
+                </span>
+                <span
+                  className="text-xs leading-tight"
+                  style={{ color: i === step ? 'var(--nm-accent)' : 'var(--nm-muted)' }}>
+                  {s.title}
+                </span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Main content */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+            {/* Step header */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(224,123,63,0.15)', color: 'var(--nm-accent)', boxShadow: '3px 3px 8px rgba(0,0,0,.35)' }}>
+                {current.icon}
+              </div>
+              <div>
+                <p className="text-[10px] text-nm-muted uppercase tracking-widest">Step {step + 1} of {STEPS.length}</p>
+                <h2 className="font-syne font-bold text-nm-text text-base">{current.title}</h2>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-nm-muted uppercase tracking-widest">Step {current.id} of {STEPS.length}</p>
-              <h2 className="font-syne font-bold text-nm-text text-base">{current.title}</h2>
+
+            {/* Diagram */}
+            <div className="rounded-xl overflow-hidden"
+              style={{ boxShadow: 'inset 3px 3px 8px rgba(0,0,0,.5), inset -2px -2px 6px rgba(255,255,255,.03)' }}>
+              {current.diagram}
             </div>
-          </div>
 
-          {/* Diagram */}
-          <div className="rounded-xl overflow-hidden mb-4"
-            style={{ boxShadow: 'inset 3px 3px 8px rgba(0,0,0,.5), inset -2px -2px 6px rgba(255,255,255,.03)' }}>
-            {current.diagram}
-          </div>
-
-          {/* Description */}
-          <div className="rounded-xl px-4 py-3"
-            style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,.4), inset -1px -1px 4px rgba(255,255,255,.03)' }}>
-            <p className="text-sm text-nm-text leading-relaxed">{current.description}</p>
-          </div>
-
-          {/* Tip */}
-          {'tip' in current && current.tip && (
-            <div className="mt-3 rounded-xl px-4 py-3 flex gap-2"
-              style={{ background: 'rgba(224,123,63,0.08)', border: '1px solid rgba(224,123,63,0.2)' }}>
-              <span className="text-nm-accent text-base flex-shrink-0">💡</span>
-              <p className="text-xs text-nm-text leading-relaxed">{current.tip}</p>
+            {/* Description */}
+            <div className="rounded-xl px-4 py-3"
+              style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,.4), inset -1px -1px 4px rgba(255,255,255,.03)' }}>
+              <p className="text-sm text-nm-text leading-relaxed whitespace-pre-line">{current.description}</p>
             </div>
-          )}
+
+            {/* Tip */}
+            {'tip' in current && current.tip && (
+              <div className="rounded-xl px-4 py-3 flex gap-2"
+                style={{ background: 'rgba(224,123,63,0.08)', border: '1px solid rgba(224,123,63,0.2)' }}>
+                <span className="text-nm-accent text-base flex-shrink-0">💡</span>
+                <p className="text-xs text-nm-text leading-relaxed">{current.tip}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer navigation */}
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+        <div className="flex items-center justify-between px-6 py-3 flex-shrink-0"
           style={{ borderTop: '1px solid var(--nm-border)' }}>
           <button
             onClick={() => setStep(s => Math.max(0, s - 1))}
@@ -1137,13 +1228,14 @@ export default function HelpModal({ onClose }: HelpModalProps) {
             <ChevronLeft size={14}/> Previous
           </button>
 
-          {/* Dots */}
-          <div className="flex gap-1.5">
+          {/* Progress dots */}
+          <div className="flex gap-1">
             {STEPS.map((_, i) => (
               <button key={i} onClick={() => setStep(i)}
                 className="rounded-full transition-all"
                 style={{
-                  width: i === step ? 20 : 8, height: 8,
+                  width: i === step ? 16 : 6,
+                  height: 6,
                   background: i === step ? 'var(--nm-accent)' : 'var(--nm-border)',
                 }}/>
             ))}
