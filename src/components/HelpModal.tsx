@@ -16,6 +16,8 @@ const STEPS = [
           <marker id="s1m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
           <linearGradient id="s1ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3a5a7a"/><stop offset="100%" stopColor="#1a2a4a"/></linearGradient>
           <linearGradient id="s1gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5a3a6a"/><stop offset="100%" stopColor="#2a1a3a"/></linearGradient>
+          <clipPath id="s1clip1"><rect x="22" y="76" width="126" height="88" rx="8"/></clipPath>
+          <clipPath id="s1clip2"><rect x="166" y="76" width="126" height="88" rx="8"/></clipPath>
         </defs>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
         {/* Header */}
@@ -24,32 +26,68 @@ const STEPS = [
         <circle cx="22" cy="22" r="13" fill="#e07b3f"/>
         <text x="22" y="27" textAnchor="middle" fontSize="13" fill="white" fontWeight="bold">A</text>
         <text x="42" y="27" fontSize="12" fill="#e0ddd8" fontWeight="600">ArchScape</text>
+        {/* Nav tabs */}
+        <text x="160" y="26" fontSize="10" fill="#e07b3f" fontWeight="600">Projects</text>
+        <rect x="142" y="37" width="52" height="2" rx="1" fill="#e07b3f"/>
+        <text x="230" y="26" fontSize="10" fill="#6b7094">Templates</text>
         {/* New Project button */}
         <rect x="356" y="9" width="112" height="26" rx="7" fill="#e07b3f"/>
         <text x="412" y="26" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">+ New Project</text>
         <rect x="352" y="5" width="120" height="34" rx="9" fill="none" stroke="#f0a060" strokeWidth="2"/>
         {/* Section label */}
         <text x="20" y="66" fontSize="9" fill="#6b7094" letterSpacing="1">MY PROJECTS</text>
-        {/* Card 1 */}
-        <rect x="20" y="74" width="130" height="162" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
-        <rect x="22" y="76" width="126" height="88" rx="8" fill="url(#s1ga)"/>
+        <text x="460" y="66" textAnchor="end" fontSize="8" fill="#6b7094">Sort: Recent ▾</text>
+        {/* ── Card 1 ── */}
+        <rect x="20" y="72" width="130" height="170" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Thumbnail */}
+        <rect x="22" y="74" width="126" height="90" rx="8" fill="url(#s1ga)"/>
+        {/* Interior perspective lines clipped to thumbnail */}
+        <g clipPath="url(#s1clip1)" opacity="0.35">
+          <line x1="85" y1="76" x2="22" y2="164" stroke="#7ab0e0" strokeWidth="0.8"/>
+          <line x1="85" y1="76" x2="148" y2="164" stroke="#7ab0e0" strokeWidth="0.8"/>
+          <line x1="85" y1="76" x2="22" y2="120" stroke="#7ab0e0" strokeWidth="0.5"/>
+          <line x1="85" y1="76" x2="148" y2="120" stroke="#7ab0e0" strokeWidth="0.5"/>
+          <rect x="65" y="120" width="40" height="44" fill="#2a4a6a" opacity="0.6"/>
+          <rect x="30" y="88" width="30" height="20" fill="#3a6a9a" opacity="0.3"/>
+          <rect x="90" y="88" width="30" height="20" fill="#3a6a9a" opacity="0.3"/>
+        </g>
+        {/* Hotspot dot on thumbnail */}
+        <circle cx="105" cy="105" r="6" fill="#e07b3f99" stroke="white" strokeWidth="1"/>
+        {/* Status badge */}
+        <rect x="26" y="78" width="38" height="14" rx="4" fill="#10b981" fillOpacity="0.85"/>
+        <text x="45" y="89" textAnchor="middle" fontSize="7" fill="white" fontWeight="600">Published</text>
+        {/* Card footer */}
         <rect x="20" y="154" width="130" height="10" fill="#25252f"/>
-        <text x="85" y="178" textAnchor="middle" fontSize="9" fill="#e0ddd8">Modern Apartment</text>
-        <text x="85" y="194" textAnchor="middle" fontSize="8" fill="#6b7094">3 scenes · 2 tours</text>
-        {/* Card 2 */}
-        <rect x="164" y="74" width="130" height="162" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
-        <rect x="166" y="76" width="126" height="88" rx="8" fill="url(#s1gb)"/>
+        <text x="85" y="176" textAnchor="middle" fontSize="9" fill="#e0ddd8" fontWeight="600">Modern Apartment</text>
+        {/* Scene pill */}
+        <rect x="32" y="182" width="44" height="14" rx="4" fill="#2e2e3a"/>
+        <text x="54" y="193" textAnchor="middle" fontSize="7" fill="#9a9ab0">3 scenes</text>
+        <rect x="80" y="182" width="36" height="14" rx="4" fill="#2e2e3a"/>
+        <text x="98" y="193" textAnchor="middle" fontSize="7" fill="#9a9ab0">2 tours</text>
+        <text x="85" y="216" textAnchor="middle" fontSize="7" fill="#6b7094">Edited 2 days ago</text>
+        {/* ── Card 2 ── */}
+        <rect x="164" y="72" width="130" height="170" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="166" y="74" width="126" height="90" rx="8" fill="url(#s1gb)"/>
+        <g clipPath="url(#s1clip2)" opacity="0.3">
+          <line x1="229" y1="76" x2="166" y2="164" stroke="#c080e0" strokeWidth="0.8"/>
+          <line x1="229" y1="76" x2="292" y2="164" stroke="#c080e0" strokeWidth="0.8"/>
+          <rect x="205" y="112" width="48" height="52" fill="#4a2a6a" opacity="0.5"/>
+        </g>
+        <rect x="170" y="78" width="30" height="14" rx="4" fill="#6b7094" fillOpacity="0.85"/>
+        <text x="185" y="89" textAnchor="middle" fontSize="7" fill="white" fontWeight="600">Draft</text>
         <rect x="164" y="154" width="130" height="10" fill="#25252f"/>
-        <text x="229" y="178" textAnchor="middle" fontSize="9" fill="#e0ddd8">Villa Showcase</text>
-        <text x="229" y="194" textAnchor="middle" fontSize="8" fill="#6b7094">7 scenes · 1 tour</text>
-        {/* New card placeholder */}
-        <rect x="308" y="74" width="150" height="162" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1" strokeDasharray="5,3"/>
-        <circle cx="383" cy="154" r="24" fill="#2e2e3a"/>
-        <text x="383" y="162" textAnchor="middle" fontSize="22" fill="#6b7094">+</text>
-        <text x="383" y="218" textAnchor="middle" fontSize="9" fill="#6b7094">New project</text>
-        {/* Arrow annotation */}
-        <path d="M 412 44 L 412 54" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s1m)" strokeDasharray="4,2"/>
-        <text x="312" y="62" fontSize="9" fill="#f0a060">① Click here to start</text>
+        <text x="229" y="176" textAnchor="middle" fontSize="9" fill="#e0ddd8" fontWeight="600">Villa Showcase</text>
+        <rect x="176" y="182" width="44" height="14" rx="4" fill="#2e2e3a"/>
+        <text x="198" y="193" textAnchor="middle" fontSize="7" fill="#9a9ab0">7 scenes</text>
+        <text x="229" y="216" textAnchor="middle" fontSize="7" fill="#6b7094">Edited today</text>
+        {/* ── New card placeholder ── */}
+        <rect x="308" y="72" width="148" height="170" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1" strokeDasharray="5,3"/>
+        <circle cx="382" cy="155" r="26" fill="#2e2e3a"/>
+        <text x="382" y="163" textAnchor="middle" fontSize="24" fill="#6b7094">+</text>
+        <text x="382" y="218" textAnchor="middle" fontSize="9" fill="#6b7094">New project</text>
+        {/* Annotation */}
+        <path d="M 412 44 L 412 56" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s1m)" strokeDasharray="4,2"/>
+        <text x="304" y="64" fontSize="9" fill="#f0a060">① Click to create a new project</text>
       </svg>
     ),
   },
@@ -88,11 +126,25 @@ const STEPS = [
         <text x="35" y="112" textAnchor="middle" fontSize="7" fill="#6b7094">Kitchen</text>
         {/* Viewer — drop zone */}
         <rect x="70" y="44" width="298" height="216" fill="#19191f"/>
-        <rect x="82" y="58" width="274" height="188" rx="10" fill="none" stroke="#e07b3f" strokeWidth="2" strokeDasharray="8,4"/>
-        <circle cx="219" cy="144" r="30" fill="#25252f"/>
-        <text x="219" y="138" textAnchor="middle" fontSize="20" fill="#3a3a48">⬆</text>
-        <text x="219" y="158" textAnchor="middle" fontSize="8" fill="#6b7094">Drop panoramas here</text>
-        <text x="219" y="170" textAnchor="middle" fontSize="7" fill="#4a4a5a">JPG · PNG · MP4 · equirectangular</text>
+        {/* Animated-feel drop zone */}
+        <rect x="82" y="58" width="274" height="188" rx="12" fill="#e07b3f06" stroke="#e07b3f" strokeWidth="2" strokeDasharray="8,4"/>
+        {/* Upload icon group */}
+        <circle cx="219" cy="132" r="36" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="211" y="116" width="16" height="20" rx="2" fill="#3a3a48"/>
+        <polygon points="219,108 226,116 212,116" fill="#e07b3f"/>
+        <rect x="207" y="135" width="24" height="3" rx="1" fill="#3a3a48"/>
+        <text x="219" y="154" textAnchor="middle" fontSize="7.5" fill="#6b7094">Drop panoramas here</text>
+        <text x="219" y="164" textAnchor="middle" fontSize="6.5" fill="#4a4a5a">JPG · PNG · MP4</text>
+        {/* File chips dropping in */}
+        <rect x="96" y="68" width="68" height="20" rx="6" fill="#2e2e3a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="130" y="82" textAnchor="middle" fontSize="7" fill="#9a9ab0">lobby.jpg</text>
+        <rect x="174" y="68" width="68" height="20" rx="6" fill="#2e2e3a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="208" y="82" textAnchor="middle" fontSize="7" fill="#9a9ab0">kitchen.jpg</text>
+        <rect x="252" y="68" width="80" height="20" rx="6" fill="#e07b3f22" stroke="#e07b3f88" strokeWidth="1"/>
+        <text x="292" y="82" textAnchor="middle" fontSize="7" fill="#e07b3f">bedroom.jpg ✓</text>
+        {/* Upload progress bar on last chip */}
+        <rect x="254" y="86" width="76" height="3" rx="1" fill="#3a3a48"/>
+        <rect x="254" y="86" width="50" height="3" rx="1" fill="#e07b3f"/>
         {/* Properties panel */}
         <rect x="368" y="44" width="112" height="216" fill="#22222c"/>
         <text x="424" y="63" textAnchor="middle" fontSize="8" fill="#6b7094">PROPERTIES</text>
@@ -149,40 +201,60 @@ const STEPS = [
         <text x="35" y="112" textAnchor="middle" fontSize="7" fill="#6b7094">Kitchen</text>
         {/* Viewer */}
         <rect x="70" y="44" width="290" height="216" fill="url(#s3g)"/>
-        {/* Placed hotspot dots */}
-        <circle cx="180" cy="150" r="14" fill="#1e1e2699" stroke="#e07b3f" strokeWidth="2"/>
-        <text x="180" y="155" textAnchor="middle" fontSize="10" fill="#e07b3f">→</text>
-        <circle cx="240" cy="110" r="12" fill="#1e1e2699" stroke="#9a9ab0" strokeWidth="1.5"/>
-        <text x="240" y="115" textAnchor="middle" fontSize="9" fill="#9a9ab0">i</text>
-        <circle cx="300" cy="170" r="12" fill="#1e1e2699" stroke="#9a9ab0" strokeWidth="1.5"/>
-        <text x="300" y="175" textAnchor="middle" fontSize="9" fill="#9a9ab0">⊞</text>
+        {/* Faint perspective lines for interior feel */}
+        <line x1="215" y1="44" x2="70" y2="260" stroke="#4a6a8a" strokeWidth="0.5" opacity="0.2"/>
+        <line x1="215" y1="44" x2="360" y2="260" stroke="#4a6a8a" strokeWidth="0.5" opacity="0.2"/>
+        <line x1="70" y1="180" x2="360" y2="180" stroke="#4a6a8a" strokeWidth="0.5" opacity="0.15"/>
+        {/* Navigation hotspot — selected/active */}
+        <circle cx="178" cy="148" r="16" fill="#1e1e2688" stroke="#e07b3f" strokeWidth="2"/>
+        <text x="178" y="153" textAnchor="middle" fontSize="11" fill="#e07b3f">→</text>
+        <circle cx="178" cy="148" r="22" fill="none" stroke="#e07b3f" strokeWidth="1" opacity="0.3"/>
+        <rect x="152" y="170" width="52" height="14" rx="5" fill="#00000066"/>
+        <text x="178" y="181" textAnchor="middle" fontSize="7" fill="#e0ddd8">Kitchen</text>
+        {/* Info Card hotspot */}
+        <circle cx="248" cy="108" r="13" fill="#1e1e2688" stroke="#60a0e0" strokeWidth="1.5"/>
+        <text x="248" y="113" textAnchor="middle" fontSize="10" fill="#60a0e0" fontWeight="bold">i</text>
+        <rect x="222" y="126" width="52" height="14" rx="5" fill="#00000066"/>
+        <text x="248" y="137" textAnchor="middle" fontSize="7" fill="#9a9ab0">Info Card</text>
+        {/* Variants hotspot */}
+        <circle cx="316" cy="165" r="13" fill="#1e1e2688" stroke="#a060e0" strokeWidth="1.5"/>
+        <text x="316" y="170" textAnchor="middle" fontSize="9" fill="#a060e0">⊞</text>
+        <rect x="290" y="183" width="52" height="14" rx="5" fill="#00000066"/>
+        <text x="316" y="194" textAnchor="middle" fontSize="7" fill="#9a9ab0">Variants</text>
+        {/* Crosshair cursor */}
+        <line x1="130" y1="88" x2="130" y2="106" stroke="#e07b3f" strokeWidth="1.5" opacity="0.7"/>
+        <line x1="121" y1="97" x2="139" y2="97" stroke="#e07b3f" strokeWidth="1.5" opacity="0.7"/>
+        <circle cx="130" cy="97" r="10" fill="none" stroke="#e07b3f" strokeWidth="1" opacity="0.4"/>
         {/* Properties panel — hotspot type picker */}
         <rect x="360" y="44" width="120" height="216" fill="#22222c"/>
         <text x="420" y="62" textAnchor="middle" fontSize="8" fill="#6b7094">HOTSPOT</text>
         <line x1="366" y1="67" x2="474" y2="67" stroke="#3a3a48" strokeWidth="1"/>
         <text x="368" y="81" fontSize="7" fill="#6b7094">Type</text>
         {/* 3×2 type button grid */}
-        {[['→ Nav','⊞ Var','i Info'],['⇔ Cmp','⊟ Gal','⬡ Room']].map((row, ri) =>
+        {[
+          ['→ Nav','⊞ Var','i Info'],
+          ['⇔ Cmp','⊟ Gal','⬡ Room'],
+        ].map((row, ri) =>
           row.map((label, ci) => (
             <g key={`${ri}-${ci}`}>
-              <rect x={368+ci*38} y={86+ri*28} width={34} height={22} rx="4"
+              <rect x={368+ci*38} y={86+ri*30} width={35} height={24} rx="5"
                 fill={ri===0&&ci===0 ? '#e07b3f22' : '#2e2e3a'}
-                stroke={ri===0&&ci===0 ? '#e07b3f' : '#3a3a48'} strokeWidth="1"/>
-              <text x={385+ci*38} y={101+ri*28} textAnchor="middle" fontSize="7"
+                stroke={ri===0&&ci===0 ? '#e07b3f' : '#3a3a48'} strokeWidth={ri===0&&ci===0 ? 1.5 : 1}/>
+              <text x={385+ci*38} y={102+ri*30} textAnchor="middle" fontSize="7"
                 fill={ri===0&&ci===0 ? '#e07b3f' : '#9a9ab0'}>{label}</text>
             </g>
           ))
         )}
-        <text x="368" y="152" fontSize="7" fill="#6b7094">Destination</text>
-        <rect x="366" y="156" width="96" height="18" rx="4" fill="#2e2e3a"/>
-        <text x="414" y="169" textAnchor="middle" fontSize="7" fill="#e0ddd8">Kitchen</text>
-        <text x="368" y="188" fontSize="7" fill="#6b7094">Tooltip label</text>
-        <rect x="366" y="192" width="96" height="18" rx="4" fill="#2e2e3a"/>
-        <text x="414" y="205" textAnchor="middle" fontSize="7" fill="#9a9ab0">Go to kitchen…</text>
-        {/* Arrow from viewer to panel */}
-        <path d="M 355 105 L 365 105" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s3m)"/>
-        <text x="155" y="210" fontSize="8" fill="#f0a060">① Place hotspot in viewer</text>
-        <text x="155" y="222" fontSize="8" fill="#f0a060">② Pick type in Properties →</text>
+        <text x="368" y="158" fontSize="7" fill="#6b7094">Destination</text>
+        <rect x="366" y="162" width="96" height="18" rx="4" fill="#2e2e3a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="414" y="175" textAnchor="middle" fontSize="7" fill="#e0ddd8">Kitchen</text>
+        <text x="368" y="194" fontSize="7" fill="#6b7094">Label</text>
+        <rect x="366" y="198" width="96" height="18" rx="4" fill="#2e2e3a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="414" y="211" textAnchor="middle" fontSize="7" fill="#6b7094">Go to kitchen…</text>
+        {/* Annotation arrows */}
+        <path d="M 355 108 L 365 108" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s3m)"/>
+        <text x="82" y="214" fontSize="8" fill="#f0a060">① Click scene to place hotspot</text>
+        <text x="82" y="226" fontSize="8" fill="#f0a060">② Choose type in panel →</text>
       </svg>
     ),
   },
@@ -199,35 +271,46 @@ const STEPS = [
         </defs>
         {/* Dimmed editor behind modal */}
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
-        <rect width="480" height="44" rx="10" fill="#25252f" fillOpacity="0.5"/>
-        <rect y="34" width="480" height="226" fill="#00000055"/>
+        <rect width="480" height="44" rx="10" fill="#25252f" fillOpacity="0.4"/>
+        <rect y="0" width="480" height="260" fill="#00000066"/>
         {/* Modal card */}
-        <rect x="70" y="18" width="340" height="226" rx="14" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="52" y="12" width="376" height="238" rx="14" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
         {/* Modal header */}
-        <rect x="70" y="18" width="340" height="40" rx="14" fill="#2e2e3a"/>
-        <rect x="70" y="44" width="340" height="14" fill="#2e2e3a"/>
-        <text x="240" y="42" textAnchor="middle" fontSize="11" fill="#e0ddd8" fontWeight="bold">Select Destination Scene</text>
-        <circle cx="394" cy="38" r="10" fill="#3a3a48"/>
-        <text x="394" y="42" textAnchor="middle" fontSize="10" fill="#9a9ab0">✕</text>
-        <line x1="82" y1="58" x2="398" y2="58" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="52" y="12" width="376" height="42" rx="14" fill="#2e2e3a"/>
+        <rect x="52" y="40" width="376" height="14" fill="#2e2e3a"/>
+        <text x="230" y="37" textAnchor="middle" fontSize="11" fill="#e0ddd8" fontWeight="bold">Select Destination Scene</text>
+        <circle cx="412" cy="33" r="11" fill="#3a3a48"/>
+        <text x="412" y="37" textAnchor="middle" fontSize="11" fill="#9a9ab0">✕</text>
+        <line x1="64" y1="54" x2="416" y2="54" stroke="#3a3a48" strokeWidth="1"/>
         {/* Search bar */}
-        <rect x="84" y="62" width="302" height="20" rx="6" fill="#1e1e26" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="102" y="76" fontSize="8" fill="#6b7094">Search scenes…</text>
-        {/* Scene thumbnails */}
-        <rect x="84" y="88" width="96" height="80" rx="8" fill="#2a3a4a" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="132" y="178" textAnchor="middle" fontSize="8" fill="#9a9ab0">Living Room</text>
-        {/* Selected thumb */}
-        <rect x="192" y="88" width="96" height="80" rx="8" fill="#3a2a18" stroke="#e07b3f" strokeWidth="2.5"/>
-        <rect x="192" y="154" width="96" height="14" rx="0" fill="#e07b3f22"/>
-        <text x="240" y="178" textAnchor="middle" fontSize="8" fill="#e07b3f" fontWeight="600">Kitchen ✓</text>
-        <rect x="300" y="88" width="96" height="80" rx="8" fill="#2a1a3a" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="348" y="178" textAnchor="middle" fontSize="8" fill="#9a9ab0">Bedroom</text>
-        {/* Callout on selected */}
-        <rect x="188" y="84" width="104" height="102" rx="10" fill="none" stroke="#f0a060" strokeWidth="2"/>
-        <text x="240" y="204" textAnchor="middle" fontSize="9" fill="#f0a060">① Click to link scene</text>
+        <rect x="66" y="58" width="316" height="22" rx="7" fill="#1e1e26" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="84" y="73" fontSize="8" fill="#6b7094">🔍  Search scenes…</text>
+        {/* Row of 4 thumbnails */}
+        {[
+          { x:66,  fill:'#2a3a4a', label:'Living Room',  sel:false },
+          { x:158, fill:'#3a2a18', label:'Kitchen',      sel:true  },
+          { x:250, fill:'#2a1a3a', label:'Bedroom',      sel:false },
+          { x:342, fill:'#1a3a2a', label:'Bathroom',     sel:false },
+        ].map(t => (
+          <g key={t.x}>
+            <rect x={t.x} y={86} width={84} height={70} rx="8" fill={t.fill}
+              stroke={t.sel ? '#e07b3f' : '#3a3a48'} strokeWidth={t.sel ? 2.5 : 1}/>
+            {/* Tiny perspective lines inside each thumb */}
+            <line x1={t.x+42} y1={86} x2={t.x} y2={156} stroke="white" strokeWidth="0.4" opacity="0.12"/>
+            <line x1={t.x+42} y1={86} x2={t.x+84} y2={156} stroke="white" strokeWidth="0.4" opacity="0.12"/>
+            {t.sel && <rect x={t.x} y={140} width={84} height={16} rx="0" fill="#e07b3f22"/>}
+            {t.sel && <circle cx={t.x+70} cy={93} r={8} fill="#e07b3f"/>}
+            {t.sel && <text x={t.x+70} y={97} textAnchor="middle" fontSize="9" fill="white">✓</text>}
+            <text x={t.x+42} y={170} textAnchor="middle" fontSize="7.5"
+              fill={t.sel ? '#e07b3f' : '#9a9ab0'} fontWeight={t.sel ? '600' : 'normal'}>{t.label}</text>
+          </g>
+        ))}
+        {/* Callout highlight on selected */}
+        <rect x="154" y="82" width="92" height="96" rx="10" fill="none" stroke="#f0a060" strokeWidth="2"/>
+        <text x="200" y="192" textAnchor="middle" fontSize="8" fill="#f0a060">① Click to select</text>
         {/* Confirm button */}
-        <rect x="84" y="210" width="302" height="26" rx="7" fill="#e07b3f"/>
-        <text x="235" y="227" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">Link Selected Scene</text>
+        <rect x="66" y="198" width="316" height="28" rx="8" fill="#e07b3f"/>
+        <text x="224" y="216" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">Link  →  Kitchen</text>
       </svg>
     ),
   },
@@ -310,53 +393,73 @@ const STEPS = [
           <radialGradient id="s6g" cx="50%" cy="50%" r="60%"><stop offset="0%" stopColor="#2a3a5a"/><stop offset="100%" stopColor="#0e1018"/></radialGradient>
           <linearGradient id="s6gn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="transparent"/><stop offset="100%" stopColor="#00000099"/></linearGradient>
         </defs>
-        {/* Full-screen preview background */}
-        <rect width="480" height="260" rx="10" fill="#0e1018"/>
+        {/* Panorama background */}
+        <rect width="480" height="260" rx="10" fill="#0a0c14"/>
         <rect width="480" height="260" rx="10" fill="url(#s6g)"/>
-        {/* Guided tour progress bar (top) */}
-        <rect width="480" height="4" rx="2" fill="#3a3a48"/>
-        <rect width="220" height="4" rx="2" fill="#e07b3f"/>
-        {/* Top HUD controls */}
-        <rect x="0" y="4" width="90" height="28" rx="0" fill="#1e1e2699"/>
-        <rect x="10" y="10" width="22" height="16" rx="5" fill="#2e2e3a"/>
+        {/* Subtle horizon */}
+        <line x1="0" y1="172" x2="480" y2="172" stroke="#ffffff06" strokeWidth="1"/>
+        {/* Guided tour progress bar */}
+        <rect width="480" height="3" fill="#3a3a4855"/>
+        <rect width="260" height="3" fill="#e07b3f"/>
+        <circle cx="260" cy="1.5" r="4" fill="#f0a060"/>
+        {/* Top HUD strip */}
+        <rect width="480" height="36" fill="#00000044"/>
+        <rect x="8" y="8" width="26" height="20" rx="6" fill="#25252f99" stroke="#3a3a4866" strokeWidth="1"/>
         <text x="21" y="22" textAnchor="middle" fontSize="9" fill="#9a9ab0">✕</text>
-        <rect x="36" y="10" width="22" height="16" rx="5" fill="#2e2e3a"/>
-        <text x="47" y="22" textAnchor="middle" fontSize="10" fill="#e07b3f">▶</text>
-        <rect x="62" y="10" width="22" height="16" rx="5" fill="#2e2e3a"/>
-        <text x="73" y="22" textAnchor="middle" fontSize="8" fill="#9a9ab0">⋯</text>
-        {/* Compass rose (top-right) */}
-        <circle cx="448" cy="28" r="20" fill="#25252f99" stroke="#3a3a48" strokeWidth="1"/>
-        <circle cx="448" cy="28" r="16" fill="none" stroke="#3a3a48" strokeWidth="1"/>
-        <polygon points="448,13 451,26 448,22 445,26" fill="#e07b3f"/>
-        <polygon points="448,43 451,30 448,34 445,30" fill="#6b7094"/>
-        <text x="448" y="16" textAnchor="middle" fontSize="6" fill="#e07b3f" fontWeight="bold">N</text>
-        {/* Scene hotspot in viewer */}
-        <circle cx="220" cy="140" r="15" fill="#1e1e2699" stroke="white" strokeWidth="1.5"/>
-        <text x="220" y="145" textAnchor="middle" fontSize="10" fill="white">→</text>
-        <text x="220" y="164" textAnchor="middle" fontSize="8" fill="white" fillOpacity="0.7">Kitchen</text>
+        <rect x="40" y="8" width="26" height="20" rx="6" fill="#e07b3f22" stroke="#e07b3f88" strokeWidth="1"/>
+        <text x="53" y="22" textAnchor="middle" fontSize="11" fill="#e07b3f">▶</text>
+        <rect x="72" y="8" width="70" height="20" rx="6" fill="#25252f99" stroke="#3a3a4866" strokeWidth="1"/>
+        <text x="107" y="22" textAnchor="middle" fontSize="8" fill="#9a9ab0">2 / 5  ·  8s</text>
+        {/* ── Proper 8-point compass rose ── */}
+        <circle cx="448" cy="44" r="28" fill="#1e1e26bb" stroke="#3a3a48" strokeWidth="1"/>
+        <circle cx="448" cy="44" r="22" fill="none" stroke="#3a3a4840" strokeWidth="1"/>
+        {/* N – orange north */}
+        <polygon points="448,20 451,40 448,35 445,40" fill="#e07b3f"/>
+        {/* S – muted south */}
+        <polygon points="448,68 451,48 448,53 445,48" fill="#4a4a60"/>
+        {/* E */}
+        <polygon points="472,44 452,41 457,44 452,47" fill="#4a4a60"/>
+        {/* W */}
+        <polygon points="424,44 444,41 439,44 444,47" fill="#4a4a60"/>
+        {/* Intercardinals */}
+        <polygon points="465,27 452,40 453,38 455,36" fill="#35354a"/>
+        <polygon points="431,27 444,40 443,38 441,36" fill="#35354a"/>
+        <polygon points="465,61 452,48 453,50 455,52" fill="#35354a"/>
+        <polygon points="431,61 444,48 443,50 441,52" fill="#35354a"/>
+        <text x="448" y="25" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="bold">N</text>
+        <text x="448" y="72" textAnchor="middle" fontSize="6" fill="#6b7094">S</text>
+        <text x="474" y="47" textAnchor="middle" fontSize="6" fill="#6b7094">E</text>
+        <text x="422" y="47" textAnchor="middle" fontSize="6" fill="#6b7094">W</text>
+        {/* Scene hotspot */}
+        <circle cx="210" cy="148" r="18" fill="#00000066" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5"/>
+        <text x="210" y="153" textAnchor="middle" fontSize="12" fill="white">→</text>
+        <rect x="166" y="172" width="88" height="18" rx="6" fill="#00000055"/>
+        <text x="210" y="185" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.7)">Go to Kitchen</text>
         {/* Bottom gradient */}
-        <rect x="0" y="210" width="480" height="50" fill="url(#s6gn)"/>
-        {/* Breadcrumb (bottom-right) */}
-        <rect x="310" y="216" width="162" height="18" rx="6" fill="#25252f88"/>
-        <text x="391" y="229" textAnchor="middle" fontSize="7" fill="#9a9ab0">Lobby › Living Rm › Kitchen</text>
-        {/* Scene dots (bottom-centre) */}
-        {[0,1,2,3].map(i=>(
-          <circle key={i} cx={218+i*14} cy={248} r={i===0?5:3.5}
-            fill={i===0 ? '#e07b3f' : 'rgba(255,255,255,0.35)'}/>
+        <rect x="0" y="200" width="480" height="60" fill="url(#s6gn)"/>
+        {/* Breadcrumb */}
+        <rect x="292" y="208" width="182" height="20" rx="7" fill="#25252faa" stroke="#3a3a4844" strokeWidth="1"/>
+        <text x="383" y="222" textAnchor="middle" fontSize="7" fill="#9a9ab0">Lobby  ›  Living Rm  ›  Kitchen</text>
+        {/* Design tray */}
+        <rect x="144" y="232" width="192" height="22" rx="8" fill="#25252faa" stroke="#3a3a4844" strokeWidth="1"/>
+        <text x="192" y="247" textAnchor="middle" fontSize="7" fill="#6b7094">Marble</text>
+        <rect x="208" y="234" width="52" height="18" rx="5" fill="#e07b3f22" stroke="#e07b3f88" strokeWidth="1"/>
+        <text x="234" y="247" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="600">Wood ✓</text>
+        <text x="284" y="247" textAnchor="middle" fontSize="7" fill="#6b7094">Concrete</text>
+        {/* Scene dots */}
+        {[0,1,2,3,4].map(i => (
+          <circle key={i} cx={216+i*12} cy={257} r={i===1?5:3.5}
+            fill={i===1 ? '#e07b3f' : 'rgba(255,255,255,0.3)'}/>
         ))}
-        {/* Design tray (bottom) */}
-        <rect x="120" y="230" width="160" height="22" rx="8" fill="#25252f99" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="152" y="245" textAnchor="middle" fontSize="7" fill="#9a9ab0">Marble</text>
-        <text x="200" y="245" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="600">Wood ✓</text>
-        <text x="248" y="245" textAnchor="middle" fontSize="7" fill="#9a9ab0">Concrete</text>
         {/* Annotations */}
-        <path d="M 220 5 L 230 15" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
-        <text x="235" y="13" fontSize="7" fill="#f0a060">Guided tour progress</text>
-        <path d="M 428 28 L 418 28" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
-        <text x="310" y="32" fontSize="7" fill="#f0a060">Compass (rotates live)</text>
-        <path d="M 310 225 L 300 235" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
-        <text x="210" y="211" fontSize="7" fill="#f0a060">Scene breadcrumb</text>
-        <path d="M 200 252 L 200 258" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <path d="M 262 2 Q 270 20 248 26" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="264" y="20" fontSize="7" fill="#f0a060">Tour progress bar</text>
+        <path d="M 420 44 L 410 44" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="300" y="40" fontSize="7" fill="#f0a060">Compass rose</text>
+        <path d="M 292 218 L 282 226" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="180" y="216" fontSize="7" fill="#f0a060">Scene breadcrumb</text>
+        <path d="M 234 232 L 234 226" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="148" y="224" fontSize="7" fill="#f0a060">Design variants tray</text>
       </svg>
     ),
   },
@@ -489,35 +592,58 @@ const STEPS = [
         <path d="M 263 36 L 263 58" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#a8)"/>
         <text x="248" y="72" fontSize="8" fill="#f0a060">Export HTML</text>
         {/* QR Code Modal */}
-        <rect x="60" y="90" width="160" height="160" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="140" y="112" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Share Tour</text>
-        <line x1="72" y1="118" x2="208" y2="118" stroke="#3a3a48" strokeWidth="1"/>
-        {/* QR code grid */}
-        {Array.from({length:6}).map((_,r)=>Array.from({length:6}).map((_,c)=>(
-          <rect key={`${r}-${c}`} x={85+c*16} y={126+r*16} width={13} height={13} rx="1"
-            fill={(r===0||r===5||c===0||c===5||(r>1&&r<4&&c>1&&c<4)) ? '#e0ddd8' : '#25252f'}/>
-        )))}
-        <text x="140" y="228" textAnchor="middle" fontSize="8" fill="#6b7094">archscape.io/tour/abc123</text>
-        <rect x="76" y="234" width="128" height="10" rx="4" fill="#e07b3f22"/>
-        <text x="140" y="243" textAnchor="middle" fontSize="7" fill="#e07b3f">Copy Link</text>
+        <rect x="56" y="86" width="172" height="168" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="142" y="108" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Share Tour</text>
+        <line x1="68" y1="114" x2="216" y2="114" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Realistic QR code — 3 finder squares + data cells */}
+        {/* Top-left finder */}
+        <rect x="76" y="120" width="36" height="36" rx="3" fill="#e0ddd8"/>
+        <rect x="80" y="124" width="28" height="28" rx="2" fill="#25252f"/>
+        <rect x="84" y="128" width="20" height="20" rx="1" fill="#e0ddd8"/>
+        {/* Top-right finder */}
+        <rect x="160" y="120" width="36" height="36" rx="3" fill="#e0ddd8"/>
+        <rect x="164" y="124" width="28" height="28" rx="2" fill="#25252f"/>
+        <rect x="168" y="128" width="20" height="20" rx="1" fill="#e0ddd8"/>
+        {/* Bottom-left finder */}
+        <rect x="76" y="200" width="36" height="36" rx="3" fill="#e0ddd8"/>
+        <rect x="80" y="204" width="28" height="28" rx="2" fill="#25252f"/>
+        <rect x="84" y="208" width="20" height="20" rx="1" fill="#e0ddd8"/>
+        {/* Data module scatter */}
+        {[[122,120],[130,120],[142,120],[150,124],[122,128],[134,136],[142,132],[150,140],
+          [122,144],[138,144],[126,152],[142,152],[154,156],[122,164],[134,160],[146,168],
+          [122,184],[130,188],[138,180],[150,184],[126,196],[142,192],[154,196],
+          [122,204],[130,208],[138,212],[154,208],[126,220],[146,216]
+        ].map(([x,y],i)=>(
+          <rect key={i} x={x} y={y} width={6} height={6} rx="1" fill="#e0ddd8"/>
+        ))}
+        <text x="142" y="250" textAnchor="middle" fontSize="7" fill="#6b7094">archscape.io/tour/abc</text>
+        <rect x="68" y="244" width="148" height="18" rx="6" fill="#e07b3f"/>
+        <text x="142" y="257" textAnchor="middle" fontSize="8" fill="white" fontWeight="600">Copy Link</text>
         {/* Analytics panel */}
-        <rect x="250" y="90" width="210" height="160" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
-        <text x="355" y="112" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Analytics</text>
-        <line x1="262" y1="118" x2="448" y2="118" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="248" y="86" width="220" height="168" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="358" y="108" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Analytics</text>
+        <line x1="260" y1="114" x2="456" y2="114" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Axis */}
+        <line x1="268" y1="118" x2="268" y2="220" stroke="#3a3a48" strokeWidth="1"/>
+        <line x1="268" y1="220" x2="456" y2="220" stroke="#3a3a48" strokeWidth="1"/>
         {/* Bar chart */}
         {[
-          {label:'Living Rm', h:70, visits:24},
-          {label:'Kitchen',   h:45, visits:15},
-          {label:'Bedroom',   h:55, visits:19},
-          {label:'Bathroom',  h:28, visits:9},
+          {label:'Living Rm', h:76, visits:24, avg:'2m 12s'},
+          {label:'Kitchen',   h:48, visits:15, avg:'1m 30s'},
+          {label:'Bedroom',   h:60, visits:19, avg:'1m 55s'},
+          {label:'Bathroom',  h:30, visits:9,  avg:'0m 48s'},
         ].map((bar, i) => (
           <g key={i}>
-            <rect x={268+i*48} y={200-bar.h} width={34} height={bar.h} rx="3" fill="#e07b3f" fillOpacity={0.6+i*0.05}/>
-            <text x={285+i*48} y={210} textAnchor="middle" fontSize="6" fill="#6b7094">{bar.label}</text>
-            <text x={285+i*48} y={198-bar.h} textAnchor="middle" fontSize="7" fill="#e0ddd8">{bar.visits}</text>
+            <rect x={278+i*44} y={220-bar.h} width={30} height={bar.h} rx="3"
+              fill="#e07b3f" fillOpacity={i===0?0.9:0.55}/>
+            <text x={293+i*44} y={228} textAnchor="middle" fontSize="5.5" fill="#6b7094">{bar.label}</text>
+            <text x={293+i*44} y={218-bar.h} textAnchor="middle" fontSize="7" fill="#e0ddd8" fontWeight="600">{bar.visits}</text>
           </g>
         ))}
-        <text x="355" y="228" textAnchor="middle" fontSize="7" fill="#6b7094">visits per scene · last 7 days</text>
+        <text x="358" y="240" textAnchor="middle" fontSize="6.5" fill="#6b7094">scene visits · this week</text>
+        {/* Total stat pill */}
+        <rect x="284" y="246" width="148" height="16" rx="5" fill="#2e2e3a"/>
+        <text x="358" y="258" textAnchor="middle" fontSize="7" fill="#9a9ab0">67 total visits · avg 1m 36s / scene</text>
       </svg>
     ),
   },
