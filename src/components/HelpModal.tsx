@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ChevronRight, ChevronLeft, Upload, Plus, Eye, Save, Globe, Navigation, Image, Map } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Upload, Plus, Eye, Navigation, Image, Map, Layers, Share2, BarChart2 } from 'lucide-react';
 
 interface HelpModalProps { onClose: () => void }
 
@@ -39,8 +39,9 @@ const STEPS = [
     id: 2,
     title: 'Upload Panoramas',
     icon: <Upload size={18} />,
-    summary: 'Upload your 360° images or videos into the tour editor.',
-    description: 'Inside the editor, click "Upload" in the toolbar or drag & drop files onto the viewer. Supported: equirectangular JPG/PNG, 360° video MP4, and fisheye images (auto-converted). You can upload multiple files at once.',
+    summary: 'Upload 360° panoramas and replace them when you have updated images.',
+    description: 'Click "Upload" in the toolbar or drag & drop files onto the viewer. Supported formats: equirectangular JPG/PNG, Stereo SBS/TB, Fisheye (auto-converted), and 360° video MP4/WebM. To swap a scene\'s panorama for a newer version, select the scene and click "Replace Panorama" in the Properties panel — hotspots and markers are preserved.',
+    tip: 'Format is auto-detected from image dimensions — override it in Properties if needed. Equirectangular is 2:1, Stereo SBS is 4:1, Fisheye is square. Replace Panorama keeps all your hotspots and floor plan markers in place.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
@@ -73,8 +74,9 @@ const STEPS = [
     id: 3,
     title: 'Add Hotspots',
     icon: <Navigation size={18} />,
-    summary: 'Place navigation hotspots to connect scenes together.',
-    description: 'Click "Hotspot" in the toolbar (or press H), then click anywhere in the panorama to place a navigation marker. A scene picker pops up — select the destination scene. In the viewer, click the hotspot icon to teleport to the linked scene.',
+    summary: 'Place hotspots to connect scenes and surface rich information.',
+    description: 'Press H (or click "Hotspot" in the toolbar), then click in the panorama to place one. Six types are available — choose in the Properties panel:\n\n• Navigation — teleports to another scene.\n• Variants — lets viewers flip through design options (materials, finishes).\n• Info Card — shows a title, icon and body text on click.\n• Compare — overlays two scenes with a draggable split divider.\n• Gallery — opens a full-screen photo lightbox.\n• Room — displays room name, area, ceiling height and finish materials.',
+    tip: 'Keyboard: H = place hotspot, M = add media, Esc = cancel. Variants hotspots sync automatically across all linked scenes so the panel stays open while navigating.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
@@ -163,8 +165,8 @@ const STEPS = [
     id: 5,
     title: 'Properties Panel',
     icon: <Navigation size={18} />,
-    summary: 'Customise each scene and hotspot from the right-side panel.',
-    description: 'Click any scene in the sidebar to see its properties: rename it, change panorama format (mono/stereo/fisheye), save your current camera view as the initial angle. Click a hotspot to change its icon, tooltip label, or re-link it to a different scene.',
+    summary: 'Customise every scene, hotspot and design option from the right panel.',
+    description: 'Click any scene to rename it, set its initial camera angle, or change panorama format. Click a hotspot to switch its type, update labels, or re-link it. For Variants hotspots, add option cards (images + labels) that sync across all linked scenes automatically. For Room hotspots, enter area, ceiling height and finish materials. Zones (folders) can be colour-coded from the sidebar for easy organisation.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
@@ -219,8 +221,9 @@ const STEPS = [
     id: 6,
     title: 'Preview & Save',
     icon: <Eye size={18} />,
-    summary: 'Test your tour in preview mode, then save or publish.',
-    description: 'Click "Preview" in the toolbar to enter full-screen preview mode — all hotspots become clickable and teleport you between scenes. Use the bottom navigation dots to jump between scenes. Click "Save" to save your work, or "Publish" to export the tour as a shareable JSON package.',
+    summary: 'Experience the tour in full preview mode with navigation aids.',
+    description: 'Click "Preview" to enter full-screen mode. In preview:\n\n• Compass (top-right) — rotates with your view; set the North direction per-scene using "Set N" in the editor.\n• Guided Tour — the HUD Play button auto-advances scenes every 10 seconds with a progress bar. Press Space to pause/resume.\n• Scene Breadcrumb — shows your navigation history (bottom-right), click any crumb to jump back.\n• Scene Dots — quick-jump to any scene at the bottom-centre.\n• Design Tray — a persistent strip at the bottom lets viewers flip through material variants without clicking a hotspot.',
+    tip: 'Press Space to pause/resume the guided tour. Click "Save" to store your work locally; "Publish" packages the tour for sharing. The splash screen and password gate (if set) are shown to viewers before the tour begins.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
@@ -267,6 +270,167 @@ const STEPS = [
         {/* Exit button */}
         <rect x="10" y="224" width="50" height="18" rx="6" fill="rgba(0,0,0,0.5)"/>
         <text x="35" y="236" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.7)">✕ Exit</text>
+      </svg>
+    ),
+  },
+  {
+    id: 7,
+    title: 'Floor Plan Minimap',
+    icon: <Map size={18} />,
+    summary: 'Tag scenes on a floor plan so viewers always know where they are.',
+    description: 'Upload a floor plan image from the editor toolbar. Then, in the minimap widget (bottom-left), click "Tag location" and click on the map to place a marker for the current scene. Repeat for every scene.\n\nIn preview mode, the minimap auto-switches to the correct floor when you navigate to a tagged scene. If a scene is tagged on multiple floors an "Also on:" nudge appears. Click any scene dot to teleport directly to that scene.',
+    tip: 'Markers persist across sessions. Use the "Move" button to reposition a marker, or "Remove" to untag a scene. The direction arrow in the current-scene dot rotates with your view.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="a7" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/>
+          </marker>
+          <marker id="a7b" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#60c0ff"/>
+          </marker>
+          <radialGradient id="g7v" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stopColor="#2a3a5a"/>
+            <stop offset="100%" stopColor="#0e1018"/>
+          </radialGradient>
+        </defs>
+        {/* Viewer background (preview mode) */}
+        <rect width="480" height="260" rx="10" fill="#0e1018"/>
+        <rect width="480" height="260" rx="10" fill="url(#g7v)"/>
+        {/* Header bar */}
+        <rect width="480" height="36" rx="10" fill="#1e1e2699"/>
+        <rect y="26" width="480" height="10" fill="#1e1e2699"/>
+        <text x="240" y="22" textAnchor="middle" fontSize="9" fill="#9a9ab0">Preview Mode — Floor Plan Minimap</text>
+        {/* Minimap widget */}
+        <rect x="12" y="148" width="190" height="104" rx="10" fill="#25252f" fillOpacity="0.95" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Widget header */}
+        <rect x="12" y="148" width="190" height="22" rx="10" fill="#2e2e3a"/>
+        <rect x="12" y="160" width="190" height="10" fill="#2e2e3a"/>
+        <text x="26" y="163" fontSize="8" fill="#9a9ab0">Floor Plan</text>
+        {/* Floor tabs */}
+        <rect x="12" y="170" width="190" height="16" fill="#22222c"/>
+        <text x="30" y="181" fontSize="7" fill="#e07b3f" fontWeight="bold">Floor 1</text>
+        <rect x="22" y="184" width="30" height="2" fill="#e07b3f"/>
+        <circle cx="55" cy="178" r="3" fill="#e07b3f"/>
+        <text x="76" y="181" fontSize="7" fill="#6b7094">Floor 2</text>
+        {/* "Also on" nudge */}
+        <rect x="12" y="186" width="190" height="14" fill="#e07b3f11"/>
+        <text x="22" y="196" fontSize="7" fill="#9a9ab0">Also on:</text>
+        <text x="55" y="196" fontSize="7" fill="#e07b3f" fontWeight="bold">Floor 2</text>
+        {/* Map area */}
+        <rect x="12" y="200" width="190" height="52" rx="0" fill="#19191f"/>
+        <rect x="12" y="240" width="190" height="12" rx="10" fill="#19191f"/>
+        {/* Floor plan outlines */}
+        <rect x="24" y="206" width="48" height="38" rx="2" fill="none" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="68" y="206" width="28" height="18" rx="2" fill="none" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="68" y="224" width="28" height="20" rx="2" fill="none" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="96" y="206" width="36" height="38" rx="2" fill="none" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="132" y="206" width="58" height="38" rx="2" fill="none" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Scene markers */}
+        <circle cx="44" cy="224" r="7" fill="#e07b3f" stroke="white" strokeWidth="1.5"/>
+        <circle cx="44" cy="224" r="12" fill="none" stroke="#e07b3f" strokeWidth="1" opacity="0.4"/>
+        <polygon points="44,218 46,224 44,221 42,224" fill="white"/>
+        <circle cx="82" cy="214" r="4" fill="#25252f" stroke="#3a3a48" strokeWidth="1.5"/>
+        <circle cx="82" cy="234" r="4" fill="#25252f" stroke="#3a3a48" strokeWidth="1.5"/>
+        <circle cx="115" cy="224" r="4" fill="#25252f" stroke="#3a3a48" strokeWidth="1.5"/>
+        <circle cx="157" cy="218" r="4" fill="#25252f" stroke="#3a3a48" strokeWidth="1.5"/>
+        <circle cx="168" cy="234" r="4" fill="#25252f" stroke="#3a3a48" strokeWidth="1.5"/>
+        {/* Annotations */}
+        <path d="M 205 165 Q 280 140 330 100" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#a7)" strokeDasharray="4,2"/>
+        <text x="270" y="90" fontSize="9" fill="#f0a060">① Auto-switches floor</text>
+        <text x="270" y="102" fontSize="9" fill="#f0a060">   when navigating</text>
+        <path d="M 86 214 Q 160 170 240 155" stroke="#60c0ff" strokeWidth="1.5" fill="none" markerEnd="url(#a7b)" strokeDasharray="4,2"/>
+        <text x="242" y="150" fontSize="9" fill="#60c0ff">② Click dot to teleport</text>
+        <text x="242" y="163" fontSize="9" fill="#60c0ff">   to that scene</text>
+        <path d="M 56 195 Q 100 190 130 185" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#a7)" strokeDasharray="4,2"/>
+        <text x="132" y="182" fontSize="8" fill="#f0a060">③ Multi-floor nudge</text>
+      </svg>
+    ),
+  },
+  {
+    id: 8,
+    title: 'Share, Export & Advanced',
+    icon: <Share2 size={18} />,
+    summary: 'Share your tour via QR code, embed it, export to HTML, and more.',
+    description: 'The toolbar utility buttons (icon-only, right of the main actions) unlock powerful features:\n\n• QR Code — generates a scannable QR linking to your published tour.\n• Embed </> — copy an iframe snippet to drop the tour into any website.\n• Export HTML — bundles the entire tour (images + viewer) into one self-contained .html file.\n• Snapshots — save named version checkpoints and restore them at any time.\n• Analytics — see per-scene visit counts and average dwell time across sessions.\n• WebXR / VR — click "Enter VR" in preview (when a compatible headset is connected) for an immersive walkthrough.',
+    tip: 'QR and embed codes are generated from the published tour URL. HTML export can take a moment for large tours — progress is shown while images are bundled. Snapshots are stored locally (up to 20 versions).',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="a8" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/>
+          </marker>
+        </defs>
+        {/* Background */}
+        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
+        {/* Toolbar */}
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        {/* Logo */}
+        <circle cx="22" cy="22" r="12" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">A</text>
+        {/* Primary buttons */}
+        <rect x="46" y="9" width="58" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="75" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">⬆ Upload</text>
+        <rect x="110" y="9" width="58" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="139" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">+ Hotspot</text>
+        {/* Separator */}
+        <rect x="175" y="12" width="1" height="20" fill="#3a3a48"/>
+        {/* Utility icon buttons — highlighted row */}
+        {[0,1,2,3,4,5].map(i => (
+          <rect key={i} x={183+i*33} y="9" width="28" height="26" rx="6"
+            fill={i < 3 ? '#e07b3f22' : '#2e2e3a'} stroke={i < 3 ? '#e07b3f' : 'none'} strokeWidth="1"/>
+        ))}
+        <text x="197" y="26" textAnchor="middle" fontSize="9" fill="#e07b3f">⊞</text>
+        <text x="230" y="26" textAnchor="middle" fontSize="9" fill="#e07b3f">{`</>`}</text>
+        <text x="263" y="27" textAnchor="middle" fontSize="11" fill="#e07b3f">↓</text>
+        <text x="296" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">◷</text>
+        <text x="329" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">▦</text>
+        <text x="362" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">?</text>
+        {/* Separator */}
+        <rect x="378" y="12" width="1" height="20" fill="#3a3a48"/>
+        {/* Preview/Save/Publish */}
+        <rect x="384" y="9" width="46" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="407" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">Preview</text>
+        <rect x="434" y="9" width="40" height="26" rx="7" fill="#e07b3f"/>
+        <text x="454" y="26" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">Publish</text>
+        {/* Annotation arrows */}
+        <path d="M 197 36 L 197 58" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#a8)"/>
+        <text x="140" y="72" fontSize="8" fill="#f0a060">QR Code</text>
+        <path d="M 230 36 L 230 58" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#a8)"/>
+        <text x="214" y="72" fontSize="8" fill="#f0a060">Embed</text>
+        <path d="M 263 36 L 263 58" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#a8)"/>
+        <text x="248" y="72" fontSize="8" fill="#f0a060">Export HTML</text>
+        {/* QR Code Modal */}
+        <rect x="60" y="90" width="160" height="160" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="140" y="112" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Share Tour</text>
+        <line x1="72" y1="118" x2="208" y2="118" stroke="#3a3a48" strokeWidth="1"/>
+        {/* QR code grid */}
+        {Array.from({length:6}).map((_,r)=>Array.from({length:6}).map((_,c)=>(
+          <rect key={`${r}-${c}`} x={85+c*16} y={126+r*16} width={13} height={13} rx="1"
+            fill={(r===0||r===5||c===0||c===5||(r>1&&r<4&&c>1&&c<4)) ? '#e0ddd8' : '#25252f'}/>
+        )))}
+        <text x="140" y="228" textAnchor="middle" fontSize="8" fill="#6b7094">archscape.io/tour/abc123</text>
+        <rect x="76" y="234" width="128" height="10" rx="4" fill="#e07b3f22"/>
+        <text x="140" y="243" textAnchor="middle" fontSize="7" fill="#e07b3f">Copy Link</text>
+        {/* Analytics panel */}
+        <rect x="250" y="90" width="210" height="160" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="355" y="112" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Analytics</text>
+        <line x1="262" y1="118" x2="448" y2="118" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Bar chart */}
+        {[
+          {label:'Living Rm', h:70, visits:24},
+          {label:'Kitchen',   h:45, visits:15},
+          {label:'Bedroom',   h:55, visits:19},
+          {label:'Bathroom',  h:28, visits:9},
+        ].map((bar, i) => (
+          <g key={i}>
+            <rect x={268+i*48} y={200-bar.h} width={34} height={bar.h} rx="3" fill="#e07b3f" fillOpacity={0.6+i*0.05}/>
+            <text x={285+i*48} y={210} textAnchor="middle" fontSize="6" fill="#6b7094">{bar.label}</text>
+            <text x={285+i*48} y={198-bar.h} textAnchor="middle" fontSize="7" fill="#e0ddd8">{bar.visits}</text>
+          </g>
+        ))}
+        <text x="355" y="228" textAnchor="middle" fontSize="7" fill="#6b7094">visits per scene · last 7 days</text>
       </svg>
     ),
   },
@@ -349,29 +513,12 @@ export default function HelpModal({ onClose }: HelpModalProps) {
             <p className="text-sm text-nm-text leading-relaxed">{current.description}</p>
           </div>
 
-          {/* Tips */}
-          {current.id === 3 && (
+          {/* Tip */}
+          {'tip' in current && current.tip && (
             <div className="mt-3 rounded-xl px-4 py-3 flex gap-2"
               style={{ background: 'rgba(224,123,63,0.08)', border: '1px solid rgba(224,123,63,0.2)' }}>
               <span className="text-nm-accent text-base flex-shrink-0">💡</span>
-              <p className="text-xs text-nm-text leading-relaxed">
-                <strong>Keyboard shortcut:</strong> Press <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono"
-                  style={{ background: 'rgba(255,255,255,.1)', border: '1px solid var(--nm-border)' }}>H</kbd> to activate the Hotspot tool,{' '}
-                <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono"
-                  style={{ background: 'rgba(255,255,255,.1)', border: '1px solid var(--nm-border)' }}>M</kbd> for Media,{' '}
-                <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono"
-                  style={{ background: 'rgba(255,255,255,.1)', border: '1px solid var(--nm-border)' }}>Esc</kbd> to cancel.
-              </p>
-            </div>
-          )}
-          {current.id === 2 && (
-            <div className="mt-3 rounded-xl px-4 py-3 flex gap-2"
-              style={{ background: 'rgba(224,123,63,0.08)', border: '1px solid rgba(224,123,63,0.2)' }}>
-              <span className="text-nm-accent text-base flex-shrink-0">📐</span>
-              <p className="text-xs text-nm-text leading-relaxed">
-                Supported formats: <strong>Equirectangular</strong> (2:1 ratio), <strong>Stereo SBS</strong> (4:1), <strong>Stereo Top-Bottom</strong> (1:1), <strong>Fisheye</strong> (auto-converted), <strong>360° video</strong> (MP4/WebM).
-                The format is auto-detected from the image dimensions — you can override it in the Properties panel.
-              </p>
+              <p className="text-xs text-nm-text leading-relaxed">{current.tip}</p>
             </div>
           )}
         </div>
