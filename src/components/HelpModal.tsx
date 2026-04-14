@@ -12,26 +12,44 @@ const STEPS = [
     description: 'From the Home screen, click "New Project", give it a name, then click Create. Each project can hold multiple tours.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
-        {/* Home screen mockup */}
+        <defs>
+          <marker id="s1m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <linearGradient id="s1ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3a5a7a"/><stop offset="100%" stopColor="#1a2a4a"/></linearGradient>
+          <linearGradient id="s1gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5a3a6a"/><stop offset="100%" stopColor="#2a1a3a"/></linearGradient>
+        </defs>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
         {/* Header */}
-        <rect x="0" y="0" width="480" height="44" rx="10" fill="#25252f"/>
-        <rect x="0" y="34" width="480" height="10" fill="#25252f"/>
-        <circle cx="20" cy="22" r="12" fill="#2e2e3a"/>
-        <rect x="40" y="15" width="70" height="14" rx="4" fill="#3a3a48"/>
-        {/* Highlight: New Project button */}
-        <rect x="370" y="10" width="96" height="26" rx="8" fill="#e07b3f"/>
-        <text x="418" y="27" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">+ New Project</text>
-        {/* Arrow pointing at button */}
-        <path d="M 330 40 Q 350 55 370 28" stroke="#f0a060" strokeWidth="2.5" fill="none" strokeDasharray="5,3" markerEnd="url(#arr)"/>
-        <text x="285" y="52" fontSize="11" fill="#f0a060" fontWeight="600">① Click here</text>
-        {/* Annotation box */}
-        <rect x="358" y="4" width="116" height="36" rx="8" fill="none" stroke="#f0a060" strokeWidth="2"/>
-        {/* Empty state */}
-        <rect x="100" y="90" width="280" height="120" rx="12" fill="#25252f" opacity="0.6"/>
-        <text x="240" y="145" textAnchor="middle" fontSize="12" fill="#6b7094">No projects yet</text>
-        <text x="240" y="163" textAnchor="middle" fontSize="10" fill="#4a4a5a">Create your first virtual tour project</text>
-        <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker></defs>
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        <circle cx="22" cy="22" r="13" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="13" fill="white" fontWeight="bold">A</text>
+        <text x="42" y="27" fontSize="12" fill="#e0ddd8" fontWeight="600">ArchScape</text>
+        {/* New Project button */}
+        <rect x="356" y="9" width="112" height="26" rx="7" fill="#e07b3f"/>
+        <text x="412" y="26" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">+ New Project</text>
+        <rect x="352" y="5" width="120" height="34" rx="9" fill="none" stroke="#f0a060" strokeWidth="2"/>
+        {/* Section label */}
+        <text x="20" y="66" fontSize="9" fill="#6b7094" letterSpacing="1">MY PROJECTS</text>
+        {/* Card 1 */}
+        <rect x="20" y="74" width="130" height="162" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="22" y="76" width="126" height="88" rx="8" fill="url(#s1ga)"/>
+        <rect x="20" y="154" width="130" height="10" fill="#25252f"/>
+        <text x="85" y="178" textAnchor="middle" fontSize="9" fill="#e0ddd8">Modern Apartment</text>
+        <text x="85" y="194" textAnchor="middle" fontSize="8" fill="#6b7094">3 scenes · 2 tours</text>
+        {/* Card 2 */}
+        <rect x="164" y="74" width="130" height="162" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="166" y="76" width="126" height="88" rx="8" fill="url(#s1gb)"/>
+        <rect x="164" y="154" width="130" height="10" fill="#25252f"/>
+        <text x="229" y="178" textAnchor="middle" fontSize="9" fill="#e0ddd8">Villa Showcase</text>
+        <text x="229" y="194" textAnchor="middle" fontSize="8" fill="#6b7094">7 scenes · 1 tour</text>
+        {/* New card placeholder */}
+        <rect x="308" y="74" width="150" height="162" rx="10" fill="#25252f" stroke="#3a3a48" strokeWidth="1" strokeDasharray="5,3"/>
+        <circle cx="383" cy="154" r="24" fill="#2e2e3a"/>
+        <text x="383" y="162" textAnchor="middle" fontSize="22" fill="#6b7094">+</text>
+        <text x="383" y="218" textAnchor="middle" fontSize="9" fill="#6b7094">New project</text>
+        {/* Arrow annotation */}
+        <path d="M 412 44 L 412 54" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s1m)" strokeDasharray="4,2"/>
+        <text x="312" y="62" fontSize="9" fill="#f0a060">① Click here to start</text>
       </svg>
     ),
   },
@@ -44,29 +62,56 @@ const STEPS = [
     tip: 'Format is auto-detected from image dimensions — override it in Properties if needed. Equirectangular is 2:1, Stereo SBS is 4:1, Fisheye is square. Replace Panorama keeps all your hotspots and floor plan markers in place.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s2m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+        </defs>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
-        {/* Toolbar */}
-        <rect x="0" y="0" width="480" height="44" rx="10" fill="#25252f"/>
-        <rect x="0" y="34" width="480" height="10" fill="#25252f"/>
-        {/* Upload button highlight */}
-        <rect x="54" y="9" width="68" height="26" rx="6" fill="#2e2e3a"/>
-        <text x="88" y="26" textAnchor="middle" fontSize="10" fill="#e0ddd8">⬆ Upload</text>
-        <rect x="50" y="5" width="76" height="34" rx="8" fill="none" stroke="#f0a060" strokeWidth="2.5"/>
-        {/* Arrow */}
-        <path d="M 88 100 L 88 46" stroke="#f0a060" strokeWidth="2.5" fill="none" markerEnd="url(#arr2)"/>
-        <text x="90" y="118" fontSize="11" fill="#f0a060" fontWeight="600">② Click Upload</text>
+        {/* Header */}
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        <circle cx="22" cy="22" r="12" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">A</text>
+        {/* Upload button — highlighted */}
+        <rect x="46" y="9" width="68" height="26" rx="6" fill="#e07b3f" fillOpacity="0.18" stroke="#e07b3f" strokeWidth="1.5"/>
+        <text x="80" y="26" textAnchor="middle" fontSize="9" fill="#e07b3f" fontWeight="600">⬆ Upload</text>
+        {/* Other toolbar items */}
+        <rect x="120" y="9" width="70" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="155" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">+ Hotspot</text>
+        <rect x="420" y="9" width="50" height="26" rx="7" fill="#e07b3f"/>
+        <text x="445" y="26" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">Publish</text>
         {/* Sidebar */}
-        <rect x="0" y="44" width="60" height="216" fill="#22222c"/>
-        {/* Viewer - empty state */}
-        <rect x="60" y="44" width="340" height="216" fill="#19191f"/>
-        <circle cx="230" cy="152" r="40" fill="#25252f"/>
-        <text x="230" y="156" textAnchor="middle" fontSize="10" fill="#4a4a5a">Drop files here</text>
-        {/* Drop zone highlight */}
-        <rect x="100" y="80" width="240" height="140" rx="12" fill="none" stroke="#e07b3f" strokeWidth="2" strokeDasharray="8,4" opacity="0.7"/>
-        <text x="220" y="230" textAnchor="middle" fontSize="10" fill="#e07b3f">or drag & drop panoramas</text>
-        {/* Props panel */}
-        <rect x="400" y="44" width="80" height="216" fill="#22222c"/>
-        <defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker></defs>
+        <rect x="0" y="44" width="70" height="216" fill="#22222c"/>
+        <text x="35" y="63" textAnchor="middle" fontSize="8" fill="#6b7094">SCENES</text>
+        <rect x="6" y="68" width="58" height="24" rx="5" fill="#2e2e3a" stroke="#e07b3f" strokeWidth="1"/>
+        <text x="35" y="84" textAnchor="middle" fontSize="7" fill="#e0ddd8">Lobby</text>
+        <rect x="6" y="96" width="58" height="24" rx="5" fill="#25252f"/>
+        <text x="35" y="112" textAnchor="middle" fontSize="7" fill="#6b7094">Kitchen</text>
+        {/* Viewer — drop zone */}
+        <rect x="70" y="44" width="298" height="216" fill="#19191f"/>
+        <rect x="82" y="58" width="274" height="188" rx="10" fill="none" stroke="#e07b3f" strokeWidth="2" strokeDasharray="8,4"/>
+        <circle cx="219" cy="144" r="30" fill="#25252f"/>
+        <text x="219" y="138" textAnchor="middle" fontSize="20" fill="#3a3a48">⬆</text>
+        <text x="219" y="158" textAnchor="middle" fontSize="8" fill="#6b7094">Drop panoramas here</text>
+        <text x="219" y="170" textAnchor="middle" fontSize="7" fill="#4a4a5a">JPG · PNG · MP4 · equirectangular</text>
+        {/* Properties panel */}
+        <rect x="368" y="44" width="112" height="216" fill="#22222c"/>
+        <text x="424" y="63" textAnchor="middle" fontSize="8" fill="#6b7094">PROPERTIES</text>
+        <line x1="374" y1="68" x2="474" y2="68" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="376" y="83" fontSize="7" fill="#6b7094">Panorama</text>
+        <rect x="374" y="86" width="96" height="50" rx="6" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="376" y="88" width="92" height="34" rx="4" fill="#2a3a4a"/>
+        <text x="422" y="110" textAnchor="middle" fontSize="7" fill="#6b7094">scene.jpg</text>
+        <text x="422" y="127" textAnchor="middle" fontSize="7" fill="#9a9ab0">2:1 Equirectangular</text>
+        {/* Replace Panorama button */}
+        <rect x="374" y="142" width="96" height="20" rx="5" fill="#e07b3f" fillOpacity="0.15" stroke="#e07b3f" strokeWidth="1"/>
+        <text x="422" y="156" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="600">Replace Panorama</text>
+        {/* Annotations */}
+        <path d="M 80 36 L 80 44" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s2m)"/>
+        <text x="82" y="106" fontSize="8" fill="#f0a060">① Upload</text>
+        <text x="82" y="117" fontSize="8" fill="#f0a060">   new scene</text>
+        <path d="M 370 152 L 360 152" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s2m)" strokeDasharray="3,2"/>
+        <text x="248" y="148" fontSize="8" fill="#f0a060">② Replace existing</text>
+        <text x="248" y="160" fontSize="8" fill="#f0a060">   (keeps hotspots)</text>
       </svg>
     ),
   },
@@ -79,46 +124,65 @@ const STEPS = [
     tip: 'Keyboard: H = place hotspot, M = add media, Esc = cancel. Variants hotspots sync automatically across all linked scenes so the panel stays open while navigating.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
-        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
-        {/* Toolbar */}
-        <rect x="0" y="0" width="480" height="44" rx="10" fill="#25252f"/>
-        <rect x="0" y="34" width="480" height="10" fill="#25252f"/>
-        {/* Hotspot button */}
-        <rect x="130" y="9" width="68" height="26" rx="6" fill="#e07b3f" fillOpacity="0.2"/>
-        <text x="164" y="26" textAnchor="middle" fontSize="10" fill="#e07b3f">＋ Hotspot</text>
-        <rect x="126" y="5" width="76" height="34" rx="8" fill="none" stroke="#f0a060" strokeWidth="2.5"/>
-        <path d="M 164 52 L 164 44" stroke="#f0a060" strokeWidth="2" fill="none" markerEnd="url(#arr3)"/>
-        <text x="120" y="68" fontSize="10" fill="#f0a060">③ Click Hotspot</text>
-        {/* Panorama viewer */}
-        <rect x="60" y="44" width="340" height="200" fill="#19191f"/>
-        <image href="" x="60" y="44" width="340" height="200"/>
-        {/* Panorama content suggestion */}
-        <rect x="60" y="44" width="340" height="200" rx="0" fill="url(#pano-grad)"/>
         <defs>
-          <linearGradient id="pano-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#2a3a4a"/>
-            <stop offset="50%" stopColor="#3a4a5a"/>
-            <stop offset="100%" stopColor="#2a3a4a"/>
-          </linearGradient>
-          <marker id="arr3" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
-          <marker id="arr4" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#60c0ff"/></marker>
+          <marker id="s3m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <linearGradient id="s3g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="50%" stopColor="#3a4a5a"/><stop offset="100%" stopColor="#2a3a4a"/></linearGradient>
         </defs>
-        {/* Crosshair cursor */}
-        <line x1="240" y1="135" x2="240" y2="155" stroke="#e07b3f" strokeWidth="1.5"/>
-        <line x1="230" y1="145" x2="250" y2="145" stroke="#e07b3f" strokeWidth="1.5"/>
-        {/* Click indicator */}
-        <circle cx="240" cy="145" r="16" fill="none" stroke="#e07b3f" strokeWidth="1.5" opacity="0.6"/>
-        <text x="265" y="140" fontSize="9" fill="#e07b3f">click to place</text>
-        {/* Hotspot icon placed */}
-        <circle cx="180" cy="160" r="14" fill="#1e1e26" fillOpacity="0.8" stroke="#e07b3f" strokeWidth="2"/>
-        <text x="180" y="164" textAnchor="middle" fontSize="10" fill="#e07b3f">→</text>
-        <rect x="155" y="140" width="50" height="36" rx="8" fill="none" stroke="#60c0ff" strokeWidth="2"/>
-        <path d="M 155 158 Q 120 158 120 180 L 120 190" stroke="#60c0ff" strokeWidth="2" fill="none" markerEnd="url(#arr4)"/>
-        <text x="80" y="200" fontSize="9" fill="#60c0ff">④ Click hotspot</text>
-        <text x="80" y="213" fontSize="9" fill="#60c0ff">  to teleport</text>
-        {/* Sidebar & props */}
-        <rect x="0" y="44" width="60" height="200" fill="#22222c"/>
-        <rect x="400" y="44" width="80" height="200" fill="#22222c"/>
+        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
+        {/* Header */}
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        <circle cx="22" cy="22" r="12" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">A</text>
+        <rect x="46" y="9" width="68" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="80" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">⬆ Upload</text>
+        <rect x="120" y="9" width="70" height="26" rx="6" fill="#e07b3f" fillOpacity="0.18" stroke="#e07b3f" strokeWidth="1.5"/>
+        <text x="155" y="26" textAnchor="middle" fontSize="9" fill="#e07b3f" fontWeight="600">+ Hotspot</text>
+        <rect x="420" y="9" width="50" height="26" rx="7" fill="#e07b3f"/>
+        <text x="445" y="26" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">Publish</text>
+        {/* Sidebar */}
+        <rect x="0" y="44" width="70" height="216" fill="#22222c"/>
+        <text x="35" y="63" textAnchor="middle" fontSize="8" fill="#6b7094">SCENES</text>
+        <rect x="6" y="68" width="58" height="24" rx="5" fill="#2e2e3a" stroke="#e07b3f" strokeWidth="1"/>
+        <text x="35" y="84" textAnchor="middle" fontSize="7" fill="#e0ddd8">Living Room</text>
+        <rect x="6" y="96" width="58" height="24" rx="5" fill="#25252f"/>
+        <text x="35" y="112" textAnchor="middle" fontSize="7" fill="#6b7094">Kitchen</text>
+        {/* Viewer */}
+        <rect x="70" y="44" width="290" height="216" fill="url(#s3g)"/>
+        {/* Placed hotspot dots */}
+        <circle cx="180" cy="150" r="14" fill="#1e1e2699" stroke="#e07b3f" strokeWidth="2"/>
+        <text x="180" y="155" textAnchor="middle" fontSize="10" fill="#e07b3f">→</text>
+        <circle cx="240" cy="110" r="12" fill="#1e1e2699" stroke="#9a9ab0" strokeWidth="1.5"/>
+        <text x="240" y="115" textAnchor="middle" fontSize="9" fill="#9a9ab0">i</text>
+        <circle cx="300" cy="170" r="12" fill="#1e1e2699" stroke="#9a9ab0" strokeWidth="1.5"/>
+        <text x="300" y="175" textAnchor="middle" fontSize="9" fill="#9a9ab0">⊞</text>
+        {/* Properties panel — hotspot type picker */}
+        <rect x="360" y="44" width="120" height="216" fill="#22222c"/>
+        <text x="420" y="62" textAnchor="middle" fontSize="8" fill="#6b7094">HOTSPOT</text>
+        <line x1="366" y1="67" x2="474" y2="67" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="368" y="81" fontSize="7" fill="#6b7094">Type</text>
+        {/* 3×2 type button grid */}
+        {[['→ Nav','⊞ Var','i Info'],['⇔ Cmp','⊟ Gal','⬡ Room']].map((row, ri) =>
+          row.map((label, ci) => (
+            <g key={`${ri}-${ci}`}>
+              <rect x={368+ci*38} y={86+ri*28} width={34} height={22} rx="4"
+                fill={ri===0&&ci===0 ? '#e07b3f22' : '#2e2e3a'}
+                stroke={ri===0&&ci===0 ? '#e07b3f' : '#3a3a48'} strokeWidth="1"/>
+              <text x={385+ci*38} y={101+ri*28} textAnchor="middle" fontSize="7"
+                fill={ri===0&&ci===0 ? '#e07b3f' : '#9a9ab0'}>{label}</text>
+            </g>
+          ))
+        )}
+        <text x="368" y="152" fontSize="7" fill="#6b7094">Destination</text>
+        <rect x="366" y="156" width="96" height="18" rx="4" fill="#2e2e3a"/>
+        <text x="414" y="169" textAnchor="middle" fontSize="7" fill="#e0ddd8">Kitchen</text>
+        <text x="368" y="188" fontSize="7" fill="#6b7094">Tooltip label</text>
+        <rect x="366" y="192" width="96" height="18" rx="4" fill="#2e2e3a"/>
+        <text x="414" y="205" textAnchor="middle" fontSize="7" fill="#9a9ab0">Go to kitchen…</text>
+        {/* Arrow from viewer to panel */}
+        <path d="M 355 105 L 365 105" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s3m)"/>
+        <text x="155" y="210" fontSize="8" fill="#f0a060">① Place hotspot in viewer</text>
+        <text x="155" y="222" fontSize="8" fill="#f0a060">② Pick type in Properties →</text>
       </svg>
     ),
   },
@@ -130,34 +194,40 @@ const STEPS = [
     description: 'After placing a hotspot, a scene picker appears automatically. Click any scene thumbnail to link it. You can re-link later from the Properties panel → "Change" button on the hotspot. The linked scene name appears as a tooltip on hover.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
-        <rect width="480" height="260" rx="10" fill="#1e1e26" fillOpacity="0.5"/>
-        {/* Scene picker modal */}
-        <rect x="80" y="20" width="320" height="220" rx="14" fill="#25252f"/>
-        <rect x="80" y="20" width="320" height="220" rx="14" fill="none" stroke="#e07b3f" strokeWidth="2"/>
-        {/* Title */}
-        <text x="240" y="44" textAnchor="middle" fontSize="13" fill="#e0ddd8" fontWeight="bold">Select Destination Scene</text>
-        <line x1="96" y1="52" x2="384" y2="52" stroke="#3a3a48" strokeWidth="1"/>
+        <defs>
+          <marker id="s4m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+        </defs>
+        {/* Dimmed editor behind modal */}
+        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
+        <rect width="480" height="44" rx="10" fill="#25252f" fillOpacity="0.5"/>
+        <rect y="34" width="480" height="226" fill="#00000055"/>
+        {/* Modal card */}
+        <rect x="70" y="18" width="340" height="226" rx="14" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Modal header */}
+        <rect x="70" y="18" width="340" height="40" rx="14" fill="#2e2e3a"/>
+        <rect x="70" y="44" width="340" height="14" fill="#2e2e3a"/>
+        <text x="240" y="42" textAnchor="middle" fontSize="11" fill="#e0ddd8" fontWeight="bold">Select Destination Scene</text>
+        <circle cx="394" cy="38" r="10" fill="#3a3a48"/>
+        <text x="394" y="42" textAnchor="middle" fontSize="10" fill="#9a9ab0">✕</text>
+        <line x1="82" y1="58" x2="398" y2="58" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Search bar */}
+        <rect x="84" y="62" width="302" height="20" rx="6" fill="#1e1e26" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="102" y="76" fontSize="8" fill="#6b7094">Search scenes…</text>
         {/* Scene thumbnails */}
-        {[0,1,2].map(i => (
-          <g key={i}>
-            <rect x={100 + i*108} y={62} width={96} height={70} rx="8" fill={i===1 ? '#3a2a18' : '#2a2a34'}
-              stroke={i===1 ? '#e07b3f' : '#3a3a48'} strokeWidth={i===1 ? 2.5 : 1}/>
-            <rect x={100 + i*108} y={62} width={96} height={52} rx="8" fill={['#2a3a4a','#3a4a2a','#3a2a4a'][i]}/>
-            <text x={148 + i*108} y={146} textAnchor="middle" fontSize="9" fill={i===1 ? '#e07b3f' : '#9a9aaa'}>
-              {['Scene 01','Scene 02 ✓','Scene 03'][i]}
-            </text>
-          </g>
-        ))}
-        {/* Annotation on selected */}
-        <rect x="196" y="56" width="112" height="88" rx="10" fill="none" stroke="#f0a060" strokeWidth="2.5"/>
-        <text x="252" y="162" textAnchor="middle" fontSize="9" fill="#f0a060">Linked ✓</text>
-        {/* Arrow */}
-        <path d="M 360 100 Q 390 100 390 140 L 360 160" stroke="#f0a060" strokeWidth="2" fill="none" markerEnd="url(#arr5)"/>
-        <text x="363" y="96" fontSize="9" fill="#f0a060">⑤ Click to link</text>
-        {/* Close button */}
-        <circle cx="376" cy="32" r="10" fill="#3a3a48"/>
-        <text x="376" y="36" textAnchor="middle" fontSize="11" fill="#9a9aaa">✕</text>
-        <defs><marker id="arr5" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker></defs>
+        <rect x="84" y="88" width="96" height="80" rx="8" fill="#2a3a4a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="132" y="178" textAnchor="middle" fontSize="8" fill="#9a9ab0">Living Room</text>
+        {/* Selected thumb */}
+        <rect x="192" y="88" width="96" height="80" rx="8" fill="#3a2a18" stroke="#e07b3f" strokeWidth="2.5"/>
+        <rect x="192" y="154" width="96" height="14" rx="0" fill="#e07b3f22"/>
+        <text x="240" y="178" textAnchor="middle" fontSize="8" fill="#e07b3f" fontWeight="600">Kitchen ✓</text>
+        <rect x="300" y="88" width="96" height="80" rx="8" fill="#2a1a3a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="348" y="178" textAnchor="middle" fontSize="8" fill="#9a9ab0">Bedroom</text>
+        {/* Callout on selected */}
+        <rect x="188" y="84" width="104" height="102" rx="10" fill="none" stroke="#f0a060" strokeWidth="2"/>
+        <text x="240" y="204" textAnchor="middle" fontSize="9" fill="#f0a060">① Click to link scene</text>
+        {/* Confirm button */}
+        <rect x="84" y="210" width="302" height="26" rx="7" fill="#e07b3f"/>
+        <text x="235" y="227" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">Link Selected Scene</text>
       </svg>
     ),
   },
@@ -169,51 +239,60 @@ const STEPS = [
     description: 'Click any scene to rename it, set its initial camera angle, or change panorama format. Click a hotspot to switch its type, update labels, or re-link it. For Variants hotspots, add option cards (images + labels) that sync across all linked scenes automatically. For Room hotspots, enter area, ceiling height and finish materials. Zones (folders) can be colour-coded from the sidebar for easy organisation.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s5m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <linearGradient id="s5g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="100%" stopColor="#1a2a3a"/></linearGradient>
+        </defs>
         <rect width="480" height="260" rx="10" fill="#1e1e26"/>
-        <rect x="0" y="0" width="480" height="44" rx="10" fill="#25252f"/>
-        <rect x="0" y="34" width="480" height="10" fill="#25252f"/>
+        {/* Header */}
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        <circle cx="22" cy="22" r="12" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">A</text>
+        <rect x="420" y="9" width="50" height="26" rx="7" fill="#e07b3f"/>
+        <text x="445" y="26" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">Publish</text>
         {/* Sidebar */}
-        <rect x="0" y="44" width="80" height="216" fill="#22222c"/>
-        <text x="40" y="65" textAnchor="middle" fontSize="9" fill="#6b7094">SCENES</text>
-        {['Scene 01','Scene 02','Scene 03'].map((n,i)=>(
+        <rect x="0" y="44" width="72" height="216" fill="#22222c"/>
+        <text x="36" y="62" textAnchor="middle" fontSize="8" fill="#6b7094">SCENES</text>
+        {['Living Rm','Kitchen','Bedroom'].map((n,i) => (
           <g key={i}>
-            <rect x="6" y={74+i*36} width="68" height="28" rx="6" fill={i===0 ? '#2e2e3a' : '#22222c'}
-              stroke={i===0 ? '#e07b3f' : 'none'} strokeWidth="1.5"/>
-            <rect x="10" y={78+i*36} width="20" height="20" rx="3" fill="#3a3a48"/>
-            <text x="34" y={92+i*36} fontSize="8" fill={i===0 ? '#e0ddd8' : '#6b7094'}>{n}</text>
+            <rect x="4" y={68+i*34} width="64" height="26" rx="5" fill={i===0 ? '#2e2e3a' : '#22222c'} stroke={i===0 ? '#e07b3f' : 'none'} strokeWidth="1.5"/>
+            <rect x="8" y={72+i*34} width="18" height="18" rx="3" fill="#3a3a48"/>
+            <text x="32" y={85+i*34} fontSize="7" fill={i===0 ? '#e0ddd8' : '#6b7094'}>{n}</text>
           </g>
         ))}
         {/* Viewer */}
-        <rect x="80" y="44" width="260" height="216" fill="#19191f"/>
-        <rect x="80" y="44" width="260" height="216" fill="url(#v-grad)"/>
-        <defs>
-          <linearGradient id="v-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#2a3a4a"/>
-            <stop offset="100%" stopColor="#1a2a3a"/>
-          </linearGradient>
-          <marker id="arr6" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
-        </defs>
-        {/* Properties panel */}
-        <rect x="340" y="44" width="140" height="216" fill="#22222c"/>
-        <rect x="340" y="44" width="140" height="216" rx="0" fill="none" stroke="#f0a060" strokeWidth="2.5"/>
-        <text x="410" y="64" textAnchor="middle" fontSize="9" fill="#e07b3f" fontWeight="bold">PROPERTIES</text>
-        <line x1="346" y1="70" x2="474" y2="70" stroke="#3a3a48" strokeWidth="1"/>
-        {/* Fields */}
-        {[
-          ['Scene Name','Scene 01'],
-          ['Format','EQUIRECT'],
-          ['Initial View','Save Current View'],
-        ].map(([label, val], i) => (
+        <rect x="72" y="44" width="258" height="216" fill="url(#s5g)"/>
+        {/* Hotspot in scene */}
+        <circle cx="200" cy="150" r="13" fill="#1e1e2699" stroke="#e07b3f" strokeWidth="2"/>
+        <text x="200" y="155" textAnchor="middle" fontSize="9" fill="#e07b3f">→</text>
+        {/* Properties panel — highlighted */}
+        <rect x="330" y="44" width="150" height="216" fill="#22222c"/>
+        <rect x="330" y="44" width="150" height="216" fill="none" stroke="#f0a060" strokeWidth="2"/>
+        <text x="405" y="62" textAnchor="middle" fontSize="8" fill="#e07b3f" fontWeight="bold">PROPERTIES</text>
+        <line x1="336" y1="67" x2="474" y2="67" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="338" y="82" fontSize="7" fill="#6b7094">Scene Name</text>
+        <rect x="336" y="85" width="136" height="20" rx="4" fill="#2e2e3a"/>
+        <text x="344" y="99" fontSize="8" fill="#e0ddd8">Living Room</text>
+        <text x="338" y="118" fontSize="7" fill="#6b7094">Initial View</text>
+        <rect x="336" y="121" width="136" height="20" rx="4" fill="#e07b3f22" stroke="#e07b3f" strokeWidth="1"/>
+        <text x="404" y="135" textAnchor="middle" fontSize="7" fill="#e07b3f">Save Current View</text>
+        <text x="338" y="154" fontSize="7" fill="#6b7094">Hotspot Type</text>
+        {/* Hotspot type mini-grid in panel */}
+        {['→Nav','⊞Var','i Info','⇔Cmp','⊟Gal','⬡Rm'].map((t,i) => (
           <g key={i}>
-            <text x="348" y={88+i*44} fontSize="8" fill="#6b7094">{label}</text>
-            <rect x="346" y={93+i*44} width="126" height="22" rx="4" fill="#2a2a34"/>
-            <text x="355" y={108+i*44} fontSize="8" fill={i===2 ? '#e07b3f' : '#e0ddd8'}>{val}</text>
+            <rect x={336+(i%3)*46} y={158+Math.floor(i/3)*24} width={42} height={20} rx="3"
+              fill={i===0 ? '#e07b3f22' : '#2e2e3a'} stroke={i===0 ? '#e07b3f' : '#3a3a48'} strokeWidth="1"/>
+            <text x={357+(i%3)*46} y={172+Math.floor(i/3)*24} textAnchor="middle" fontSize="6"
+              fill={i===0 ? '#e07b3f' : '#9a9ab0'}>{t}</text>
           </g>
         ))}
-        {/* Arrow from panel */}
-        <path d="M 330 152 L 350 152" stroke="#f0a060" strokeWidth="2" fill="none" markerEnd="url(#arr6)"/>
-        <text x="200" y="148" fontSize="9" fill="#f0a060" textAnchor="middle">⑥ Edit scene properties</text>
-        <text x="200" y="162" fontSize="9" fill="#f0a060" textAnchor="middle">in the right panel</text>
+        {/* Annotations */}
+        <path d="M 325 99 L 335 99" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s5m)"/>
+        <text x="110" y="96" fontSize="8" fill="#f0a060">① Rename, format,</text>
+        <text x="110" y="108" fontSize="8" fill="#f0a060">   set initial view</text>
+        <path d="M 325 168 L 335 168" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s5m)"/>
+        <text x="110" y="175" fontSize="8" fill="#f0a060">② Choose hotspot type</text>
       </svg>
     ),
   },
@@ -226,50 +305,58 @@ const STEPS = [
     tip: 'Press Space to pause/resume the guided tour. Click "Save" to store your work locally; "Publish" packages the tour for sharing. The splash screen and password gate (if set) are shown to viewers before the tour begins.',
     diagram: (
       <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
-        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
-        <rect x="0" y="0" width="480" height="44" rx="10" fill="#25252f"/>
-        <rect x="0" y="34" width="480" height="10" fill="#25252f"/>
-        {/* Save button */}
-        <rect x="320" y="9" width="54" height="26" rx="6" fill="#2e2e3a"/>
-        <text x="347" y="26" textAnchor="middle" fontSize="10" fill="#e0ddd8">💾 Save</text>
-        {/* Preview button */}
-        <rect x="378" y="9" width="60" height="26" rx="6" fill="#2e2e3a"/>
-        <text x="408" y="26" textAnchor="middle" fontSize="10" fill="#e0ddd8">👁 Preview</text>
-        <rect x="374" y="5" width="68" height="34" rx="8" fill="none" stroke="#f0a060" strokeWidth="2.5"/>
-        <path d="M 408 48 L 408 44" stroke="#f0a060" strokeWidth="2" fill="none" markerEnd="url(#arr7)"/>
-        <text x="360" y="62" fontSize="9" fill="#f0a060">⑦ Enter preview mode</text>
-        {/* Preview mode viewer */}
-        <rect x="0" y="44" width="480" height="216" fill="#0e1018"/>
-        <rect x="0" y="44" width="480" height="216" fill="url(#preview-grad)"/>
         <defs>
-          <radialGradient id="preview-grad" cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stopColor="#2a3a5a"/>
-            <stop offset="100%" stopColor="#0e1018"/>
-          </radialGradient>
-          <marker id="arr7" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <marker id="s6m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <radialGradient id="s6g" cx="50%" cy="50%" r="60%"><stop offset="0%" stopColor="#2a3a5a"/><stop offset="100%" stopColor="#0e1018"/></radialGradient>
+          <linearGradient id="s6gn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="transparent"/><stop offset="100%" stopColor="#00000099"/></linearGradient>
         </defs>
-        {/* Hotspot icons */}
-        <circle cx="200" cy="152" r="16" fill="#1e1e26cc" stroke="white" strokeWidth="2"/>
-        <text x="200" y="157" textAnchor="middle" fontSize="12" fill="white">→</text>
-        <text x="200" y="180" textAnchor="middle" fontSize="8" fill="white" fillOpacity="0.7">Next Room</text>
-        {/* Bottom nav */}
-        <rect x="0" y="220" width="480" height="40" fill="url(#nav-grad)"/>
-        <defs>
-          <linearGradient id="nav-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="transparent"/>
-            <stop offset="100%" stopColor="#00000099"/>
-          </linearGradient>
-        </defs>
-        {/* Scene dots */}
-        {[0,1,2].map(i=>(
-          <circle key={i} cx={222+i*14} cy={238} r={i===0?5:4}
-            fill={i===0 ? 'white' : 'rgba(255,255,255,0.4)'}/>
+        {/* Full-screen preview background */}
+        <rect width="480" height="260" rx="10" fill="#0e1018"/>
+        <rect width="480" height="260" rx="10" fill="url(#s6g)"/>
+        {/* Guided tour progress bar (top) */}
+        <rect width="480" height="4" rx="2" fill="#3a3a48"/>
+        <rect width="220" height="4" rx="2" fill="#e07b3f"/>
+        {/* Top HUD controls */}
+        <rect x="0" y="4" width="90" height="28" rx="0" fill="#1e1e2699"/>
+        <rect x="10" y="10" width="22" height="16" rx="5" fill="#2e2e3a"/>
+        <text x="21" y="22" textAnchor="middle" fontSize="9" fill="#9a9ab0">✕</text>
+        <rect x="36" y="10" width="22" height="16" rx="5" fill="#2e2e3a"/>
+        <text x="47" y="22" textAnchor="middle" fontSize="10" fill="#e07b3f">▶</text>
+        <rect x="62" y="10" width="22" height="16" rx="5" fill="#2e2e3a"/>
+        <text x="73" y="22" textAnchor="middle" fontSize="8" fill="#9a9ab0">⋯</text>
+        {/* Compass rose (top-right) */}
+        <circle cx="448" cy="28" r="20" fill="#25252f99" stroke="#3a3a48" strokeWidth="1"/>
+        <circle cx="448" cy="28" r="16" fill="none" stroke="#3a3a48" strokeWidth="1"/>
+        <polygon points="448,13 451,26 448,22 445,26" fill="#e07b3f"/>
+        <polygon points="448,43 451,30 448,34 445,30" fill="#6b7094"/>
+        <text x="448" y="16" textAnchor="middle" fontSize="6" fill="#e07b3f" fontWeight="bold">N</text>
+        {/* Scene hotspot in viewer */}
+        <circle cx="220" cy="140" r="15" fill="#1e1e2699" stroke="white" strokeWidth="1.5"/>
+        <text x="220" y="145" textAnchor="middle" fontSize="10" fill="white">→</text>
+        <text x="220" y="164" textAnchor="middle" fontSize="8" fill="white" fillOpacity="0.7">Kitchen</text>
+        {/* Bottom gradient */}
+        <rect x="0" y="210" width="480" height="50" fill="url(#s6gn)"/>
+        {/* Breadcrumb (bottom-right) */}
+        <rect x="310" y="216" width="162" height="18" rx="6" fill="#25252f88"/>
+        <text x="391" y="229" textAnchor="middle" fontSize="7" fill="#9a9ab0">Lobby › Living Rm › Kitchen</text>
+        {/* Scene dots (bottom-centre) */}
+        {[0,1,2,3].map(i=>(
+          <circle key={i} cx={218+i*14} cy={248} r={i===0?5:3.5}
+            fill={i===0 ? '#e07b3f' : 'rgba(255,255,255,0.35)'}/>
         ))}
-        <rect x="160" y="218" width="160" height="30" rx="0" fill="none" stroke="#60c0ff" strokeWidth="1.5"/>
-        <text x="240" y="252" textAnchor="middle" fontSize="8" fill="#60c0ff">Scene navigation dots</text>
-        {/* Exit button */}
-        <rect x="10" y="224" width="50" height="18" rx="6" fill="rgba(0,0,0,0.5)"/>
-        <text x="35" y="236" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.7)">✕ Exit</text>
+        {/* Design tray (bottom) */}
+        <rect x="120" y="230" width="160" height="22" rx="8" fill="#25252f99" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="152" y="245" textAnchor="middle" fontSize="7" fill="#9a9ab0">Marble</text>
+        <text x="200" y="245" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="600">Wood ✓</text>
+        <text x="248" y="245" textAnchor="middle" fontSize="7" fill="#9a9ab0">Concrete</text>
+        {/* Annotations */}
+        <path d="M 220 5 L 230 15" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="235" y="13" fontSize="7" fill="#f0a060">Guided tour progress</text>
+        <path d="M 428 28 L 418 28" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="310" y="32" fontSize="7" fill="#f0a060">Compass (rotates live)</text>
+        <path d="M 310 225 L 300 235" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
+        <text x="210" y="211" fontSize="7" fill="#f0a060">Scene breadcrumb</text>
+        <path d="M 200 252 L 200 258" stroke="#f0a060" strokeWidth="1" fill="none" markerEnd="url(#s6m)" strokeDasharray="3,2"/>
       </svg>
     ),
   },
