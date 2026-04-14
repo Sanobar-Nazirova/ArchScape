@@ -647,6 +647,396 @@ const STEPS = [
       </svg>
     ),
   },
+  {
+    id: 9,
+    title: 'Zones & Organisation',
+    icon: <Layers size={18} />,
+    summary: 'Group scenes into colour-coded zones for cleaner navigation.',
+    description: 'Click "+ New Zone" at the bottom of the sidebar to create a folder. Drag scenes into zones to group them — e.g. Ground Floor, First Floor, or Living / Sleeping / Wet Rooms.\n\nEach zone gets a colour: click the coloured dot on the zone row to pick from 8 presets. The colour appears as a tinted left border and badge throughout the sidebar.\n\nThe Zone Overview panel shows all zones as coloured pills — click one to filter the scene list to just that zone.',
+    tip: 'Zones are organisational only and do not affect tour flow or hotspot routing. For large projects use zone names that match the floor plan labels so clients can orient themselves.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s9m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <linearGradient id="s9g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="50%" stopColor="#3a4a5a"/><stop offset="100%" stopColor="#2a3a4a"/></linearGradient>
+        </defs>
+        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
+        {/* Header */}
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        <circle cx="22" cy="22" r="12" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">A</text>
+        <rect x="420" y="9" width="50" height="26" rx="7" fill="#e07b3f"/>
+        <text x="445" y="26" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">Publish</text>
+        {/* Sidebar — wider for zones */}
+        <rect x="0" y="44" width="130" height="216" fill="#22222c"/>
+        {/* Zone Overview bar */}
+        <rect x="0" y="44" width="130" height="22" fill="#1e1e26"/>
+        <text x="10" y="59" fontSize="8" fill="#6b7094" letterSpacing="0.5">ZONES</text>
+        <rect x="102" y="47" width="22" height="14" rx="4" fill="#2e2e3a"/>
+        <text x="113" y="58" textAnchor="middle" fontSize="8" fill="#6b7094">+</text>
+        {/* Zone 1 — Ground Floor (blue) */}
+        <rect x="0" y="66" width="3" height="64" fill="#3a7abf"/>
+        <rect x="4" y="68" width="122" height="22" rx="5" fill="#2e2e3a"/>
+        <circle cx="14" cy="79" r="5" fill="#3a7abf"/>
+        <text x="24" y="83" fontSize="8" fill="#e0ddd8" fontWeight="600">Ground Floor</text>
+        <rect x="108" y="71" width="14" height="14" rx="3" fill="#3a3a48"/>
+        <text x="115" y="81" textAnchor="middle" fontSize="8" fill="#9a9ab0">▾</text>
+        {/* Scenes under Ground Floor */}
+        <rect x="8" y="93" width="118" height="18" rx="4" fill="#25252f" stroke="#3a7abf" strokeWidth="1" strokeOpacity="0.5"/>
+        <rect x="12" y="97" width="14" height="10" rx="2" fill="#3a7abf" fillOpacity="0.4"/>
+        <text x="30" y="106" fontSize="7" fill="#e0ddd8">Lobby</text>
+        <rect x="8" y="113" width="118" height="18" rx="4" fill="#25252f"/>
+        <rect x="12" y="117" width="14" height="10" rx="2" fill="#3a3a48"/>
+        <text x="30" y="126" fontSize="7" fill="#9a9ab0">Living Room</text>
+        {/* Zone 2 — First Floor (green, collapsed) */}
+        <rect x="0" y="132" width="3" height="22" fill="#3abf7a"/>
+        <rect x="4" y="134" width="122" height="22" rx="5" fill="#252530"/>
+        <circle cx="14" cy="145" r="5" fill="#3abf7a"/>
+        <text x="24" y="149" fontSize="8" fill="#9a9ab0">First Floor</text>
+        <rect x="100" y="137" width="22" height="14" rx="3" fill="#2e2e3a"/>
+        <text x="111" y="148" textAnchor="middle" fontSize="7" fill="#6b7094">4 sc</text>
+        {/* Zone 3 — Roof (orange, collapsed) */}
+        <rect x="0" y="158" width="3" height="22" fill="#e07b3f"/>
+        <rect x="4" y="160" width="122" height="22" rx="5" fill="#252530"/>
+        <circle cx="14" cy="171" r="5" fill="#e07b3f"/>
+        <text x="24" y="175" fontSize="8" fill="#9a9ab0">Roof Terrace</text>
+        <rect x="100" y="163" width="22" height="14" rx="3" fill="#2e2e3a"/>
+        <text x="111" y="174" textAnchor="middle" fontSize="7" fill="#6b7094">2 sc</text>
+        {/* + New Zone button */}
+        <rect x="4" y="188" width="122" height="20" rx="5" fill="#2e2e3a" stroke="#3a3a48" strokeWidth="1" strokeDasharray="4,2"/>
+        <text x="65" y="202" textAnchor="middle" fontSize="8" fill="#6b7094">+ New Zone</text>
+        {/* Colour picker popover */}
+        <rect x="6" y="214" width="120" height="40" rx="8" fill="#2e2e3a" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="66" y="225" textAnchor="middle" fontSize="7" fill="#9a9ab0">Zone colour</text>
+        {['#3a7abf','#3abf7a','#e07b3f','#bf3a7a','#7a3abf','#bf9a3a','#3abfbf','#9abf3a'].map((c,i)=>(
+          <circle key={i} cx={18+i*14} cy={237} r={5} fill={c} stroke={i===0?'white':'none'} strokeWidth="1.5"/>
+        ))}
+        {/* Viewer */}
+        <rect x="130" y="44" width="240" height="216" fill="url(#s9g)"/>
+        {/* Properties panel */}
+        <rect x="370" y="44" width="110" height="216" fill="#22222c"/>
+        <text x="425" y="62" textAnchor="middle" fontSize="8" fill="#6b7094">SCENE</text>
+        <line x1="376" y1="67" x2="474" y2="67" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="378" y="82" fontSize="7" fill="#6b7094">Zone</text>
+        <rect x="376" y="85" width="96" height="20" rx="4" fill="#3a7abf22" stroke="#3a7abf" strokeWidth="1"/>
+        <circle cx="386" cy="95" r="5" fill="#3a7abf"/>
+        <text x="415" y="99" textAnchor="middle" fontSize="7" fill="#e0ddd8">Ground Floor</text>
+        {/* Annotations */}
+        <path d="M 6 188 L 6 196" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s9m)" strokeDasharray="3,2"/>
+        <text x="138" y="194" fontSize="8" fill="#f0a060">① Create colour-coded zones</text>
+        <path d="M 6 113 L 6 120" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s9m)" strokeDasharray="3,2"/>
+        <text x="138" y="120" fontSize="8" fill="#f0a060">② Drag scenes into zones</text>
+        <path d="M 370 92 L 360 92" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s9m)" strokeDasharray="3,2"/>
+        <text x="148" y="148" fontSize="8" fill="#f0a060">③ Zone shown in Properties →</text>
+      </svg>
+    ),
+  },
+  {
+    id: 10,
+    title: 'Design Variants',
+    icon: <Layers size={18} />,
+    summary: 'Let viewers switch between finishes and materials inside the tour.',
+    description: 'Place a Variants hotspot (set Type = Variants in Properties). Then add option cards — each card has a name, a preview image, and links to the scene that shows that variant (e.g. Marble, Wood, Concrete).\n\nIn preview mode, clicking the hotspot opens a floating selector panel. The persistent Design Tray at the bottom of the screen always shows the options — no hotspot click required.\n\nThe Variants hotspot uses the same ID across all linked variant scenes, so the panel stays open and in sync as viewers navigate between options.',
+    tip: 'Set up one scene per variant and link each card to its scene. Shoot all variants from the same camera position for a seamless switch. The active option is highlighted with an orange ring in both the panel and the tray.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s10m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <radialGradient id="s10g" cx="45%" cy="50%" r="65%"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="100%" stopColor="#0a0c14"/></radialGradient>
+          <linearGradient id="s10gn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="transparent"/><stop offset="100%" stopColor="#000000aa"/></linearGradient>
+        </defs>
+        {/* Preview background */}
+        <rect width="480" height="260" rx="10" fill="#0a0c14"/>
+        <rect width="480" height="260" rx="10" fill="url(#s10g)"/>
+        {/* HUD bar */}
+        <rect width="480" height="32" fill="#00000033"/>
+        <rect x="8" y="7" width="24" height="18" rx="5" fill="#25252f99"/>
+        <text x="20" y="20" textAnchor="middle" fontSize="9" fill="#9a9ab0">✕</text>
+        {/* Variants hotspot in scene */}
+        <circle cx="200" cy="150" r="20" fill="#1e1e2688" stroke="#a060e0" strokeWidth="2"/>
+        <circle cx="200" cy="150" r="28" fill="none" stroke="#a060e0" strokeWidth="1" opacity="0.3"/>
+        <text x="200" y="155" textAnchor="middle" fontSize="12" fill="#a060e0">⊞</text>
+        <rect x="164" y="176" width="72" height="16" rx="6" fill="#00000055"/>
+        <text x="200" y="188" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.7)">Choose Finish</text>
+        {/* Floating variants panel */}
+        <rect x="104" y="42" width="272" height="118" rx="12" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="104" y="42" width="272" height="36" rx="12" fill="#2e2e3a"/>
+        <rect x="104" y="62" width="272" height="16" fill="#2e2e3a"/>
+        <text x="240" y="64" textAnchor="middle" fontSize="10" fill="#e0ddd8" fontWeight="bold">Choose Finish</text>
+        <circle cx="360" cy="60" r="10" fill="#3a3a48"/>
+        <text x="360" y="64" textAnchor="middle" fontSize="9" fill="#9a9ab0">✕</text>
+        <line x1="116" y1="78" x2="364" y2="78" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Option cards — 3 side by side */}
+        {[
+          {x:116, fill:'#e0d8d0', label:'Marble',   sel:true},
+          {x:200, fill:'#8a6040', label:'Wood',      sel:false},
+          {x:284, fill:'#808080', label:'Concrete',  sel:false},
+        ].map(c=>(
+          <g key={c.x}>
+            <rect x={c.x} y={82} width={76} height={54} rx="8"
+              fill={c.fill} fillOpacity="0.25"
+              stroke={c.sel ? '#e07b3f' : '#3a3a48'} strokeWidth={c.sel ? 2 : 1}/>
+            {/* Swatch */}
+            <rect x={c.x+8} y={88} width={60} height={30} rx="5" fill={c.fill} fillOpacity="0.6"/>
+            {c.sel && <circle cx={c.x+66} cy={88} r={7} fill="#e07b3f"/>}
+            {c.sel && <text x={c.x+66} y={92} textAnchor="middle" fontSize="8" fill="white">✓</text>}
+            <text x={c.x+38} y={148} textAnchor="middle" fontSize="7.5"
+              fill={c.sel ? '#e07b3f' : '#9a9ab0'} fontWeight={c.sel ? '600':'normal'}>{c.label}</text>
+          </g>
+        ))}
+        {/* Bottom fade + design tray */}
+        <rect x="0" y="215" width="480" height="45" fill="url(#s10gn)"/>
+        <rect x="120" y="226" width="240" height="26" rx="10" fill="#25252faa" stroke="#3a3a4855" strokeWidth="1"/>
+        <rect x="132" y="230" width="68" height="18" rx="6" fill="#e07b3f22" stroke="#e07b3f" strokeWidth="1.5"/>
+        <text x="166" y="243" textAnchor="middle" fontSize="7.5" fill="#e07b3f" fontWeight="600">Marble ✓</text>
+        <text x="244" y="243" textAnchor="middle" fontSize="7.5" fill="#6b7094">Wood</text>
+        <text x="310" y="243" textAnchor="middle" fontSize="7.5" fill="#6b7094">Concrete</text>
+        {/* Annotations */}
+        <path d="M 240 78 Q 280 30 340 20" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s10m)" strokeDasharray="3,2"/>
+        <text x="292" y="16" fontSize="7" fill="#f0a060">① Click hotspot to open panel</text>
+        <path d="M 240 228 L 240 218" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s10m)" strokeDasharray="3,2"/>
+        <text x="364" y="214" fontSize="7" fill="#f0a060">② Persistent design tray</text>
+      </svg>
+    ),
+  },
+  {
+    id: 11,
+    title: 'Compare & Gallery Hotspots',
+    icon: <Image size={18} />,
+    summary: 'Overlay before/after scenes or open a full-screen photo lightbox.',
+    description: 'Compare hotspot: links a second scene — clicking opens a full-screen split view with a draggable vertical divider. Drag it left or right to reveal more of either scene. Perfect for before/after renovations, furnished vs unfurnished, or day vs night.\n\nGallery hotspot: holds a list of images — clicking opens a full-screen lightbox with previous/next arrows, a thumbnail strip at the bottom, and a photo counter. Ideal for material swatches, mood boards, or construction progress.',
+    tip: 'The Compare divider position is remembered while the overlay is open — release anywhere. In Gallery, press Esc or click the backdrop to close. Both types work equally well on touch screens.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s11m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <linearGradient id="s11g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="100%" stopColor="#1a2a3a"/></linearGradient>
+          <linearGradient id="s11g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#3a2a1a"/><stop offset="100%" stopColor="#2a3a2a"/></linearGradient>
+        </defs>
+        {/* Background */}
+        <rect width="480" height="260" rx="10" fill="#0a0c14"/>
+        {/* ── LEFT HALF: Before/After Compare ── */}
+        <rect x="0" y="0" width="238" height="260" rx="10" fill="url(#s11g1)"/>
+        {/* Divider line */}
+        <rect x="118" y="0" width="2" height="260" fill="white" opacity="0.9"/>
+        {/* Drag handle */}
+        <circle cx="119" cy="130" r="16" fill="white"/>
+        <text x="110" y="133" fontSize="11" fill="#333" fontWeight="bold">‹</text>
+        <text x="120" y="133" fontSize="11" fill="#333" fontWeight="bold">›</text>
+        {/* Before label */}
+        <rect x="8" y="220" width="52" height="18" rx="6" fill="#00000077"/>
+        <text x="34" y="233" textAnchor="middle" fontSize="8" fill="white">◀ Before</text>
+        {/* After label */}
+        <rect x="160" y="220" width="50" height="18" rx="6" fill="#00000077"/>
+        <text x="185" y="233" textAnchor="middle" fontSize="8" fill="white">After ▶</text>
+        {/* Panel label */}
+        <rect x="6" y="6" width="66" height="18" rx="6" fill="#1e1e2699"/>
+        <text x="39" y="19" textAnchor="middle" fontSize="8" fill="#e07b3f" fontWeight="600">⇔ Compare</text>
+        {/* Annotation */}
+        <text x="50" y="250" textAnchor="middle" fontSize="7" fill="#f0a060">drag divider</text>
+        {/* ── DIVIDING GUTTER ── */}
+        <rect x="238" y="0" width="4" height="260" fill="#3a3a48"/>
+        {/* ── RIGHT HALF: Gallery Lightbox ── */}
+        <rect x="242" y="0" width="238" height="260" rx="10" fill="#0e0e18"/>
+        {/* Gallery label */}
+        <rect x="248" y="6" width="58" height="18" rx="6" fill="#1e1e2699"/>
+        <text x="277" y="19" textAnchor="middle" fontSize="8" fill="#a060e0" fontWeight="600">⊟ Gallery</text>
+        {/* Counter */}
+        <rect x="400" y="6" width="34" height="18" rx="6" fill="#1e1e2699"/>
+        <text x="417" y="19" textAnchor="middle" fontSize="8" fill="#9a9ab0">3 / 8</text>
+        {/* Main photo */}
+        <rect x="256" y="28" width="208" height="148" rx="8" fill="#2a3a2a"/>
+        <line x1="260" y1="32" x2="360" y2="172" stroke="#3a5a3a" strokeWidth="0.6" opacity="0.4"/>
+        <line x1="360" y1="32" x2="260" y2="172" stroke="#3a5a3a" strokeWidth="0.6" opacity="0.4"/>
+        <text x="360" y="104" textAnchor="middle" fontSize="8" fill="#6b7094">Oak parquet</text>
+        <text x="360" y="118" textAnchor="middle" fontSize="7" fill="#4a4a5a">gallery photo 3</text>
+        {/* Prev/Next arrows */}
+        <circle cx="268" cy="102" r="16" fill="#00000077"/>
+        <text x="268" y="107" textAnchor="middle" fontSize="14" fill="white">‹</text>
+        <circle cx="452" cy="102" r="16" fill="#00000077"/>
+        <text x="452" y="107" textAnchor="middle" fontSize="14" fill="white">›</text>
+        {/* Thumbnail strip */}
+        <rect x="256" y="182" width="208" height="50" rx="6" fill="#1e1e2699"/>
+        {[0,1,2,3,4].map(i=>(
+          <g key={i}>
+            <rect x={258+i*42} y={186} width={36} height={42} rx="4"
+              fill={i===2 ? '#2a3a2a' : '#25252f'}
+              stroke={i===2 ? '#a060e0' : '#3a3a48'} strokeWidth={i===2 ? 2 : 1}/>
+          </g>
+        ))}
+        {/* Annotations */}
+        <path d="M 119 30 Q 100 55 80 70" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s11m)" strokeDasharray="3,2"/>
+        <text x="10" y="70" fontSize="7" fill="#f0a060">Drag to</text>
+        <text x="10" y="80" fontSize="7" fill="#f0a060">reveal</text>
+        <path d="M 360 182 L 360 175" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s11m)" strokeDasharray="3,2"/>
+        <text x="290" y="240" fontSize="7" fill="#f0a060">Thumbnail strip</text>
+      </svg>
+    ),
+  },
+  {
+    id: 12,
+    title: 'Splash Screen & Guided Tour',
+    icon: <Eye size={18} />,
+    summary: 'Brand the entry experience and automate scene progression for clients.',
+    description: 'Splash screen: before the tour starts viewers see a branded intro card showing the project name, an optional 8-second countdown, and an "Enter Tour" button. Optionally set a password — the prompt appears on the splash and only viewers with the correct code can proceed.\n\nGuided Tour: press Play (▶) in the top-left HUD to start auto-advancing through scenes every 10 seconds. A progress bar fills at the top of the screen. The order follows your sidebar sequence. Press Space or ▶/⏸ to pause and resume at any time.',
+    tip: 'The splash screen and password gate only appear in Preview and published tours — never in the editor. Use guided tour when presenting to clients on a large screen so scenes advance hands-free without you touching the keyboard.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s12m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+          <radialGradient id="s12bg" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#1a2a3a"/><stop offset="100%" stopColor="#060810"/></radialGradient>
+          <radialGradient id="s12sg" cx="50%" cy="50%" r="70%"><stop offset="0%" stopColor="#2a3a4a"/><stop offset="100%" stopColor="#0a0c14"/></radialGradient>
+        </defs>
+        <rect width="480" height="260" rx="10" fill="#060810"/>
+        {/* ── LEFT HALF: Splash Screen ── */}
+        <rect x="0" y="0" width="236" height="260" rx="10" fill="url(#s12bg)"/>
+        <rect x="238" y="0" width="4" height="260" fill="#3a3a48"/>
+        {/* Splash card */}
+        <rect x="18" y="24" width="200" height="210" rx="14" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        <rect x="18" y="24" width="200" height="54" rx="14" fill="#2e2e3a"/>
+        <rect x="18" y="64" width="200" height="14" fill="#2e2e3a"/>
+        <circle cx="88" cy="50" r="18" fill="#e07b3f"/>
+        <text x="88" y="57" textAnchor="middle" fontSize="17" fill="white" fontWeight="bold">A</text>
+        <text x="143" y="52" fontSize="9" fill="#e0ddd8" fontWeight="700">ArchScape</text>
+        <text x="118" y="96" textAnchor="middle" fontSize="11" fill="#e0ddd8" fontWeight="bold">Luxury Villa Tour</text>
+        <text x="118" y="110" textAnchor="middle" fontSize="7.5" fill="#6b7094">4 scenes · Ground + First Floor</text>
+        <text x="32" y="126" fontSize="7" fill="#6b7094">Password</text>
+        <rect x="30" y="130" width="176" height="20" rx="6" fill="#1e1e26" stroke="#3a3a48" strokeWidth="1"/>
+        <text x="44" y="144" fontSize="8" fill="#6b7094">••••••••</text>
+        <rect x="187" y="132" width="15" height="16" rx="3" fill="#2e2e3a"/>
+        <text x="194" y="143" textAnchor="middle" fontSize="8" fill="#6b7094">👁</text>
+        {/* Countdown ring */}
+        <circle cx="118" cy="180" r="24" fill="none" stroke="#3a3a48" strokeWidth="3"/>
+        <circle cx="118" cy="180" r="24" fill="none" stroke="#e07b3f" strokeWidth="3"
+          strokeDasharray="90 61" strokeLinecap="round"/>
+        <text x="118" y="177" textAnchor="middle" fontSize="12" fill="#e0ddd8" fontWeight="bold">00</text>
+        <text x="118" y="191" textAnchor="middle" fontSize="7" fill="#6b7094">:05 sec</text>
+        <rect x="30" y="210" width="176" height="26" rx="8" fill="#e07b3f"/>
+        <text x="118" y="227" textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">Enter Tour →</text>
+        <rect x="22" y="6" width="84" height="14" rx="5" fill="#1e1e2699"/>
+        <text x="64" y="17" textAnchor="middle" fontSize="7" fill="#e07b3f" fontWeight="600">Splash Screen</text>
+        {/* ── RIGHT HALF: Preview HUD ── */}
+        <rect x="242" y="0" width="238" height="260" rx="10" fill="url(#s12sg)"/>
+        <rect x="246" y="6" width="88" height="14" rx="5" fill="#1e1e2699"/>
+        <text x="290" y="17" textAnchor="middle" fontSize="7" fill="#60a0e0" fontWeight="600">Guided Tour HUD</text>
+        {/* Progress bar */}
+        <rect x="242" y="22" width="238" height="4" fill="#3a3a4855"/>
+        <rect x="242" y="22" width="142" height="4" fill="#e07b3f"/>
+        <circle cx="384" cy="24" r="5" fill="#f0a060"/>
+        {/* HUD strip */}
+        <rect x="242" y="26" width="238" height="34" fill="#00000033"/>
+        <rect x="250" y="32" width="24" height="20" rx="6" fill="#25252f99"/>
+        <text x="262" y="46" textAnchor="middle" fontSize="9" fill="#9a9ab0">✕</text>
+        <rect x="280" y="32" width="24" height="20" rx="6" fill="#e07b3f22" stroke="#e07b3f88" strokeWidth="1"/>
+        <text x="292" y="46" textAnchor="middle" fontSize="12" fill="#e07b3f">⏸</text>
+        <rect x="310" y="32" width="68" height="20" rx="6" fill="#25252f99"/>
+        <text x="344" y="46" textAnchor="middle" fontSize="8" fill="#9a9ab0">3 / 5  ·  4s</text>
+        {/* Scene in viewer */}
+        <text x="361" y="118" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.4)">Bedroom</text>
+        <circle cx="350" cy="152" r="16" fill="#00000055" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5"/>
+        <text x="350" y="157" textAnchor="middle" fontSize="10" fill="white">→</text>
+        {/* Scene dots */}
+        {[0,1,2,3,4].map(i=>(
+          <circle key={i} cx={344+i*13} cy={234} r={i===2?5:3.5}
+            fill={i===2 ? '#e07b3f' : 'rgba(255,255,255,0.3)'}/>
+        ))}
+        {/* Breadcrumb */}
+        <rect x="290" y="242" width="184" height="14" rx="5" fill="#25252f88"/>
+        <text x="382" y="253" textAnchor="middle" fontSize="6.5" fill="#9a9ab0">Lobby › Living Rm › Bedroom</text>
+        {/* Annotations */}
+        <path d="M 118 210 L 118 218" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s12m)" strokeDasharray="3,2"/>
+        <text x="20" y="248" fontSize="7" fill="#f0a060">① Password entry + countdown</text>
+        <path d="M 384 22 Q 400 12 420 8" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s12m)" strokeDasharray="3,2"/>
+        <text x="330" y="6" fontSize="7" fill="#f0a060">10s bar</text>
+        <path d="M 292 32 L 292 26" stroke="#f0a060" strokeWidth="1.2" fill="none" markerEnd="url(#s12m)" strokeDasharray="3,2"/>
+        <text x="252" y="76" fontSize="7" fill="#f0a060">⏸ Pause / resume</text>
+      </svg>
+    ),
+  },
+  {
+    id: 13,
+    title: 'Snapshots & Version History',
+    icon: <BarChart2 size={18} />,
+    summary: 'Save named checkpoints of your work and roll back at any time.',
+    description: 'Click the Snapshots icon (🕐) in the toolbar to open the Version History panel. Click "+ Save Snapshot" and give it a descriptive name — the full state of all scenes, hotspots, floor plan markers, zones, and properties is captured instantly.\n\nUp to 20 snapshots can be stored. To roll back, click "Restore" next to any entry — the editor reverts to that exact state immediately. Each snapshot shows its name, creation time, and how long ago it was saved.\n\nSnapshots persist in your browser\'s local storage across sessions on the same device.',
+    tip: 'Create a snapshot before big structural changes — swapping panoramas, rebuilding zone layout, or adding a wave of new hotspots. Snapshot data does not include panorama image files (those stay in place); only project structure and settings are captured.',
+    diagram: (
+      <svg viewBox="0 0 480 260" className="w-full" style={{ maxHeight: 260 }}>
+        <defs>
+          <marker id="s13m" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#f0a060"/></marker>
+        </defs>
+        <rect width="480" height="260" rx="10" fill="#1e1e26"/>
+        {/* Header */}
+        <rect width="480" height="44" rx="10" fill="#25252f"/>
+        <rect y="34" width="480" height="10" fill="#25252f"/>
+        <circle cx="22" cy="22" r="12" fill="#e07b3f"/>
+        <text x="22" y="27" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">A</text>
+        {/* Toolbar utility icons */}
+        <rect x="200" y="9" width="28" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="214" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">⊞</text>
+        <rect x="232" y="9" width="28" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="246" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">{`</>`}</text>
+        {/* Snapshots icon — highlighted */}
+        <rect x="264" y="9" width="28" height="26" rx="6" fill="#e07b3f22" stroke="#e07b3f" strokeWidth="1.5"/>
+        <text x="278" y="26" textAnchor="middle" fontSize="11" fill="#e07b3f">🕐</text>
+        <rect x="296" y="9" width="28" height="26" rx="6" fill="#2e2e3a"/>
+        <text x="310" y="26" textAnchor="middle" fontSize="9" fill="#9a9ab0">▦</text>
+        <rect x="420" y="9" width="50" height="26" rx="7" fill="#e07b3f"/>
+        <text x="445" y="26" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold">Publish</text>
+        {/* Snapshots modal */}
+        <rect x="50" y="50" width="380" height="202" rx="14" fill="#25252f" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Modal header */}
+        <rect x="50" y="50" width="380" height="38" rx="14" fill="#2e2e3a"/>
+        <rect x="50" y="74" width="380" height="14" fill="#2e2e3a"/>
+        <text x="210" y="73" textAnchor="middle" fontSize="11" fill="#e0ddd8" fontWeight="bold">🕐  Version History</text>
+        <circle cx="414" cy="69" r="11" fill="#3a3a48"/>
+        <text x="414" y="73" textAnchor="middle" fontSize="10" fill="#9a9ab0">✕</text>
+        <line x1="62" y1="88" x2="418" y2="88" stroke="#3a3a48" strokeWidth="1"/>
+        {/* Snapshot list */}
+        {[
+          {name:'Initial Layout',    sub:'Lobby + 2 rooms',      time:'2 days ago',     cur:false},
+          {name:'With Materials',    sub:'Variants + hotspots',  time:'Yesterday 14:30', cur:false},
+          {name:'Client Review v1',  sub:'Floor plan tagged',    time:'5 hours ago',     cur:false},
+          {name:'Final Draft  ★',    sub:'All 7 scenes + zones', time:'32 min ago',      cur:true},
+        ].map((s,i)=>(
+          <g key={i}>
+            <rect x="62" y={94+i*36} width="356" height="30" rx="7"
+              fill={s.cur ? '#e07b3f08' : '#22222c'}
+              stroke={s.cur ? '#e07b3f44' : 'none'} strokeWidth="1"/>
+            {/* Timeline */}
+            <circle cx="80" cy={109+i*36} r={s.cur ? 7 : 5}
+              fill={s.cur ? '#e07b3f' : '#3a3a48'}
+              stroke={s.cur ? '#f0a060' : 'none'} strokeWidth="2"/>
+            {i < 3 && <line x1="80" y1={116+i*36} x2="80" y2={129+i*36} stroke="#3a3a48" strokeWidth="1" strokeDasharray="2,2"/>}
+            {/* Text */}
+            <text x="96" y={106+i*36} fontSize="8.5"
+              fill={s.cur ? '#e0ddd8' : '#9a9ab0'} fontWeight={s.cur ? '600' : 'normal'}>{s.name}</text>
+            <text x="96" y={118+i*36} fontSize="6.5" fill="#6b7094">{s.sub}  ·  {s.time}</text>
+            {/* Button */}
+            <rect x={346} y={98+i*36} width={64} height={22} rx="6"
+              fill={s.cur ? '#e07b3f' : '#2e2e3a'}
+              stroke={s.cur ? 'none' : '#3a3a48'} strokeWidth="1"/>
+            <text x={378} y={113+i*36} textAnchor="middle" fontSize="7.5"
+              fill={s.cur ? 'white' : '#9a9ab0'} fontWeight={s.cur ? '600' : 'normal'}>
+              {s.cur ? 'Current' : 'Restore'}
+            </text>
+          </g>
+        ))}
+        {/* Save Snapshot button */}
+        <rect x="62" y="240" width="356" height="24" rx="8"
+          fill="#e07b3f" fillOpacity="0.12" stroke="#e07b3f" strokeWidth="1.5"/>
+        <text x="240" y="256" textAnchor="middle" fontSize="9" fill="#e07b3f" fontWeight="600">+ Save Snapshot</text>
+        {/* Annotations */}
+        <path d="M 278 36 L 278 44" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s13m)" strokeDasharray="3,2"/>
+        <text x="282" y="50" fontSize="7" fill="#f0a060">① Open Snapshots</text>
+        <path d="M 346 109 L 338 109" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s13m)" strokeDasharray="3,2"/>
+        <text x="114" y="100" fontSize="7" fill="#f0a060">② Restore any checkpoint →</text>
+        <path d="M 240 240 L 240 232" stroke="#f0a060" strokeWidth="1.5" fill="none" markerEnd="url(#s13m)" strokeDasharray="3,2"/>
+        <text x="138" y="230" fontSize="7" fill="#f0a060">③ Save current state</text>
+      </svg>
+    ),
+  },
 ];
 
 export default function HelpModal({ onClose }: HelpModalProps) {
