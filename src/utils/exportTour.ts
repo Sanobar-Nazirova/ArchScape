@@ -195,6 +195,15 @@ export async function exportTourAsHTML(
       border-top-color: #e07b3f; border-radius: 50%; animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    #vr-btn {
+      display: none; position: fixed; bottom: 60px; right: 20px; z-index: 30;
+      align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 12px;
+      background: rgba(0,0,0,0.72); border: 1px solid rgba(255,255,255,0.22);
+      color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+      backdrop-filter: blur(8px); transition: background 0.2s, transform 0.1s;
+    }
+    #vr-btn:hover { background: rgba(255,255,255,0.12); transform: scale(1.03); }
   </style>
 </head>
 <body>
@@ -214,6 +223,7 @@ export async function exportTourAsHTML(
   <div id="scene-name"></div>
   <div id="hotspot-container"></div>
   <div id="nav-bar"></div>
+  <button id="vr-btn"><span style="font-size:14px">🥽</span> Enter VR</button>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.min.js"></script>
 <script>
@@ -267,7 +277,42 @@ export async function exportTourAsHTML(
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
     app.insertBefore(renderer.domElement, app.firstChild);
+
+    // ── WebXR VR button ─────────────────────────────────────────────────
+    const vrBtn = document.getElementById('vr-btn');
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+        if (supported && vrBtn) vrBtn.style.display = 'flex';
+      }).catch(() => {});
+    }
+    if (vrBtn) {
+      let vrSession = null;
+      vrBtn.addEventListener('click', async () => {
+        if (!navigator.xr) return;
+        if (vrSession) {
+          vrSession.end();
+          return;
+        }
+        try {
+          const session = await navigator.xr.requestSession('immersive-vr', {
+            optionalFeatures: ['local-floor', 'bounded-floor'],
+          });
+          vrSession = session;
+          renderer.xr.setSession(session);
+          vrBtn.textContent = '✕  Exit VR';
+          vrBtn.style.background = 'rgba(224,123,63,0.85)';
+          session.addEventListener('end', () => {
+            vrSession = null;
+            vrBtn.innerHTML = '<span style="font-size:14px">🥽</span> Enter VR';
+            vrBtn.style.background = 'rgba(0,0,0,0.72)';
+          });
+        } catch (e) {
+          console.warn('WebXR session failed:', e);
+        }
+      });
+    }
 
     const scene3d = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -404,13 +449,14 @@ export async function exportTourAsHTML(
       );
     }
 
-    // ── Render loop ──────────────────────────────────────────────────────
+    // ── Render loop (setAnimationLoop required for WebXR) ────────────────
     function animate() {
-      requestAnimationFrame(animate);
-      updateHotspotPositions(camera, renderer);
+      if (!renderer.xr.isPresenting) {
+        updateHotspotPositions(camera, renderer);
+      }
       renderer.render(scene3d, camera);
     }
-    animate();
+    renderer.setAnimationLoop(animate);
 
     // ── Bootstrap ────────────────────────────────────────────────────────
     loadScene(0);

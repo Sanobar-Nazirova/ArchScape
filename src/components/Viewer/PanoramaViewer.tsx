@@ -1606,8 +1606,8 @@ export default function PanoramaViewer({
           {/* ── Zoom controls ── */}
           <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} />
 
-          {/* ── VR button (preview mode + WebXR supported) ── */}
-          {isPreviewMode && vrSupported && (
+          {/* ── VR button (WebXR supported) ── */}
+          {vrSupported && (
             <button
               onClick={enterVR}
               className="absolute bottom-20 right-4 z-20 px-3 py-2 bg-black/70 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xs flex items-center gap-2 hover:bg-white/10 transition-colors"
