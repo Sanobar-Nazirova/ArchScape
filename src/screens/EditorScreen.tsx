@@ -413,6 +413,7 @@ export default function EditorScreen() {
           onHotspotSelect={() => {}}
           onMediaSelect={() => {}}
           onHotspotReposition={() => {}}
+          onEnterImmersive={() => setImmersiveOpen(true)}
         />
         <PresentationHUD onEnterImmersive={() => setImmersiveOpen(true)} />
         {immersiveOpen && (

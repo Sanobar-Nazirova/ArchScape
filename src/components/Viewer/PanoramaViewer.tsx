@@ -487,12 +487,13 @@ interface PanoramaViewerProps {
   onHotspotSelect: (hotspotId: string) => void;
   onMediaSelect: (mediaId: string) => void;
   onHotspotReposition: (hotspotId: string, yaw: number, pitch: number) => void;
+  onEnterImmersive?: () => void;
 }
 
 export default function PanoramaViewer({
   scene, isPreviewMode, activeTool, selectedElementId,
   onHotspotPlace, onMediaPlace, onHotspotClick, onHotspotSelect, onMediaSelect,
-  onHotspotReposition,
+  onHotspotReposition, onEnterImmersive,
 }: PanoramaViewerProps) {
   const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes, setPendingStartView, updateSceneNorthOffset } = useTourStore();
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
@@ -1605,8 +1606,24 @@ export default function PanoramaViewer({
           {/* ── Zoom controls ── */}
           <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} />
 
-          {/* ── VR button (WebXR supported) ── */}
-          {vrSupported && (
+          {/* ── 360° / VR button ── */}
+          {isPreviewMode && onEnterImmersive && (
+            <button
+              onClick={onEnterImmersive}
+              className="absolute bottom-20 right-4 z-20 px-4 py-2.5 backdrop-blur-sm border rounded-2xl text-sm font-semibold flex items-center gap-2 transition-all hover:scale-105"
+              style={{
+                background: 'rgba(224,123,63,0.85)',
+                borderColor: 'rgba(224,123,63,1)',
+                color: 'white',
+                boxShadow: '0 0 20px rgba(224,123,63,0.5)',
+              }}
+              title="Open 360° immersive / VR viewer"
+            >
+              <Glasses size={15} />
+              360° / VR
+            </button>
+          )}
+          {!isPreviewMode && vrSupported && (
             <button
               onClick={enterVR}
               className="absolute bottom-20 right-4 z-20 px-3 py-2 bg-black/70 backdrop-blur-sm border border-white/20 rounded-xl text-white text-xs flex items-center gap-2 hover:bg-white/10 transition-colors"
