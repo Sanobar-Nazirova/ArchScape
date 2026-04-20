@@ -174,15 +174,20 @@ export default function EditorScreen() {
     : undefined;
 
   const [immersiveOpen, setImmersiveOpen] = useState(false);
+  const [autoEnterVR, setAutoEnterVR]     = useState(false);
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
 
-  // Auto-open ImmersiveViewer when launched via "View VR" from the tour card
+  // Auto-open ImmersiveViewer when launched via "View VR" from the tour card.
+  // Uses both the Zustand flag AND sessionStorage as a reliable fallback.
   useEffect(() => {
-    if (pendingVRMode) {
+    const fromSession = sessionStorage.getItem('_archscape_vr') === '1';
+    if (pendingVRMode || fromSession) {
       clearPendingVRMode();
+      sessionStorage.removeItem('_archscape_vr');
       setImmersiveOpen(true);
+      setAutoEnterVR(true);
     }
   }, [pendingVRMode, clearPendingVRMode]);
 
@@ -430,7 +435,8 @@ export default function EditorScreen() {
             scene={activeScene}
             scenes={scenes}
             onSceneChange={setActiveScene}
-            onClose={() => setImmersiveOpen(false)}
+            onClose={() => { setImmersiveOpen(false); setAutoEnterVR(false); }}
+            autoEnterVR={autoEnterVR}
           />
         )}
         {pendingHotspotId && activeScene && (
@@ -499,7 +505,8 @@ export default function EditorScreen() {
               scene={activeScene}
               scenes={scenes}
               onSceneChange={setActiveScene}
-              onClose={() => setImmersiveOpen(false)}
+              onClose={() => { setImmersiveOpen(false); setAutoEnterVR(false); }}
+              autoEnterVR={autoEnterVR}
             />
           )}
         </div>

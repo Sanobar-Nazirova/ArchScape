@@ -8,9 +8,10 @@ interface Props {
   scenes: Scene[];
   onSceneChange: (id: string) => void;
   onClose: () => void;
+  autoEnterVR?: boolean;
 }
 
-export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose }: Props) {
+export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose, autoEnterVR }: Props) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const rendererRef   = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef     = useRef<THREE.PerspectiveCamera | null>(null);
@@ -206,6 +207,14 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose 
       console.warn('WebXR session failed:', e);
     }
   }, []);
+
+  // Auto-enter VR when launched from "View VR" button (e.g. on Meta Quest)
+  useEffect(() => {
+    if (!autoEnterVR) return;
+    // Small delay to let Three.js finish initialising the renderer
+    const t = setTimeout(() => enterVR(), 400);
+    return () => clearTimeout(t);
+  }, [autoEnterVR, enterVR]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black" style={{ touchAction: 'none' }}>

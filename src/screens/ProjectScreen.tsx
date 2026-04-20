@@ -267,7 +267,9 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
 
   const openInVR = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Both mechanisms ensure EditorScreen knows to auto-open ImmersiveViewer
     useTourStore.setState({ pendingVRMode: true });
+    sessionStorage.setItem('_archscape_vr', '1');
     openTour(projectId, tour.id);
     document.documentElement.requestFullscreen?.().catch(() => {});
   };
