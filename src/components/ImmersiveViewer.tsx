@@ -234,16 +234,21 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose 
             </button>
           )}
 
-          {/* WebXR VR button */}
-          {vrSupported && (
-            <button
-              onClick={enterVR}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs border border-white/20 transition-colors hover:bg-white/10"
-              style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
-              <Glasses size={13} />
-              Enter VR
-            </button>
-          )}
+          {/* WebXR VR button — always visible */}
+          <button
+            onClick={vrSupported ? enterVR : undefined}
+            title={vrSupported ? 'Enter immersive VR' : 'WebXR not available in this browser — open in a VR headset browser or Chrome with a headset connected'}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border transition-colors"
+            style={{
+              background: vrSupported ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)',
+              borderColor: vrSupported ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+              color: vrSupported ? 'white' : 'rgba(255,255,255,0.35)',
+              backdropFilter: 'blur(8px)',
+              cursor: vrSupported ? 'pointer' : 'default',
+            }}>
+            <Glasses size={13} />
+            Enter VR
+          </button>
         </div>
 
         {/* Scene name */}
