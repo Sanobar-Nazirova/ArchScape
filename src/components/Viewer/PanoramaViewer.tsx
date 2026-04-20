@@ -506,7 +506,6 @@ export default function PanoramaViewer({
   const textureRef    = useRef<THREE.Texture | null>(null);
   const videoElRef    = useRef<HTMLVideoElement | null>(null);
   const shaderMatRef  = useRef<THREE.ShaderMaterial | null>(null);
-  const rafRef        = useRef<number>(0);
   const xrActiveRef   = useRef(false);
 
   // ── Camera state refs (avoid stale closures in rAF) ─────────────────
@@ -619,83 +618,80 @@ export default function PanoramaViewer({
     threeScene.add(mesh);
     sphereRef.current = mesh;
 
-    // Animation loop
+    // Animation loop — handles both regular and WebXR rendering.
+    // renderer.setAnimationLoop is required (vs rAF) so Three.js can hand us
+    // XRFrames when an immersive-vr session is active.  The second argument
+    // is undefined in regular mode and an XRFrame in XR mode.
     let frame = 0;
-    const animate = () => {
-      if (xrActiveRef.current) return;
-      rafRef.current = requestAnimationFrame(animate);
+    const animate = (_time: number, xrFrame?: XRFrame) => {
       frame++;
-
       const cam = cameraRef.current!;
-      cam.rotation.y = -yawRef.current;
-      cam.rotation.x = pitchRef.current;
-      cam.fov = fovRef.current;
-      cam.updateProjectionMatrix();
 
-      // Update video texture every frame
+      if (!xrFrame) {
+        // ── Regular (non-XR) mode: apply manual camera controls ──────────
+        cam.rotation.y = -yawRef.current;
+        cam.rotation.x = pitchRef.current;
+        cam.fov = fovRef.current;
+        cam.updateProjectionMatrix();
+
+        // Imperatively update hotspot/media overlay positions every frame
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        const sc = sceneRef.current;
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+        if (sc) {
+          for (const hs of (sc.hotspots ?? [])) {
+            const el = hotspotContainersRef.current.get(hs.id);
+            if (!el) continue;
+            const pos = draggingHotspotRef.current?.id === hs.id ? draggingHotspotRef.current : hs;
+            const wp = yawPitchToWorld(pos.yaw, pos.pitch);
+            const v = new THREE.Vector3(wp.x, wp.y, wp.z);
+            const proj = v.clone().project(cam);
+            const visible = forward.dot(v.normalize()) > 0.15;
+            const x = (proj.x + 1) / 2 * w;
+            const y = (1 - proj.y) / 2 * h;
+            el.style.transform = `translate3d(${x}px,${y}px,0)`;
+            el.style.opacity = visible ? '1' : '0';
+            el.style.pointerEvents = visible ? 'auto' : 'none';
+          }
+          for (const mp of (sc.mediaPoints ?? [])) {
+            const el = mediaContainersRef.current.get(mp.id);
+            if (!el) continue;
+            const wp = yawPitchToWorld(mp.yaw, mp.pitch);
+            const v = new THREE.Vector3(wp.x, wp.y, wp.z);
+            const proj = v.clone().project(cam);
+            const visible = forward.dot(v.normalize()) > 0.15;
+            const x = (proj.x + 1) / 2 * w;
+            const y = (1 - proj.y) / 2 * h;
+            el.style.transform = `translate3d(${x}px,${y}px,0)`;
+            el.style.opacity = visible ? '1' : '0';
+            el.style.pointerEvents = visible ? 'auto' : 'none';
+          }
+          if (frame % 10 === 0) {
+            setMinimapYaw(yawRef.current);
+            setCompassYaw(prev => Math.abs(yawRef.current - prev) > 0.02 ? yawRef.current : prev);
+          }
+        }
+      }
+      // ── Both modes: keep video texture fresh ─────────────────────────
       if (videoElRef.current && textureRef.current) {
         (textureRef.current as THREE.VideoTexture).needsUpdate = true;
       }
 
-      // Imperatively update hotspot/media overlay positions every frame
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      const sc = sceneRef.current;
-      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-      if (sc) {
-        for (const hs of (sc.hotspots ?? [])) {
-          const el = hotspotContainersRef.current.get(hs.id);
-          if (!el) continue;
-          // use dragging override position if active
-          const pos = draggingHotspotRef.current?.id === hs.id ? draggingHotspotRef.current : hs;
-          const wp = yawPitchToWorld(pos.yaw, pos.pitch);
-          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-          const proj = v.clone().project(cam);
-          const visible = forward.dot(v.normalize()) > 0.15;
-          const x = (proj.x + 1) / 2 * w;
-          const y = (1 - proj.y) / 2 * h;
-          el.style.transform = `translate3d(${x}px,${y}px,0)`;
-          el.style.opacity = visible ? '1' : '0';
-          el.style.pointerEvents = visible ? 'auto' : 'none';
-        }
-        for (const mp of (sc.mediaPoints ?? [])) {
-          const el = mediaContainersRef.current.get(mp.id);
-          if (!el) continue;
-          const wp = yawPitchToWorld(mp.yaw, mp.pitch);
-          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-          const proj = v.clone().project(cam);
-          const visible = forward.dot(v.normalize()) > 0.15;
-          const x = (proj.x + 1) / 2 * w;
-          const y = (1 - proj.y) / 2 * h;
-          el.style.transform = `translate3d(${x}px,${y}px,0)`;
-          el.style.opacity = visible ? '1' : '0';
-          el.style.pointerEvents = visible ? 'auto' : 'none';
-        }
-        if (frame % 10 === 0) {
-          setMinimapYaw(yawRef.current);
-          setCompassYaw(prev => Math.abs(yawRef.current - prev) > 0.02 ? yawRef.current : prev);
-        }
-      }
-
       renderer.render(threeScene, cam);
     };
-    animate();
+
+    // Single loop — Three.js passes XRFrame when a VR session is active.
+    // Must be registered before renderer.xr.setSession() is called.
+    renderer.setAnimationLoop(animate);
 
     // ── WebXR session lifecycle ──────────────────────────────────────
     renderer.xr.addEventListener('sessionstart', () => {
       xrActiveRef.current = true;
-      cancelAnimationFrame(rafRef.current);
-      renderer.setAnimationLoop((_time: number, _frame: XRFrame) => {
-        const cam = cameraRef.current!;
-        // In XR the HMD pose overrides manual yaw/pitch, but we still update
-        // video textures and hotspot overlays (2D overlays won't be visible in
-        // the HMD anyway — they're for the monitor window).
-        if (videoElRef.current && textureRef.current) {
-          (textureRef.current as THREE.VideoTexture).needsUpdate = true;
-        }
-        renderer.render(threeScene, cam);
-      });
-      // Attach trigger-select → advance scene
+      // Reset camera rotation so HMD tracking starts from a neutral pose
+      const cam = cameraRef.current!;
+      cam.rotation.set(0, 0, 0);
+      // Attach controller trigger → advance scene
       const session = renderer.xr.getSession();
       session?.addEventListener('select', () => {
         const store = useTourStore.getState();
@@ -708,9 +704,10 @@ export default function PanoramaViewer({
 
     renderer.xr.addEventListener('sessionend', () => {
       xrActiveRef.current = false;
-      renderer.setAnimationLoop(null);
-      // Restart the manual rAF loop
-      animate();
+      // Restore camera rotation from current yaw/pitch refs
+      const cam = cameraRef.current!;
+      cam.rotation.y = -yawRef.current;
+      cam.rotation.x = pitchRef.current;
     });
 
     // Resize observer
@@ -724,7 +721,7 @@ export default function PanoramaViewer({
     ro.observe(container);
 
     return () => {
-      cancelAnimationFrame(rafRef.current);
+      renderer.setAnimationLoop(null);
       ro.disconnect();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
