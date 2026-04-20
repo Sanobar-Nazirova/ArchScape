@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { setVRIntent } from '../utils/vrIntent';
 import {
   Plus, ChevronLeft, Play, Trash2, X, Copy, Share2,
   Edit2, Lock, Globe, Headset, HelpCircle, Check, Camera,
@@ -267,10 +268,8 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
 
   const openInVR = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Both mechanisms ensure EditorScreen knows to auto-open ImmersiveViewer
-    useTourStore.setState({ pendingVRMode: true });
-    sessionStorage.setItem('_archscape_vr', '1');
-    openTour(projectId, tour.id);
+    setVRIntent();                 // module-level flag, 100% reliable
+    openTour(projectId, tour.id);  // navigate to editor
     document.documentElement.requestFullscreen?.().catch(() => {});
   };
 

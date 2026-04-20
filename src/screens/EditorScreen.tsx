@@ -9,6 +9,7 @@ import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
 import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Lock, Expand } from 'lucide-react';
 import { saveSession, SceneVisit, AnalyticsSession } from '../utils/analytics';
+import { consumeVRIntent } from '../utils/vrIntent';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD({ onEnterImmersive }: { onEnterImmersive: () => void }) {
@@ -173,23 +174,13 @@ export default function EditorScreen() {
     ? projects[currentProjectId]?.tours[currentTourId]?.password
     : undefined;
 
-  const [immersiveOpen, setImmersiveOpen] = useState(false);
-  const [autoEnterVR, setAutoEnterVR]     = useState(false);
+  // consumeVRIntent() reads and clears the module-level flag set by "View VR"
+  const _vrOnMount                        = consumeVRIntent();
+  const [immersiveOpen, setImmersiveOpen] = useState(_vrOnMount);
+  const [autoEnterVR, setAutoEnterVR]     = useState(_vrOnMount);
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
-
-  // Auto-open ImmersiveViewer when launched via "View VR" from the tour card.
-  // Uses both the Zustand flag AND sessionStorage as a reliable fallback.
-  useEffect(() => {
-    const fromSession = sessionStorage.getItem('_archscape_vr') === '1';
-    if (pendingVRMode || fromSession) {
-      clearPendingVRMode();
-      sessionStorage.removeItem('_archscape_vr');
-      setImmersiveOpen(true);
-      setAutoEnterVR(true);
-    }
-  }, [pendingVRMode, clearPendingVRMode]);
 
   // ── Analytics tracking refs ─────────────────────────────────────────────
   const sessionRef   = useRef<AnalyticsSession | null>(null);
