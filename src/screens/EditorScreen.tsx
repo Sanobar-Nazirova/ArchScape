@@ -4,13 +4,14 @@ import Sidebar from '../components/Sidebar/Sidebar';
 import PanoramaViewer from '../components/Viewer/PanoramaViewer';
 import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel';
 import ScenePicker from '../components/ScenePicker';
+import ImmersiveViewer from '../components/ImmersiveViewer';
 import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
-import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Lock, Expand } from 'lucide-react';
 import { saveSession, SceneVisit, AnalyticsSession } from '../utils/analytics';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
-function PresentationHUD() {
+function PresentationHUD({ onEnterImmersive }: { onEnterImmersive: () => void }) {
   const { scenes, activeSceneId, setActiveScene, togglePreviewMode } = useTourStore();
   const [, startTransition] = useTransition();
   const idx  = scenes.findIndex(s => s.id === activeSceneId);
@@ -133,6 +134,15 @@ function PresentationHUD() {
           </button>
         </div>
 
+        {/* 360° immersive mode */}
+        <button
+          onClick={onEnterImmersive}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs text-white/80 hover:text-white bg-black/40 backdrop-blur-sm rounded-full transition-all"
+          title="360° Immersive View"
+        >
+          <Expand size={12} /> 360°
+        </button>
+
         {/* Fullscreen */}
         <button
           onClick={toggleFullscreen}
@@ -161,6 +171,8 @@ export default function EditorScreen() {
   const tourPassword = (currentProjectId && currentTourId)
     ? projects[currentProjectId]?.tours[currentTourId]?.password
     : undefined;
+
+  const [immersiveOpen, setImmersiveOpen] = useState(false);
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
@@ -402,7 +414,15 @@ export default function EditorScreen() {
           onMediaSelect={() => {}}
           onHotspotReposition={() => {}}
         />
-        <PresentationHUD />
+        <PresentationHUD onEnterImmersive={() => setImmersiveOpen(true)} />
+        {immersiveOpen && (
+          <ImmersiveViewer
+            scene={activeScene}
+            scenes={scenes}
+            onSceneChange={setActiveScene}
+            onClose={() => setImmersiveOpen(false)}
+          />
+        )}
         {pendingHotspotId && activeScene && (
           <ScenePicker
             scenes={scenes}
@@ -452,6 +472,26 @@ export default function EditorScreen() {
             onMediaSelect={handleMediaSelect}
             onHotspotReposition={handleHotspotReposition}
           />
+
+          {/* 360° immersive button (editor mode) */}
+          {activeScene && (
+            <button
+              onClick={() => setImmersiveOpen(true)}
+              className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs border border-white/20 hover:bg-white/10 transition-colors"
+              style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+              title="Open 360° immersive view">
+              <Expand size={13} /> 360° View
+            </button>
+          )}
+
+          {immersiveOpen && (
+            <ImmersiveViewer
+              scene={activeScene}
+              scenes={scenes}
+              onSceneChange={setActiveScene}
+              onClose={() => setImmersiveOpen(false)}
+            />
+          )}
         </div>
 
         {/* Right properties panel */}
