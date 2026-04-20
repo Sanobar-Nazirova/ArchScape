@@ -234,21 +234,6 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose 
             </button>
           )}
 
-          {/* WebXR VR button — always visible */}
-          <button
-            onClick={vrSupported ? enterVR : undefined}
-            title={vrSupported ? 'Enter immersive VR' : 'WebXR not available in this browser — open in a VR headset browser or Chrome with a headset connected'}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border transition-colors"
-            style={{
-              background: vrSupported ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)',
-              borderColor: vrSupported ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
-              color: vrSupported ? 'white' : 'rgba(255,255,255,0.35)',
-              backdropFilter: 'blur(8px)',
-              cursor: vrSupported ? 'pointer' : 'default',
-            }}>
-            <Glasses size={13} />
-            Enter VR
-          </button>
         </div>
 
         {/* Scene name */}
@@ -278,10 +263,27 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose 
       </div>
 
       {/* ── Bottom bar ── */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-12"
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-12 flex flex-col items-center gap-4"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' }}>
 
-        <div className="flex items-center justify-center gap-4">
+        {/* Prominent Enter VR button */}
+        <button
+          onClick={vrSupported ? enterVR : undefined}
+          title={vrSupported ? 'Enter immersive VR' : 'WebXR not available — open this page in a VR headset browser (e.g. Meta Quest Browser) or connect a headset'}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold border transition-all"
+          style={{
+            background: vrSupported ? 'rgba(224,123,63,0.9)' : 'rgba(60,60,70,0.75)',
+            borderColor: vrSupported ? 'rgba(224,123,63,1)' : 'rgba(255,255,255,0.12)',
+            color: vrSupported ? 'white' : 'rgba(255,255,255,0.4)',
+            backdropFilter: 'blur(10px)',
+            cursor: vrSupported ? 'pointer' : 'default',
+            boxShadow: vrSupported ? '0 0 24px rgba(224,123,63,0.4)' : 'none',
+          }}>
+          <Glasses size={18} />
+          {vrSupported ? 'Enter VR' : 'VR not available in this browser'}
+        </button>
+
+        <div className="flex items-center gap-4">
           {/* Prev scene */}
           <button
             onClick={() => prevScene && onSceneChange(prevScene.id)}
