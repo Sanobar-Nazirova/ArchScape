@@ -135,10 +135,24 @@ export async function exportTourAsHTML(
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    /* A-Frame's built-in VR button — restyle to match brand */
-    .a-enter-vr {
-      bottom: 60px !important; right: 20px !important;
+    /* ── Enter VR button — always visible ── */
+    #vr-btn {
+      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+      z-index: 30; display: none;
+      align-items: center; gap: 10px;
+      padding: 14px 32px; border-radius: 999px;
+      background: #e07b3f; border: none; color: #fff;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 0 32px rgba(224,123,63,0.6);
+      transition: transform 0.15s, box-shadow 0.15s;
     }
+    #vr-btn:hover { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 44px rgba(224,123,63,0.8); }
+    #vr-btn.no-xr {
+      background: rgba(60,60,70,0.85); box-shadow: none;
+      border: 1px solid rgba(255,255,255,0.15); font-size: 13px; cursor: default;
+    }
+    /* Hide A-Frame's tiny built-in VR button — we have our own */
+    .a-enter-vr { display: none !important; }
   </style>
 </head>
 <body>
@@ -163,11 +177,16 @@ export async function exportTourAsHTML(
   <p style="color:rgba(255,255,255,0.5);font-size:13px">Loading tour…</p>
 </div>
 
-<!-- A-Frame scene: Meta Quest Browser shows its own "Enter VR" button automatically -->
+<!-- Always-visible Enter VR button -->
+<button id="vr-btn">
+  🥽 Enter VR
+</button>
+
+<!-- A-Frame scene -->
 <a-scene id="main-scene"
   loading-screen="enabled: false"
   background="color: #111111"
-  vr-mode-ui="enabled: true"
+  vr-mode-ui="enabled: false"
   style="display:none">
   <a-assets id="asset-container" timeout="120000"></a-assets>
 
@@ -248,6 +267,45 @@ export async function exportTourAsHTML(
     /* ── Show the A-Frame scene ──────────────────────────────────────── */
     var aScene = document.getElementById('main-scene');
     aScene.style.display = '';
+
+    /* ── Enter VR button ─────────────────────────────────────────────── */
+    var vrBtn = document.getElementById('vr-btn');
+    vrBtn.style.display = 'flex';
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-vr').then(function (supported) {
+        if (!supported) {
+          vrBtn.textContent = '🥽 VR not available — open this page on HTTPS in Meta Quest Browser';
+          vrBtn.classList.add('no-xr');
+        }
+      }).catch(function () {
+        vrBtn.textContent = '🥽 VR not available — open this page on HTTPS in Meta Quest Browser';
+        vrBtn.classList.add('no-xr');
+      });
+    } else {
+      vrBtn.textContent = '🥽 VR not available — open this page on HTTPS in Meta Quest Browser';
+      vrBtn.classList.add('no-xr');
+    }
+    var inVR = false;
+    vrBtn.addEventListener('click', function () {
+      if (vrBtn.classList.contains('no-xr')) return;
+      if (inVR) {
+        aScene.exitVR();
+        return;
+      }
+      aScene.enterVR();
+    });
+    aScene.addEventListener('enter-vr', function () {
+      inVR = true;
+      vrBtn.textContent = '✕  Exit VR';
+      vrBtn.style.background = 'rgba(0,0,0,0.7)';
+      vrBtn.style.boxShadow = 'none';
+    });
+    aScene.addEventListener('exit-vr', function () {
+      inVR = false;
+      vrBtn.textContent = '🥽 Enter VR';
+      vrBtn.style.background = '#e07b3f';
+      vrBtn.style.boxShadow = '0 0 32px rgba(224,123,63,0.6)';
+    });
 
     /* ── Navigation bar ──────────────────────────────────────────────── */
     var navBar = document.getElementById('nav-bar');
