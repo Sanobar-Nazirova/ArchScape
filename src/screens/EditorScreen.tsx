@@ -9,7 +9,7 @@ import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
 import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Lock, Expand } from 'lucide-react';
 import { saveSession, SceneVisit, AnalyticsSession } from '../utils/analytics';
-import { consumeVRIntent } from '../utils/vrIntent';
+import { consumeVRIntent, clearVRIntent } from '../utils/vrIntent';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD({ onEnterImmersive }: { onEnterImmersive: () => void }) {
@@ -181,6 +181,14 @@ export default function EditorScreen() {
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
+
+  // Clear the VR intent flag once the component is stably mounted (past StrictMode's
+  // dev-only unmount/remount cycle). A short timeout ensures the flag survives both
+  // StrictMode mounts but is gone well before any subsequent navigation.
+  useEffect(() => {
+    const t = setTimeout(clearVRIntent, 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // ── Analytics tracking refs ─────────────────────────────────────────────
   const sessionRef   = useRef<AnalyticsSession | null>(null);
