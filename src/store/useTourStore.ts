@@ -34,6 +34,7 @@ interface TourState {
   selectedElementType: SelectedElementType;
   activeTool: ToolMode;
   isPreviewMode: boolean;
+  pendingVRMode: boolean;
   publishUrl: string | null;
   publishJsonUrl: string | null;
   showPublishModal: boolean;
@@ -117,6 +118,7 @@ interface TourState {
   setActiveTool: (tool: ToolMode) => void;
   setSelectedElement: (type: SelectedElementType, id: string | null) => void;
   togglePreviewMode: () => void;
+  clearPendingVRMode: () => void;
   publish: () => void;
   closePublishModal: () => void;
   setFloorPlanEditing: (v: boolean) => void;
@@ -155,6 +157,7 @@ export const useTourStore = create<TourState>()((set, get) => ({
   selectedElementType: null,
   activeTool: 'none',
   isPreviewMode: false,
+  pendingVRMode: false,
   publishUrl: null,
   publishJsonUrl: null,
   showPublishModal: false,
@@ -748,6 +751,8 @@ export const useTourStore = create<TourState>()((set, get) => ({
 
   togglePreviewMode: () =>
     set((s) => ({ isPreviewMode: !s.isPreviewMode, activeTool: 'none' })),
+
+  clearPendingVRMode: () => set({ pendingVRMode: false }),
 
   publish: () => {
     const state = get();

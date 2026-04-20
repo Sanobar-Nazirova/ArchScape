@@ -267,11 +267,9 @@ function TourCard({ tour, projectId }: { tour: Tour; projectId: string }) {
 
   const openInVR = (e: React.MouseEvent) => {
     e.stopPropagation();
+    useTourStore.setState({ pendingVRMode: true });
     openTour(projectId, tour.id);
-    setTimeout(() => {
-      togglePreviewMode();
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }, 100);
+    document.documentElement.requestFullscreen?.().catch(() => {});
   };
 
   return (

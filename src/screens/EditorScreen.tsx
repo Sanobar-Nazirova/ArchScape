@@ -165,6 +165,7 @@ export default function EditorScreen() {
     addHotspot, addMediaPoint, updateHotspot,
     isPreviewMode, togglePreviewMode, restoreSceneImages,
     projectName, currentProjectId, currentTourId, projects,
+    pendingVRMode, clearPendingVRMode,
   } = useTourStore();
 
   // Derive the current tour's password from the store
@@ -176,6 +177,14 @@ export default function EditorScreen() {
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
+
+  // Auto-open ImmersiveViewer when launched via "View VR" from the tour card
+  useEffect(() => {
+    if (pendingVRMode) {
+      clearPendingVRMode();
+      setImmersiveOpen(true);
+    }
+  }, [pendingVRMode, clearPendingVRMode]);
 
   // ── Analytics tracking refs ─────────────────────────────────────────────
   const sessionRef   = useRef<AnalyticsSession | null>(null);
