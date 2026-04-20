@@ -469,6 +469,14 @@ export default function Toolbar() {
           disabled={scenes.length < 2}
         />
         <ToolBtn
+          icon={<Layers size={14} />}
+          label="Design"
+          tooltip="Click in viewer to place a Design Options hotspot — link variant scenes"
+          active={activeTool === 'variants'}
+          onClick={() => setActiveTool('variants')}
+          disabled={scenes.length === 0}
+        />
+        <ToolBtn
           icon={<Image size={14} />}
           label="Media"
           tooltip="Click in viewer to place media info point  [M]"

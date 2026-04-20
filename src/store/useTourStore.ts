@@ -85,7 +85,7 @@ interface TourState {
   removeSceneTag: (sceneId: string, tag: string) => void;
 
   // ── Hotspot actions ───────────────────────────────────────────────────────
-  addHotspot: (sceneId: string, yaw: number, pitch: number) => string;
+  addHotspot: (sceneId: string, yaw: number, pitch: number, type?: Hotspot['type']) => string;
   updateHotspot: (sceneId: string, hotspotId: string, updates: Partial<Hotspot>) => void;
   removeHotspot: (sceneId: string, hotspotId: string) => void;
 
@@ -541,9 +541,15 @@ export const useTourStore = create<TourState>()((set, get) => ({
     })),
 
   // ── Hotspot actions ────────────────────────────────────────────────────────
-  addHotspot: (sceneId, yaw, pitch) => {
+  addHotspot: (sceneId, yaw, pitch, type) => {
     const id = genId('hs');
-    const hotspot: Hotspot = { id, yaw, pitch, targetSceneId: '', label: 'Go to', iconStyle: 'arrow' };
+    const isVariants = type === 'variants';
+    const hotspot: Hotspot = {
+      id, yaw, pitch, targetSceneId: '',
+      label: isVariants ? 'Design Options' : 'Go to',
+      iconStyle: 'arrow',
+      ...(isVariants ? { type: 'variants' as const } : {}),
+    };
     set((s) => ({
       scenes: s.scenes.map(sc =>
         sc.id === sceneId ? { ...sc, hotspots: [...sc.hotspots, hotspot] } : sc,

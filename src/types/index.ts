@@ -16,7 +16,7 @@ export type PanoramaFormat =
   | 'unknown';
 
 export type MediaType = 'panorama-image' | 'panorama-video';
-export type ToolMode = 'none' | 'hotspot' | 'media' | 'audio';
+export type ToolMode = 'none' | 'hotspot' | 'variants' | 'media' | 'audio';
 export type HotspotIconStyle = 'arrow' | 'door' | 'circle' | 'stairs' | 'exit';
 export type MediaPointType = 'image' | 'video' | 'text' | 'pdf';
 export type AudioType = 'ambient' | 'spatial';

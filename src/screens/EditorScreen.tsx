@@ -266,9 +266,13 @@ export default function EditorScreen() {
     if (hs.targetSceneId) setActiveScene(hs.targetSceneId);
   }, [setActiveScene]);
 
+  const activeToolRef = useRef(activeTool);
+  useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
+
   const handleHotspotPlace = useCallback((yaw: number, pitch: number) => {
     if (activeSceneId) {
-      const id = addHotspot(activeSceneId, yaw, pitch);
+      const type = activeToolRef.current === 'variants' ? 'variants' as const : undefined;
+      const id = addHotspot(activeSceneId, yaw, pitch, type);
       setPendingHotspotId(id);
     }
   }, [activeSceneId, addHotspot]);
@@ -430,9 +434,10 @@ export default function EditorScreen() {
           {activeTool !== 'none' && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full text-xs font-medium text-white pointer-events-none"
               style={{ background: 'rgba(224,123,63,0.85)', backdropFilter: 'blur(6px)' }}>
-              {activeTool === 'hotspot' && '🔗 Click in the viewer to place a navigation hotspot'}
-              {activeTool === 'media'   && '🖼 Click in the viewer to place a media point'}
-              {activeTool === 'audio'   && '🔊 Configure audio in the Properties panel →'}
+              {activeTool === 'hotspot'  && '🔗 Click in the viewer to place a navigation hotspot'}
+              {activeTool === 'variants' && '🎨 Click in the viewer to place a Design Options hotspot'}
+              {activeTool === 'media'    && '🖼 Click in the viewer to place a media point'}
+              {activeTool === 'audio'    && '🔊 Configure audio in the Properties panel →'}
             </div>
           )}
           <PanoramaViewer

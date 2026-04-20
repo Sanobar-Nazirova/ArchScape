@@ -1037,14 +1037,14 @@ export default function PanoramaViewer({
     const nx   = ((e.clientX - rect.left) / rect.width)  *  2 - 1;
     const ny   = -((e.clientY - rect.top) / rect.height) *  2 + 1;
 
-    if (activeToolRef.current === 'hotspot' || activeToolRef.current === 'media') {
+    if (activeToolRef.current === 'hotspot' || activeToolRef.current === 'variants' || activeToolRef.current === 'media') {
       const ray = new THREE.Raycaster();
       ray.setFromCamera(new THREE.Vector2(nx, ny), camera);
       const hits = ray.intersectObject(sphere);
       if (hits.length > 0) {
         const pt = hits[0].point.clone().normalize();
         const { yaw, pitch } = worldToYawPitch(pt.x, pt.y, pt.z);
-        if (activeToolRef.current === 'hotspot') onHotspotPlace(yaw, pitch);
+        if (activeToolRef.current === 'hotspot' || activeToolRef.current === 'variants') onHotspotPlace(yaw, pitch);
         else onMediaPlace(yaw, pitch);
       }
     }
@@ -1573,6 +1573,8 @@ export default function PanoramaViewer({
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-black/70 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-full border border-white/10 pointer-events-none">
               {activeTool === 'hotspot'
                 ? 'Click anywhere in the panorama to place a navigation hotspot'
+                : activeTool === 'variants'
+                ? 'Click anywhere in the panorama to place a Design Options hotspot'
                 : 'Click anywhere in the panorama to place a media information point'}
             </div>
           )}
