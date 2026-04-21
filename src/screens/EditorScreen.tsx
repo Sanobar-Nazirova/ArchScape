@@ -167,6 +167,7 @@ export default function EditorScreen() {
     isPreviewMode, togglePreviewMode, restoreSceneImages,
     projectName, currentProjectId, currentTourId, projects,
     pendingVRMode, clearPendingVRMode,
+    goBack,
   } = useTourStore();
 
   // Derive the current tour's password from the store
@@ -176,6 +177,12 @@ export default function EditorScreen() {
 
   const [immersiveOpen, setImmersiveOpen] = useState(false);
   const [autoEnterVR, setAutoEnterVR]     = useState(false);
+
+  const handleChangeTour = useCallback(() => {
+    setImmersiveOpen(false);
+    setAutoEnterVR(false);
+    goBack();
+  }, [goBack]);
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
@@ -438,6 +445,7 @@ export default function EditorScreen() {
             scenes={scenes}
             onSceneChange={setActiveScene}
             onClose={() => { setImmersiveOpen(false); setAutoEnterVR(false); }}
+            onChangeTour={handleChangeTour}
             autoEnterVR={autoEnterVR}
           />
         )}
@@ -508,6 +516,7 @@ export default function EditorScreen() {
               scenes={scenes}
               onSceneChange={setActiveScene}
               onClose={() => { setImmersiveOpen(false); setAutoEnterVR(false); }}
+            onChangeTour={handleChangeTour}
               autoEnterVR={autoEnterVR}
             />
           )}

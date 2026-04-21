@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
-import { X, Glasses, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
+import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft } from 'lucide-react';
 import type { Scene } from '../types';
 
 interface Props {
@@ -8,10 +8,11 @@ interface Props {
   scenes: Scene[];
   onSceneChange: (id: string) => void;
   onClose: () => void;
+  onChangeTour?: () => void;
   autoEnterVR?: boolean;
 }
 
-export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose, autoEnterVR }: Props) {
+export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR }: Props) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const rendererRef   = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef     = useRef<THREE.PerspectiveCamera | null>(null);
@@ -227,6 +228,17 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose,
         style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent)' }}>
 
         <div className="pointer-events-auto flex items-center gap-2">
+          {/* Back to tours list */}
+          {onChangeTour && (
+            <button
+              onClick={onChangeTour}
+              title="Back to tours"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs border border-white/20 hover:bg-white/10 transition-colors"
+              style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+              <ArrowLeft size={13} /> Tours
+            </button>
+          )}
+
           {/* Gyro toggle (mobile) */}
           {gyroAvail && (
             <button
@@ -242,7 +254,6 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose,
               {gyroActive ? 'Gyro ON' : 'Gyro'}
             </button>
           )}
-
         </div>
 
         {/* Scene name */}
