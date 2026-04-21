@@ -174,20 +174,23 @@ export default function EditorScreen() {
     ? projects[currentProjectId]?.tours[currentTourId]?.password
     : undefined;
 
-  // consumeVRIntent() reads and clears the module-level flag set by "View VR"
-  const _vrOnMount                        = consumeVRIntent();
-  const [immersiveOpen, setImmersiveOpen] = useState(_vrOnMount);
-  const [autoEnterVR, setAutoEnterVR]     = useState(_vrOnMount);
+  const [immersiveOpen, setImmersiveOpen] = useState(false);
+  const [autoEnterVR, setAutoEnterVR]     = useState(false);
 
   // Restore panorama images from IndexedDB when editor opens (after page refresh)
   useEffect(() => { restoreSceneImages(); }, []);
 
-  // Clear the VR intent flag once the component is stably mounted (past StrictMode's
-  // dev-only unmount/remount cycle). A short timeout ensures the flag survives both
-  // StrictMode mounts but is gone well before any subsequent navigation.
+  // Check the VR intent flag AFTER mount so it works in both StrictMode (dev)
+  // and production. consumeVRIntent() is timestamp-based — returns true for 2s
+  // after setVRIntent() was called, regardless of how many times it's read.
   useEffect(() => {
-    const t = setTimeout(clearVRIntent, 1500);
-    return () => clearTimeout(t);
+    if (consumeVRIntent()) {
+      setImmersiveOpen(true);
+      setAutoEnterVR(true);
+      // Clear after use so back-navigation doesn't re-open
+      const t = setTimeout(clearVRIntent, 500);
+      return () => clearTimeout(t);
+    }
   }, []);
 
   // ── Analytics tracking refs ─────────────────────────────────────────────

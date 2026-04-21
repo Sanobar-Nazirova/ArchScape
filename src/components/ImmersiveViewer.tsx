@@ -23,6 +23,9 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose,
   const [vrSupported, setVrSupported] = useState(false);
   const [gyroActive,  setGyroActive]  = useState(false);
   const [gyroAvail,   setGyroAvail]   = useState(false);
+  // When true, show a full-screen "Tap to Enter VR" splash as the first thing the
+  // user sees. Dismissed by tapping the button (which also calls enterVR).
+  const [showVRSplash, setShowVRSplash] = useState(!!autoEnterVR);
 
   const sceneIdx = scenes.findIndex(s => s.id === scene?.id);
   const prevScene = sceneIdx > 0 ? scenes[sceneIdx - 1] : null;
@@ -208,13 +211,10 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose,
     }
   }, []);
 
-  // Auto-enter VR when launched from "View VR" button (e.g. on Meta Quest)
+  // Sync splash visibility with autoEnterVR prop changes
   useEffect(() => {
-    if (!autoEnterVR) return;
-    // Small delay to let Three.js finish initialising the renderer
-    const t = setTimeout(() => enterVR(), 400);
-    return () => clearTimeout(t);
-  }, [autoEnterVR, enterVR]);
+    if (autoEnterVR) setShowVRSplash(true);
+  }, [autoEnterVR]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black" style={{ touchAction: 'none' }}>
@@ -275,7 +275,7 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose,
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-12 flex flex-col items-center gap-4"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' }}>
 
-        {/* Prominent Enter VR button */}
+        {/* Persistent Enter VR button (always visible) */}
         <button
           onClick={vrSupported ? enterVR : undefined}
           title={vrSupported ? 'Enter immersive VR' : 'WebXR not available — open this page in a VR headset browser (e.g. Meta Quest Browser) or connect a headset'}
@@ -329,6 +329,58 @@ export default function ImmersiveViewer({ scene, scenes, onSceneChange, onClose,
           </button>
         </div>
       </div>
+
+      {/* ── Full-screen "Tap to Enter VR" splash (shown when launched via View VR) ── */}
+      {showVRSplash && (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-8"
+          style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)' }}
+        >
+          {/* Big VR icon */}
+          <div style={{ fontSize: 72, lineHeight: 1 }}>🥽</div>
+
+          <div className="flex flex-col items-center gap-2 text-center px-6">
+            <h2 className="text-white text-2xl font-bold tracking-tight">
+              {vrSupported ? 'Ready to Enter VR' : 'ArchScape 360° Viewer'}
+            </h2>
+            <p className="text-white/50 text-sm max-w-xs">
+              {vrSupported
+                ? 'Tap the button below to enter immersive 360° mode on your headset.'
+                : 'WebXR is not available in this browser. Open this page in Meta Quest Browser (HTTPS) to use VR.'}
+            </p>
+          </div>
+
+          {/* Primary action button — LARGE, centered, impossible to miss */}
+          <button
+            onClick={() => {
+              setShowVRSplash(false);
+              if (vrSupported) enterVR();
+            }}
+            className="flex items-center gap-3 rounded-2xl font-bold text-lg border-2 transition-all active:scale-95"
+            style={{
+              padding: '18px 48px',
+              background: vrSupported ? '#e07b3f' : 'rgba(255,255,255,0.08)',
+              borderColor: vrSupported ? '#e07b3f' : 'rgba(255,255,255,0.15)',
+              color: 'white',
+              boxShadow: vrSupported ? '0 0 40px rgba(224,123,63,0.5)' : 'none',
+              cursor: 'pointer',
+              minWidth: 240,
+              justifyContent: 'center',
+            }}
+          >
+            <Glasses size={24} />
+            {vrSupported ? 'Enter VR' : 'View in 360°'}
+          </button>
+
+          {/* Dismiss without entering VR */}
+          <button
+            onClick={() => setShowVRSplash(false)}
+            className="text-white/30 text-sm hover:text-white/60 transition-colors"
+          >
+            Continue in flat mode
+          </button>
+        </div>
+      )}
     </div>
   );
 }
