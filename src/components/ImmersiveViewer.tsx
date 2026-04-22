@@ -281,23 +281,53 @@ export default function ImmersiveViewer({
                 camera.updateProjectionMatrix();
               }
 
-              // Trigger (button 0) → raycast sprites first, then gaze-fallback
+              // Trigger (button 0) → menu tap → hotspot ray → gaze fallback
               if (justPressed(0)) {
+                const origin = new THREE.Vector3();
+                const dir    = new THREE.Vector3();
+                ctrl0.getWorldPosition(origin);
+                ctrl0.getWorldDirection(dir);
+                const rc = new THREE.Raycaster(origin, dir);
                 let handled = false;
-                // Try controller ray → hotspot sprites
-                if (hotspotsGroupRef.current?.children.length) {
-                  const origin = new THREE.Vector3();
-                  const dir    = new THREE.Vector3();
-                  ctrl0.getWorldPosition(origin);
-                  ctrl0.getWorldDirection(dir);
-                  const rc = new THREE.Raycaster(origin, dir);
+
+                // 1. Check wrist menu (highest priority)
+                if (wristOpenRef.current && wristMenuRef.current) {
+                  const menuHits = rc.intersectObject(wristMenuRef.current.mesh);
+                  if (menuHits.length > 0 && menuHits[0].uv) {
+                    const uv = menuHits[0].uv;
+                    // Canvas is 512×384; UV y is flipped relative to canvas y
+                    const cy = (1 - uv.y) * 384;
+                    const LIST_TOP = 108, ROW_H = 46;
+                    const EXIT_BTN_Y = 342; // H - 42
+
+                    if (cy >= EXIT_BTN_Y) {
+                      // Exit VR button
+                      renderer.xr.getSession()?.end().catch(() => {});
+                    } else if (cy >= LIST_TOP) {
+                      const idx = Math.floor((cy - LIST_TOP) / ROW_H);
+                      const target = scenesRef.current[idx];
+                      if (target) {
+                        onSceneChangeRef.current(target.id);
+                        // Close menu after selection
+                        wristOpenRef.current = false;
+                        wristMenuRef.current.mesh.visible = false;
+                        setWristMenuOpen(false);
+                      }
+                    }
+                    handled = true;
+                  }
+                }
+
+                // 2. Hotspot sprites
+                if (!handled && hotspotsGroupRef.current?.children.length) {
                   const hits = rc.intersectObjects(hotspotsGroupRef.current.children, true);
                   if (hits.length > 0) {
                     const hs = hits[0].object.userData.hotspot;
                     if (hs?.targetSceneId) { onSceneChangeRef.current(hs.targetSceneId); handled = true; }
                   }
                 }
-                // Gaze fallback
+
+                // 3. Gaze fallback
                 if (!handled) {
                   const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
                   const cur = sceneRef.current;
@@ -369,6 +399,26 @@ export default function ImmersiveViewer({
             const snap = Array.from(gp.buttons).map(b => b.pressed);
             if (isR) prevBtnsRef.current.r = snap;
             if (isL) prevBtnsRef.current.l = snap;
+          }
+
+          // Highlight right-controller ray orange when pointing at the wrist menu
+          if (wristOpenRef.current && wristMenuRef.current) {
+            const origin = new THREE.Vector3();
+            const dir    = new THREE.Vector3();
+            // Find right controller from inputSources
+            for (const src of session.inputSources) {
+              if (src.handedness !== 'right') continue;
+              ctrl0.getWorldPosition(origin);
+              ctrl0.getWorldDirection(dir);
+              const rc = new THREE.Raycaster(origin, dir);
+              const hits = rc.intersectObject(wristMenuRef.current.mesh);
+              const ray = ctrl0.children.find(c => c instanceof THREE.Line) as THREE.Line | undefined;
+              if (ray) {
+                (ray.material as THREE.LineBasicMaterial).color.set(
+                  hits.length > 0 ? 0xe07b3f : 0xffffff,
+                );
+              }
+            }
           }
         }
       } else {
