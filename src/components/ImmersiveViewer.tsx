@@ -82,23 +82,37 @@ function drawWristMenu(
     ctx.fillText(`+ ${scenes.length - maxRows} more…`, 24, listTop + maxRows * rowH);
   }
 
-  // Footer hint
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
-  ctx.font = '17px system-ui, sans-serif';
-  ctx.fillText('Y  toggle  •  ←→ navigate scenes', 22, H - 14);
+  // Exit VR button
+  const btnW = 180, btnH = 32;
+  const btnX = (W - btnW) / 2, btnY = H - 42;
+  ctx.fillStyle = 'rgba(224,123,63,0.18)';
+  ctx.beginPath();
+  ctx.roundRect(btnX, btnY, btnW, btnH, 8);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(224,123,63,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#e07b3f';
+  ctx.font = 'bold 18px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⏏  Exit VR  (B button)', W / 2, btnY + btnH / 2);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ImmersiveViewer({
   scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR,
 }: Props) {
-  const containerRef  = useRef<HTMLDivElement>(null);
-  const rendererRef   = useRef<THREE.WebGLRenderer | null>(null);
-  const cameraRef     = useRef<THREE.PerspectiveCamera | null>(null);
-  const sphereRef     = useRef<THREE.Mesh | null>(null);
-  const threeSceneRef = useRef<THREE.Scene | null>(null);
-  const yawRef        = useRef(scene?.initialYaw ?? 0);
-  const pitchRef      = useRef(scene?.initialPitch ?? 0);
+  const containerRef      = useRef<HTMLDivElement>(null);
+  const rendererRef       = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef         = useRef<THREE.PerspectiveCamera | null>(null);
+  const sphereRef         = useRef<THREE.Mesh | null>(null);
+  const threeSceneRef     = useRef<THREE.Scene | null>(null);
+  const hotspotsGroupRef  = useRef<THREE.Group | null>(null);
+  const yawRef            = useRef(scene?.initialYaw ?? 0);
+  const pitchRef          = useRef(scene?.initialPitch ?? 0);
 
   // Keep latest props accessible from animation loop without re-creating it
   const scenesRef        = useRef(scenes);
@@ -157,6 +171,11 @@ export default function ImmersiveViewer({
     const sphere = new THREE.Mesh(geo, mat);
     threeScene.add(sphere);
     sphereRef.current = sphere;
+
+    // Hotspot sprite group (rebuilt whenever scene changes)
+    const hotspotsGroup = new THREE.Group();
+    threeScene.add(hotspotsGroup);
+    hotspotsGroupRef.current = hotspotsGroup;
 
     // ── Controller models + rays ───────────────────────────────────────────
     const ctrlFactory = new XRControllerModelFactory();
@@ -262,25 +281,54 @@ export default function ImmersiveViewer({
                 camera.updateProjectionMatrix();
               }
 
-              // Trigger (button 0) → gaze-select nearest hotspot
+              // Trigger (button 0) → raycast sprites first, then gaze-fallback
               if (justPressed(0)) {
-                const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                const cur = sceneRef.current;
-                if (cur?.hotspots?.length) {
-                  let best: (typeof cur.hotspots)[0] | null = null;
-                  let bestAngle = Math.PI / 7; // ~25° threshold
-                  for (const hs of cur.hotspots) {
-                    if (!hs.targetSceneId) continue;
-                    const dir = new THREE.Vector3(
-                      -Math.cos(hs.pitch) * Math.sin(hs.yaw),
-                       Math.sin(hs.pitch),
-                      -Math.cos(hs.pitch) * Math.cos(hs.yaw),
-                    ).normalize();
-                    const angle = fwd.angleTo(dir);
-                    if (angle < bestAngle) { bestAngle = angle; best = hs; }
+                let handled = false;
+                // Try controller ray → hotspot sprites
+                if (hotspotsGroupRef.current?.children.length) {
+                  const origin = new THREE.Vector3();
+                  const dir    = new THREE.Vector3();
+                  ctrl0.getWorldPosition(origin);
+                  ctrl0.getWorldDirection(dir);
+                  const rc = new THREE.Raycaster(origin, dir);
+                  const hits = rc.intersectObjects(hotspotsGroupRef.current.children, true);
+                  if (hits.length > 0) {
+                    const hs = hits[0].object.userData.hotspot;
+                    if (hs?.targetSceneId) { onSceneChangeRef.current(hs.targetSceneId); handled = true; }
                   }
-                  if (best?.targetSceneId) onSceneChangeRef.current(best.targetSceneId);
                 }
+                // Gaze fallback
+                if (!handled) {
+                  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                  const cur = sceneRef.current;
+                  if (cur?.hotspots?.length) {
+                    let best: (typeof cur.hotspots)[0] | null = null;
+                    let bestAngle = Math.PI / 7;
+                    for (const hs of cur.hotspots) {
+                      if (!hs.targetSceneId) continue;
+                      const d = new THREE.Vector3(
+                        -Math.cos(hs.pitch) * Math.sin(hs.yaw),
+                         Math.sin(hs.pitch),
+                        -Math.cos(hs.pitch) * Math.cos(hs.yaw),
+                      ).normalize();
+                      const a = fwd.angleTo(d);
+                      if (a < bestAngle) { bestAngle = a; best = hs; }
+                    }
+                    if (best?.targetSceneId) onSceneChangeRef.current(best.targetSceneId);
+                  }
+                }
+              }
+
+              // A button (4) → next scene
+              if (justPressed(4)) {
+                const all = scenesRef.current;
+                const idx = all.findIndex(s => s.id === sceneRef.current?.id);
+                if (idx < all.length - 1) onSceneChangeRef.current(all[idx + 1].id);
+              }
+
+              // B button (5) → exit VR session
+              if (justPressed(5)) {
+                renderer.xr.getSession()?.end().catch(() => {});
               }
             }
 
@@ -353,6 +401,74 @@ export default function ImmersiveViewer({
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
     };
   }, []);
+
+  // ── Rebuild 3D hotspot sprites whenever scene changes ─────────────────────
+  useEffect(() => {
+    const group = hotspotsGroupRef.current;
+    if (!group) return;
+
+    // Clear previous sprites
+    while (group.children.length) {
+      const child = group.children[0] as THREE.Sprite;
+      (child.material as THREE.SpriteMaterial).map?.dispose();
+      (child.material as THREE.SpriteMaterial).dispose();
+      group.remove(child);
+    }
+
+    if (!scene?.hotspots?.length) return;
+
+    const targetSceneMap = new Map(scenes.map(s => [s.id, s.name]));
+
+    for (const hs of scene.hotspots) {
+      if (!hs.targetSceneId) continue;
+      const targetName = targetSceneMap.get(hs.targetSceneId) ?? 'Go';
+
+      // Draw sprite canvas
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 256;
+      const ctx = c.getContext('2d')!;
+
+      // Glow
+      ctx.shadowColor = '#e07b3f';
+      ctx.shadowBlur = 28;
+      ctx.fillStyle = 'rgba(224,123,63,0.92)';
+      ctx.beginPath();
+      ctx.arc(128, 128, 90, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Arrow icon
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 80px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('→', 128, 106);
+
+      // Target name
+      const label = targetName.length > 11 ? targetName.slice(0, 10) + '…' : targetName;
+      ctx.font = 'bold 28px system-ui, sans-serif';
+      ctx.fillText(label, 128, 182);
+
+      const tex = new THREE.CanvasTexture(c);
+      const sprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }),
+      );
+
+      // Position on inner sphere surface (radius 8, close to camera)
+      const r = 8;
+      sprite.position.set(
+        -r * Math.cos(hs.pitch) * Math.sin(hs.yaw),
+         r * Math.sin(hs.pitch),
+        -r * Math.cos(hs.pitch) * Math.cos(hs.yaw),
+      );
+      sprite.scale.set(0.9, 0.9, 1);
+      sprite.userData = { hotspot: hs };
+      group.add(sprite);
+    }
+  }, [scene?.id, scene?.hotspots, scenes]);
 
   // Refresh wrist menu canvas when scene changes while menu is open
   useEffect(() => {
