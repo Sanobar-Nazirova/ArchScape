@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft } from 'lucide-react';
-import type { Scene } from '../types';
+import type { Scene, FloorPlan } from '../types';
 
 interface Props {
   scene: Scene | null;
@@ -11,99 +11,219 @@ interface Props {
   onClose: () => void;
   onChangeTour?: () => void;
   autoEnterVR?: boolean;
+  floorPlans?: FloorPlan[];
+}
+
+// Canvas dimensions (must match the PlaneGeometry texture)
+const CW = 512, CH = 384;
+const TAB_H   = 52;   // tab bar height
+const FOOT_Y  = CH - 44; // footer start y (Exit VR button)
+
+// ── Scene dot positions for the map tab ──────────────────────────────────────
+function getMapPositions(
+  scenes: Scene[],
+  floorPlans: FloorPlan[] | undefined,
+): { x: number; y: number; hidden: boolean }[] {
+  const MAP_TOP = TAB_H + 8;
+  const MAP_H   = FOOT_Y - MAP_TOP;
+
+  // Use floor plan markers when available
+  const plan = floorPlans?.find(fp => fp.markers?.length > 0);
+  if (plan) {
+    return scenes.map(s => {
+      const m = plan.markers.find(mk => mk.sceneId === s.id);
+      if (!m) return { x: -1, y: -1, hidden: true };
+      return {
+        x: 24 + m.x * (CW - 48),
+        y: MAP_TOP + m.y * MAP_H,
+        hidden: false,
+      };
+    });
+  }
+
+  // Fallback: arrange in a circle
+  const n  = scenes.length;
+  const cx = CW / 2;
+  const cy = MAP_TOP + MAP_H / 2;
+  const r  = Math.min(CW * 0.34, MAP_H * 0.42);
+  return scenes.map((_, i) => ({
+    x: cx + Math.cos((i / n) * Math.PI * 2 - Math.PI / 2) * r,
+    y: cy + Math.sin((i / n) * Math.PI * 2 - Math.PI / 2) * r,
+    hidden: false,
+  }));
 }
 
 // ── Wrist menu canvas renderer ───────────────────────────────────────────────
 function drawWristMenu(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
+  tab: number,
   scenes: Scene[],
   currentSceneId: string | null | undefined,
+  floorPlans?: FloorPlan[],
 ) {
-  const W = canvas.width, H = canvas.height;
+  const W = CW, H = CH;
   ctx.clearRect(0, 0, W, H);
 
   // Background
-  ctx.fillStyle = 'rgba(10, 10, 20, 0.96)';
+  ctx.fillStyle = 'rgba(10, 10, 20, 0.97)';
   ctx.beginPath();
   ctx.roundRect(0, 0, W, H, 28);
   ctx.fill();
 
-  // Orange border
+  // Border
   ctx.strokeStyle = '#e07b3f';
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.roundRect(2, 2, W - 4, H - 4, 26);
   ctx.stroke();
 
-  // Header
-  ctx.fillStyle = '#e07b3f';
-  ctx.font = 'bold 30px system-ui, sans-serif';
-  ctx.fillText('🏛  ArchScape', 22, 50);
-
-  // Divider
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(20, 66);
-  ctx.lineTo(W - 20, 66);
-  ctx.stroke();
-
-  // Section label
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.font = '18px system-ui, sans-serif';
-  ctx.fillText('SCENES', 22, 92);
-
-  // Scene list (clip to available height)
-  const listTop = 108;
-  const rowH = 46;
-  const maxRows = Math.floor((H - listTop - 36) / rowH);
-
-  scenes.slice(0, maxRows).forEach((s, i) => {
-    const isCurrent = s.id === currentSceneId;
-    const y = listTop + i * rowH;
-
-    if (isCurrent) {
+  // ── Tab bar ──────────────────────────────────────────────────────────────
+  const TABS = ['📋  Scenes', '🗺  Map'];
+  const tabW = W / TABS.length;
+  TABS.forEach((label, i) => {
+    const active = i === tab;
+    if (active) {
       ctx.fillStyle = 'rgba(224,123,63,0.18)';
-      ctx.beginPath();
-      ctx.roundRect(12, y - 26, W - 24, 36, 8);
-      ctx.fill();
+      ctx.fillRect(i * tabW, 0, tabW, TAB_H);
     }
-
-    ctx.fillStyle = isCurrent ? '#e07b3f' : 'rgba(255,255,255,0.78)';
-    ctx.font = isCurrent ? 'bold 22px system-ui, sans-serif' : '22px system-ui, sans-serif';
-    const num = String(i + 1).padStart(2, ' ');
-    ctx.fillText(`${num}.  ${s.name}`, 24, y);
+    ctx.fillStyle = active ? '#e07b3f' : 'rgba(255,255,255,0.45)';
+    ctx.font = `${active ? 'bold ' : ''}19px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, (i + 0.5) * tabW, TAB_H / 2);
+    if (active) {
+      ctx.strokeStyle = '#e07b3f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(i * tabW + 10, TAB_H - 1);
+      ctx.lineTo((i + 1) * tabW - 10, TAB_H - 1);
+      ctx.stroke();
+    }
   });
-
-  if (scenes.length > maxRows) {
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = '18px system-ui, sans-serif';
-    ctx.fillText(`+ ${scenes.length - maxRows} more…`, 24, listTop + maxRows * rowH);
-  }
-
-  // Exit VR button
-  const btnW = 180, btnH = 32;
-  const btnX = (W - btnW) / 2, btnY = H - 42;
-  ctx.fillStyle = 'rgba(224,123,63,0.18)';
-  ctx.beginPath();
-  ctx.roundRect(btnX, btnY, btnW, btnH, 8);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(224,123,63,0.6)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.fillStyle = '#e07b3f';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('⏏  Exit VR  (B button)', W / 2, btnY + btnH / 2);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
+
+  // Tab divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, TAB_H);
+  ctx.lineTo(W, TAB_H);
+  ctx.stroke();
+
+  // ── SCENES tab ────────────────────────────────────────────────────────────
+  if (tab === 0) {
+    const LIST_TOP = TAB_H + 14;
+    const ROW_H    = 44;
+    const maxRows  = Math.floor((FOOT_Y - LIST_TOP) / ROW_H);
+
+    scenes.slice(0, maxRows).forEach((s, i) => {
+      const isCurrent = s.id === currentSceneId;
+      const y = LIST_TOP + i * ROW_H;
+      if (isCurrent) {
+        ctx.fillStyle = 'rgba(224,123,63,0.18)';
+        ctx.beginPath();
+        ctx.roundRect(10, y - 2, W - 20, ROW_H - 4, 8);
+        ctx.fill();
+      }
+      ctx.fillStyle = isCurrent ? '#e07b3f' : 'rgba(255,255,255,0.45)';
+      ctx.beginPath();
+      ctx.arc(26, y + ROW_H / 2 - 2, isCurrent ? 7 : 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = isCurrent ? '#e07b3f' : 'rgba(255,255,255,0.8)';
+      ctx.font = `${isCurrent ? 'bold ' : ''}21px system-ui, sans-serif`;
+      const lbl = s.name.length > 20 ? s.name.slice(0, 19) + '…' : s.name;
+      ctx.fillText(lbl, 44, y + ROW_H / 2 + 7);
+    });
+    if (scenes.length > maxRows) {
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillText(`+ ${scenes.length - maxRows} more`, 20, FOOT_Y - 6);
+    }
+  }
+
+  // ── MAP tab ───────────────────────────────────────────────────────────────
+  if (tab === 1) {
+    const positions = getMapPositions(scenes, floorPlans);
+
+    // Connection lines
+    scenes.forEach((s, i) => {
+      const from = positions[i];
+      if (from.hidden) return;
+      s.hotspots?.forEach(hs => {
+        if (!hs.targetSceneId) return;
+        const ti = scenes.findIndex(sc => sc.id === hs.targetSceneId);
+        if (ti < 0 || positions[ti].hidden) return;
+        ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(positions[ti].x, positions[ti].y);
+        ctx.stroke();
+      });
+    });
+
+    // Scene nodes
+    scenes.forEach((s, i) => {
+      const pos = positions[i];
+      if (pos.hidden) return;
+      const isCurrent = s.id === currentSceneId;
+      const r = isCurrent ? 18 : 13;
+      if (isCurrent) { ctx.shadowColor = '#e07b3f'; ctx.shadowBlur = 14; }
+      ctx.fillStyle   = isCurrent ? '#e07b3f' : 'rgba(70,80,110,0.95)';
+      ctx.strokeStyle = isCurrent ? '#e07b3f' : 'rgba(255,255,255,0.4)';
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${isCurrent ? 13 : 11}px system-ui, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(i + 1), pos.x, pos.y);
+      const name = s.name.length > 9 ? s.name.slice(0, 8) + '…' : s.name;
+      ctx.fillStyle = isCurrent ? '#e07b3f' : 'rgba(255,255,255,0.5)';
+      ctx.font = `${isCurrent ? 'bold ' : ''}11px system-ui, sans-serif`;
+      ctx.fillText(name, pos.x, pos.y + r + 12);
+    });
+
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+    // Hint if no floor plan markers
+    const hasPlan = floorPlans?.some(fp => fp.markers?.length > 0);
+    if (!hasPlan) {
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Add floor plan markers in the editor', CW / 2, FOOT_Y - 8);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // ── Shared footer: Exit VR ────────────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(16, FOOT_Y); ctx.lineTo(W - 16, FOOT_Y);
+  ctx.stroke();
+
+  const btnW = 190, btnH = 30;
+  const btnX = (W - btnW) / 2, btnY = FOOT_Y + 6;
+  ctx.fillStyle = 'rgba(224,123,63,0.15)';
+  ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(224,123,63,0.55)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 7); ctx.stroke();
+  ctx.fillStyle = '#e07b3f';
+  ctx.font = 'bold 17px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('⏏  Exit VR  (B button)', W / 2, btnY + btnH / 2);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ImmersiveViewer({
-  scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR,
+  scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR, floorPlans,
 }: Props) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const rendererRef       = useRef<THREE.WebGLRenderer | null>(null);
@@ -121,6 +241,7 @@ export default function ImmersiveViewer({
   useEffect(() => { scenesRef.current = scenes; }, [scenes]);
   useEffect(() => { sceneRef.current  = scene;  }, [scene]);
   useEffect(() => { onSceneChangeRef.current = onSceneChange; }, [onSceneChange]);
+  useEffect(() => { floorPlansRef.current = floorPlans; }, [floorPlans]);
 
   // Controller / wrist-menu refs (Three.js objects live here)
   const wristMenuRef = useRef<{
@@ -131,7 +252,10 @@ export default function ImmersiveViewer({
   } | null>(null);
   const wristOpenRef     = useRef(false);  // mirror of React state for animation loop
   const prevBtnsRef      = useRef<{ l: boolean[]; r: boolean[] }>({ l: [], r: [] });
-  const leftNavLockRef   = useRef(false);  // debounce left-stick scene navigation
+  const leftNavLockRef   = useRef(false);  // debounce left-stick X scene navigation
+  const leftYLockRef     = useRef(false);  // debounce left-stick Y tab switching
+  const wristTabRef      = useRef(0);      // 0=Scenes, 1=Map
+  const floorPlansRef    = useRef(floorPlans);
 
   const [vrSupported,   setVrSupported]  = useState(false);
   const [gyroActive,    setGyroActive]   = useState(false);
@@ -295,20 +419,44 @@ export default function ImmersiveViewer({
                   const menuHits = rc.intersectObject(wristMenuRef.current.mesh);
                   if (menuHits.length > 0 && menuHits[0].uv) {
                     const uv = menuHits[0].uv;
-                    // Canvas is 512×384; UV y is flipped relative to canvas y
-                    const cy = (1 - uv.y) * 384;
-                    const LIST_TOP = 108, ROW_H = 46;
-                    const EXIT_BTN_Y = 342; // H - 42
+                    const hitX = uv.x * CW;
+                    const hitY = (1 - uv.y) * CH;
 
-                    if (cy >= EXIT_BTN_Y) {
+                    if (hitY < TAB_H) {
+                      // Tab bar click
+                      const newTab = hitX < CW / 2 ? 0 : 1;
+                      if (newTab !== wristTabRef.current) {
+                        wristTabRef.current = newTab;
+                        const menu = wristMenuRef.current;
+                        drawWristMenu(menu.ctx, menu.canvas, newTab, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
+                        menu.texture.needsUpdate = true;
+                      }
+                    } else if (hitY >= FOOT_Y + 6) {
                       // Exit VR button
                       renderer.xr.getSession()?.end().catch(() => {});
-                    } else if (cy >= LIST_TOP) {
-                      const idx = Math.floor((cy - LIST_TOP) / ROW_H);
+                    } else if (wristTabRef.current === 0) {
+                      // Scenes tab list
+                      const LIST_TOP = TAB_H + 14;
+                      const ROW_H    = 44;
+                      const idx = Math.floor((hitY - LIST_TOP) / ROW_H);
                       const target = scenesRef.current[idx];
-                      if (target) {
+                      if (idx >= 0 && target) {
                         onSceneChangeRef.current(target.id);
-                        // Close menu after selection
+                        wristOpenRef.current = false;
+                        wristMenuRef.current.mesh.visible = false;
+                        setWristMenuOpen(false);
+                      }
+                    } else if (wristTabRef.current === 1) {
+                      // Map tab — tap nearest scene node
+                      const positions = getMapPositions(scenesRef.current, floorPlansRef.current);
+                      let closest = -1, minDist = 32;
+                      positions.forEach((pos, i) => {
+                        if (pos.hidden) return;
+                        const d = Math.hypot(hitX - pos.x, hitY - pos.y);
+                        if (d < minDist) { minDist = d; closest = i; }
+                      });
+                      if (closest >= 0) {
+                        onSceneChangeRef.current(scenesRef.current[closest].id);
                         wristOpenRef.current = false;
                         wristMenuRef.current.mesh.visible = false;
                         setWristMenuOpen(false);
@@ -380,6 +528,23 @@ export default function ImmersiveViewer({
                 leftNavLockRef.current = false;
               }
 
+              // Thumbstick Y → switch wrist menu tab (when menu is open)
+              const sy = gp.axes[3] ?? 0;
+              if (wristOpenRef.current && Math.abs(sy) > 0.7 && !leftYLockRef.current) {
+                leftYLockRef.current = true;
+                const newTab = sy > 0 ? 1 : 0;
+                if (newTab !== wristTabRef.current) {
+                  wristTabRef.current = newTab;
+                  const menu = wristMenuRef.current;
+                  if (menu) {
+                    drawWristMenu(menu.ctx, menu.canvas, newTab, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
+                    menu.texture.needsUpdate = true;
+                  }
+                }
+              } else if (Math.abs(sy) < 0.3) {
+                leftYLockRef.current = false;
+              }
+
               // Y button (buttons[5]) → toggle wrist menu
               if (justPressed(5)) {
                 wristOpenRef.current = !wristOpenRef.current;
@@ -387,7 +552,7 @@ export default function ImmersiveViewer({
                 if (menu) {
                   menu.mesh.visible = wristOpenRef.current;
                   if (wristOpenRef.current) {
-                    drawWristMenu(menu.ctx, menu.canvas, scenesRef.current, sceneRef.current?.id);
+                    drawWristMenu(menu.ctx, menu.canvas, wristTabRef.current, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
                     menu.texture.needsUpdate = true;
                   }
                 }
@@ -524,7 +689,7 @@ export default function ImmersiveViewer({
   useEffect(() => {
     const menu = wristMenuRef.current;
     if (!menu || !wristOpenRef.current) return;
-    drawWristMenu(menu.ctx, menu.canvas, scenes, scene?.id);
+    drawWristMenu(menu.ctx, menu.canvas, wristTabRef.current, scenes, scene?.id, floorPlansRef.current);
     menu.texture.needsUpdate = true;
   }, [scene?.id, scenes]);
 

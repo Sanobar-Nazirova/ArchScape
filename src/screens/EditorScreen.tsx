@@ -167,7 +167,7 @@ export default function EditorScreen() {
     isPreviewMode, togglePreviewMode, restoreSceneImages,
     projectName, currentProjectId, currentTourId, projects,
     pendingVRMode, clearPendingVRMode,
-    goBack,
+    goBack, floorPlans,
   } = useTourStore();
 
   // Derive the current tour's password from the store
@@ -447,6 +447,7 @@ export default function EditorScreen() {
             onClose={() => { setImmersiveOpen(false); setAutoEnterVR(false); }}
             onChangeTour={handleChangeTour}
             autoEnterVR={autoEnterVR}
+            floorPlans={floorPlans}
           />
         )}
         {pendingHotspotId && activeScene && (
@@ -516,8 +517,9 @@ export default function EditorScreen() {
               scenes={scenes}
               onSceneChange={setActiveScene}
               onClose={() => { setImmersiveOpen(false); setAutoEnterVR(false); }}
-            onChangeTour={handleChangeTour}
+              onChangeTour={handleChangeTour}
               autoEnterVR={autoEnterVR}
+              floorPlans={floorPlans}
             />
           )}
         </div>
