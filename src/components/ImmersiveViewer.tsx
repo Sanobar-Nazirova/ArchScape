@@ -697,17 +697,28 @@ export default function ImmersiveViewer({
   useEffect(() => {
     if (!sphereRef.current || !scene) return;
     const m = sphereRef.current.material as THREE.MeshBasicMaterial;
+
+    // Dispose previous texture before loading new one (critical on Quest — VRAM is limited)
+    if (m.map) { m.map.dispose(); m.map = null; }
+    m.color.set(0x111119); m.needsUpdate = true;
+
     yawRef.current   = scene.initialYaw   ?? 0;
     pitchRef.current = scene.initialPitch ?? 0;
-    m.map = null; m.color.set(0x111119); m.needsUpdate = true;
+
     if (!scene.imageUrl) return;
+
+    let cancelled = false;
     new THREE.TextureLoader().load(scene.imageUrl, (tex) => {
+      if (cancelled) { tex.dispose(); return; }
       tex.colorSpace = THREE.SRGBColorSpace;
       if (sphereRef.current) {
         const mat = sphereRef.current.material as THREE.MeshBasicMaterial;
+        if (mat.map) mat.map.dispose(); // discard a race-condition winner
         mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
       }
     });
+
+    return () => { cancelled = true; };
   }, [scene?.id, scene?.imageUrl]);
 
   // ── Gyroscope ─────────────────────────────────────────────────────────────
