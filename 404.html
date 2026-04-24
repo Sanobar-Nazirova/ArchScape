@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script>
+    // GitHub Pages SPA redirect: send any 404 back to index.html
+    // preserving the path as a query param so App.tsx can read it.
+    var l = window.location;
+    l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1).join('/') +
+      '/?/' + l.pathname.slice(1) +
+      (l.search ? '&' + l.search.slice(1) : '') +
+      l.hash);
+  </script>
+</head>
+<body></body>
+</html>
