@@ -163,7 +163,7 @@ export default function EditorScreen() {
     scenes, activeSceneId, setActiveScene,
     selectedElementId, setSelectedElement,
     activeTool, setActiveTool,
-    addHotspot, addMediaPoint, updateHotspot,
+    addHotspot, addMediaPoint, updateHotspot, addScene,
     isPreviewMode, togglePreviewMode, restoreSceneImages,
     projectName, currentProjectId, currentTourId, projects,
     pendingVRMode, clearPendingVRMode,
@@ -448,6 +448,7 @@ export default function EditorScreen() {
             onChangeTour={handleChangeTour}
             autoEnterVR={autoEnterVR}
             floorPlans={floorPlans}
+            onAddScene={addScene}
           />
         )}
         {pendingHotspotId && activeScene && (
@@ -520,6 +521,7 @@ export default function EditorScreen() {
               onChangeTour={handleChangeTour}
               autoEnterVR={autoEnterVR}
               floorPlans={floorPlans}
+              onAddScene={addScene}
             />
           )}
         </div>

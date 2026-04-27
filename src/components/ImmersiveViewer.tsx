@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
-import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft } from 'lucide-react';
-import type { Scene, FloorPlan } from '../types';
+import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft, Upload } from 'lucide-react';
+import type { Scene, FloorPlan, PanoramaFormat, MediaType } from '../types';
+import { detectPanorama } from '../utils/panoramaDetector';
+import { generateThumbnail } from '../utils/panoramaGenerator';
 
 interface Props {
   scene: Scene | null;
@@ -12,6 +14,7 @@ interface Props {
   onChangeTour?: () => void;
   autoEnterVR?: boolean;
   floorPlans?: FloorPlan[];
+  onAddScene?: (imageUrl: string, name: string, format: PanoramaFormat, mediaType: MediaType, thumbnail?: string, aspectRatio?: number) => string;
 }
 
 // Canvas dimensions (must match the PlaneGeometry texture)
@@ -221,9 +224,18 @@ function drawWristMenu(
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ImmersiveViewer({
-  scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR, floorPlans,
+  scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR, floorPlans, onAddScene,
 }: Props) {
   const containerRef      = useRef<HTMLDivElement>(null);
   const rendererRef       = useRef<THREE.WebGLRenderer | null>(null);
@@ -256,6 +268,9 @@ export default function ImmersiveViewer({
   const leftYLockRef     = useRef(false);  // debounce left-stick Y tab switching
   const wristTabRef      = useRef(0);      // 0=Scenes, 1=Map
   const floorPlansRef    = useRef(floorPlans);
+
+  const uploadInputRef  = useRef<HTMLInputElement>(null);
+  const [uploading,     setUploading]    = useState<{ done: number; total: number } | null>(null);
 
   const [vrSupported,   setVrSupported]  = useState(false);
   const [gyroActive,    setGyroActive]   = useState(false);
@@ -752,6 +767,33 @@ export default function ImmersiveViewer({
 
   useEffect(() => () => { gyroCleanupRef.current?.(); }, []);
 
+  // ── Batch upload ───────────────────────────────────────────────────────────
+  const handleUploadFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (!files.length || !onAddScene) return;
+
+    setUploading({ done: 0, total: files.length });
+    let firstId: string | null = null;
+
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const detection = await detectPanorama(files[i]);
+        const imageUrl  = await fileToDataUrl(files[i]);
+        const thumbnail = await generateThumbnail(imageUrl);
+        const name      = files[i].name.replace(/\.[^.]+$/, '');
+        const id = onAddScene(imageUrl, name, detection.format, detection.mediaType, thumbnail, detection.aspectRatio);
+        if (i === 0) firstId = id;
+      } catch (err) {
+        console.warn('Upload failed for', files[i].name, err);
+      }
+      setUploading({ done: i + 1, total: files.length });
+    }
+
+    setUploading(null);
+    if (firstId) onSceneChange(firstId);
+  }, [onAddScene, onSceneChange]);
+
   // ── Enter WebXR ────────────────────────────────────────────────────────────
   const enterVR = useCallback(async () => {
     if (!rendererRef.current || !navigator.xr) return;
@@ -833,10 +875,23 @@ export default function ImmersiveViewer({
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-12 flex flex-col items-center gap-4"
         style={{ background: 'linear-gradient(to top,rgba(0,0,0,0.65),transparent)' }}>
 
-        <button
-          onClick={vrSupported ? enterVR : undefined}
-          title={vrSupported ? 'Enter immersive VR' : 'Open in Meta Quest Browser (HTTPS) for VR'}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold border transition-all"
+        {/* Hidden file input for batch upload */}
+        {onAddScene && (
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleUploadFiles}
+          />
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={vrSupported ? enterVR : undefined}
+            title={vrSupported ? 'Enter immersive VR' : 'Open in Meta Quest Browser (HTTPS) for VR'}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold border transition-all"
           style={{
             background:   vrSupported ? 'rgba(224,123,63,0.9)' : 'rgba(60,60,70,0.75)',
             borderColor:  vrSupported ? 'rgba(224,123,63,1)'   : 'rgba(255,255,255,0.12)',
@@ -848,6 +903,24 @@ export default function ImmersiveViewer({
           <Glasses size={18} />
           {vrSupported ? 'Enter VR' : 'VR not available in this browser'}
         </button>
+
+        {onAddScene && (
+          uploading ? (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl text-white/70 text-sm"
+              style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              {uploading.done}/{uploading.total} processing…
+            </div>
+          ) : (
+            <button onClick={() => uploadInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium border transition-all hover:bg-white/10"
+              style={{ background: 'rgba(0,0,0,0.55)', borderColor: 'rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)' }}>
+              <Upload size={14} />
+              Add Scenes
+            </button>
+          )
+        )}
+        </div>
 
         <div className="flex items-center gap-4">
           <button onClick={() => prevScene && onSceneChange(prevScene.id)} disabled={!prevScene}
