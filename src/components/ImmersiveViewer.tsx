@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
-import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft, Upload } from 'lucide-react';
 import type { Scene, FloorPlan, PanoramaFormat, MediaType } from '../types';
 import { detectPanorama } from '../utils/panoramaDetector';
@@ -237,6 +236,7 @@ function fileToDataUrl(file: File): Promise<string> {
 export default function ImmersiveViewer({
   scene, scenes, onSceneChange, onClose, onChangeTour, autoEnterVR, floorPlans, onAddScene,
 }: Props) {
+  const overlayRef        = useRef<HTMLDivElement>(null);
   const containerRef      = useRef<HTMLDivElement>(null);
   const rendererRef       = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef         = useRef<THREE.PerspectiveCamera | null>(null);
@@ -318,15 +318,34 @@ export default function ImmersiveViewer({
     hotspotsGroupRef.current = hotspotsGroup;
 
     // ── Controller models + rays ───────────────────────────────────────────
-    const ctrlFactory = new XRControllerModelFactory();
+    // Simple geometry (no CDN fetch — works on Quest regardless of network)
+    const buildControllerVisual = (tint: number) => {
+      const g = new THREE.Group();
+      const bodyMat = new THREE.MeshBasicMaterial({ color: tint });
+      // Handle
+      const handleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.12, 10);
+      handleGeo.rotateX(Math.PI / 2);
+      g.add(new THREE.Mesh(handleGeo, bodyMat));
+      // Ring guard
+      const ringGeo = new THREE.TorusGeometry(0.03, 0.006, 6, 20);
+      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x888899 }));
+      ring.position.z = 0.018;
+      g.add(ring);
+      // Tip dot (direction indicator)
+      const tipGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const tip = new THREE.Mesh(tipGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      tip.position.z = -0.065;
+      g.add(tip);
+      return g;
+    };
 
     const buildRay = (color: number) => {
       const pts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)];
       const line = new THREE.Line(
         new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 }),
+        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.6 }),
       );
-      line.scale.z = 4;
+      line.scale.z = 5;
       return line;
     };
 
@@ -334,15 +353,90 @@ export default function ImmersiveViewer({
     const ctrl0     = renderer.xr.getController(0);
     const ctrlGrip0 = renderer.xr.getControllerGrip(0);
     ctrl0.add(buildRay(0xffffff));
-    ctrlGrip0.add(ctrlFactory.createControllerModel(ctrlGrip0));
+    ctrlGrip0.add(buildControllerVisual(0x444455));
     threeScene.add(ctrl0, ctrlGrip0);
 
-    // Left (index 1) — pale-blue ray
+    // Left (index 1) — blue-tinted
     const ctrl1     = renderer.xr.getController(1);
     const ctrlGrip1 = renderer.xr.getControllerGrip(1);
     ctrl1.add(buildRay(0x88aaff));
-    ctrlGrip1.add(ctrlFactory.createControllerModel(ctrlGrip1));
+    ctrlGrip1.add(buildControllerVisual(0x334455));
     threeScene.add(ctrl1, ctrlGrip1);
+
+    // ── selectstart events (reliable fallback alongside gamepad polling) ───
+    const doSelect = () => {
+      const origin = new THREE.Vector3();
+      const dir    = new THREE.Vector3();
+      ctrl0.getWorldPosition(origin);
+      ctrl0.getWorldDirection(dir);
+      const rc = new THREE.Raycaster(origin, dir);
+
+      if (wristOpenRef.current && wristMenuRef.current) {
+        const hits = rc.intersectObject(wristMenuRef.current.mesh);
+        if (hits.length > 0 && hits[0].uv) {
+          const uv  = hits[0].uv;
+          const hitX = uv.x * CW;
+          const hitY = (1 - uv.y) * CH;
+          if (hitY < TAB_H) {
+            const newTab = hitX < CW / 2 ? 0 : 1;
+            wristTabRef.current = newTab;
+            const menu = wristMenuRef.current;
+            drawWristMenu(menu.ctx, menu.canvas, newTab, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
+            menu.texture.needsUpdate = true;
+          } else if (hitY >= FOOT_Y + 6) {
+            renderer.xr.getSession()?.end().catch(() => {});
+          } else if (wristTabRef.current === 0) {
+            const idx = Math.floor((hitY - (TAB_H + 14)) / 44);
+            const target = scenesRef.current[idx];
+            if (idx >= 0 && target) {
+              onSceneChangeRef.current(target.id);
+              wristOpenRef.current = false;
+              wristMenuRef.current.mesh.visible = false;
+              setWristMenuOpen(false);
+            }
+          } else {
+            const positions = getMapPositions(scenesRef.current, floorPlansRef.current);
+            let closest = -1, minDist = 32;
+            positions.forEach((pos, i) => {
+              if (pos.hidden) return;
+              const d = Math.hypot(hitX - pos.x, hitY - pos.y);
+              if (d < minDist) { minDist = d; closest = i; }
+            });
+            if (closest >= 0) {
+              onSceneChangeRef.current(scenesRef.current[closest].id);
+              wristOpenRef.current = false;
+              wristMenuRef.current.mesh.visible = false;
+              setWristMenuOpen(false);
+            }
+          }
+          return;
+        }
+      }
+
+      if (hotspotsGroupRef.current?.children.length) {
+        const hits = rc.intersectObjects(hotspotsGroupRef.current.children, true);
+        if (hits.length > 0) {
+          const hs = hits[0].object.userData.hotspot ?? hits[0].object.userData.nav;
+          if (hs?.targetSceneId) { onSceneChangeRef.current(hs.targetSceneId); return; }
+        }
+      }
+    };
+
+    const doMenuToggle = () => {
+      wristOpenRef.current = !wristOpenRef.current;
+      const menu = wristMenuRef.current;
+      if (menu) {
+        menu.mesh.visible = wristOpenRef.current;
+        if (wristOpenRef.current) {
+          drawWristMenu(menu.ctx, menu.canvas, wristTabRef.current, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
+          menu.texture.needsUpdate = true;
+        }
+      }
+      setWristMenuOpen(wristOpenRef.current);
+    };
+
+    ctrl0.addEventListener('selectstart', doSelect);
+    ctrl1.addEventListener('selectstart', doMenuToggle);
 
     // ── Wrist menu (attached to left grip) ────────────────────────────────
     const menuCanvas  = document.createElement('canvas');
@@ -646,7 +740,39 @@ export default function ImmersiveViewer({
       group.remove(child);
     }
 
-    if (!scene?.hotspots?.length) return;
+    // If no hotspots, show prev/next navigation arrows so VR navigation is always possible
+    if (!scene?.hotspots?.length) {
+      const idx = scenes.findIndex(s => s.id === scene?.id);
+      const navItems = [
+        idx > 0              ? { scene: scenes[idx - 1], yaw: Math.PI,  label: '◀ Prev' } : null,
+        idx < scenes.length - 1 ? { scene: scenes[idx + 1], yaw: 0,     label: 'Next ▶' } : null,
+      ].filter(Boolean) as { scene: Scene; yaw: number; label: string }[];
+
+      for (const nav of navItems) {
+        const c = document.createElement('canvas');
+        c.width = 256; c.height = 128;
+        const ctx2 = c.getContext('2d')!;
+        ctx2.fillStyle = 'rgba(224,123,63,0.85)';
+        ctx2.beginPath(); ctx2.roundRect(8, 8, 240, 112, 24); ctx2.fill();
+        ctx2.fillStyle = 'white';
+        ctx2.font = 'bold 28px system-ui';
+        ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+        ctx2.fillText(nav.label, 128, 44);
+        ctx2.font = '20px system-ui';
+        ctx2.fillStyle = 'rgba(255,255,255,0.7)';
+        const lbl = nav.scene.name.length > 16 ? nav.scene.name.slice(0,15)+'…' : nav.scene.name;
+        ctx2.fillText(lbl, 128, 84);
+
+        const sprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }),
+        );
+        sprite.position.set(-8 * Math.sin(nav.yaw), 0, -8 * Math.cos(nav.yaw));
+        sprite.scale.set(2.4, 1.2, 1);
+        sprite.userData = { nav: { targetSceneId: nav.scene.id } };
+        group.add(sprite);
+      }
+      return;
+    }
 
     const targetSceneMap = new Map(scenes.map(s => [s.id, s.name]));
 
@@ -795,9 +921,14 @@ export default function ImmersiveViewer({
   const enterVR = useCallback(async () => {
     if (!rendererRef.current || !navigator.xr) return;
     try {
+      const overlayRoot = overlayRef.current ?? undefined;
       const session = await navigator.xr.requestSession('immersive-vr', {
-        optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
-      });
+        optionalFeatures: [
+          'local-floor', 'bounded-floor', 'hand-tracking',
+          ...(overlayRoot ? ['dom-overlay'] : []),
+        ],
+        ...(overlayRoot ? { domOverlay: { root: overlayRoot } } : {}),
+      } as XRSessionInit);
       rendererRef.current.xr.setSession(session);
     } catch (e) { console.warn('WebXR failed:', e); }
   }, []);
@@ -808,7 +939,7 @@ export default function ImmersiveViewer({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 bg-black" style={{ touchAction: 'none' }}>
+    <div ref={overlayRef} className="fixed inset-0 z-50 bg-black" style={{ touchAction: 'none' }}>
 
       <div ref={containerRef} className="w-full h-full" />
 
