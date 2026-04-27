@@ -253,6 +253,7 @@ export default function ImmersiveViewer({
   const rendererRef       = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef         = useRef<THREE.PerspectiveCamera | null>(null);
   const sphereRef         = useRef<THREE.Mesh | null>(null);
+  const defaultSphereGeoRef = useRef<THREE.BufferGeometry | null>(null);
   const threeSceneRef     = useRef<THREE.Scene | null>(null);
   const hotspotsGroupRef  = useRef<THREE.Group | null>(null);
   const yawRef            = useRef(scene?.initialYaw ?? 0);
@@ -319,6 +320,7 @@ export default function ImmersiveViewer({
 
     // Panorama sphere
     const geo = new THREE.SphereGeometry(500, 64, 32);
+    defaultSphereGeoRef.current = geo;
     const mat = new THREE.MeshBasicMaterial({ color: 0x111119, side: THREE.BackSide });
     const sphere = new THREE.Mesh(geo, mat);
     threeScene.add(sphere);
@@ -862,10 +864,11 @@ export default function ImmersiveViewer({
 
     if (!scene.imageUrl) return;
 
-    // ── Swap geometry based on format ───────────────────────────────────────
+    // ── Swap geometry based on format (only when it actually changes type) ──
     const ar = scene.aspectRatio ?? 2;
     const oldGeo = mesh.geometry;
-    let newGeo: THREE.BufferGeometry;
+    const isDefaultGeo = oldGeo === defaultSphereGeoRef.current;
+    let newGeo: THREE.BufferGeometry | null = null;
     switch (scene.format) {
       case 'cylindrical': {
         const height = Math.min(800, 500 / Math.max(ar, 0.5));
@@ -886,9 +889,19 @@ export default function ImmersiveViewer({
         break;
       }
       default:
-        newGeo = new THREE.SphereGeometry(500, 64, 32);
+        // Reuse the init-time sphere — no GPU allocation needed
+        if (!isDefaultGeo && defaultSphereGeoRef.current) {
+          // Coming back from a custom geo — swap back to default without dispose (default is persistent)
+          if (!isDefaultGeo) oldGeo.dispose();
+          mesh.geometry = defaultSphereGeoRef.current;
+        }
+        // else: already using default sphere, nothing to do
     }
-    if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
+    if (newGeo) {
+      // Custom geometry: dispose previous only if it isn't the default sphere
+      if (!isDefaultGeo) oldGeo.dispose();
+      mesh.geometry = newGeo;
+    }
 
     const applyTexture = (tex: THREE.Texture) => {
       if (!sphereRef.current) { tex.dispose(); return; }
