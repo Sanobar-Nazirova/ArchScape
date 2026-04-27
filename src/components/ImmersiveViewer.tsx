@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
 import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft, Upload } from 'lucide-react';
-import type { Scene, FloorPlan, PanoramaFormat, MediaType } from '../types';
+import type { Scene, FloorPlan, PanoramaFormat, MediaType, FisheyeConfig } from '../types';
 import { detectPanorama } from '../utils/panoramaDetector';
 import { generateThumbnail } from '../utils/panoramaGenerator';
+import { fisheyeToEquirectangular, fisheyeCache } from '../utils/fisheyeConverter';
 
 interface Props {
   scene: Scene | null;
@@ -230,6 +231,17 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function fisheyeConfigFromFormat(format: PanoramaFormat): FisheyeConfig {
+  switch (format) {
+    case 'fisheye-dual-sbs':
+      return { type: 'dual-sbs', fov: 200, centerX: 0.25, centerY: 0.5, radius: 0.46 };
+    case 'fisheye-dual-tb':
+      return { type: 'dual-tb', fov: 200, centerX: 0.5, centerY: 0.25, radius: 0.46 };
+    default:
+      return { type: 'single', fov: 180, centerX: 0.5, centerY: 0.5, radius: 0.92 };
+  }
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -838,7 +850,8 @@ export default function ImmersiveViewer({
   // ── Load panorama texture ──────────────────────────────────────────────────
   useEffect(() => {
     if (!sphereRef.current || !scene) return;
-    const m = sphereRef.current.material as THREE.MeshBasicMaterial;
+    const mesh = sphereRef.current;
+    const m = mesh.material as THREE.MeshBasicMaterial;
 
     // Dispose previous texture before loading new one (critical on Quest — VRAM is limited)
     if (m.map) { m.map.dispose(); m.map = null; }
@@ -849,19 +862,101 @@ export default function ImmersiveViewer({
 
     if (!scene.imageUrl) return;
 
-    let cancelled = false;
-    new THREE.TextureLoader().load(scene.imageUrl, (tex) => {
-      if (cancelled) { tex.dispose(); return; }
-      tex.colorSpace = THREE.SRGBColorSpace;
-      if (sphereRef.current) {
-        const mat = sphereRef.current.material as THREE.MeshBasicMaterial;
-        if (mat.map) mat.map.dispose(); // discard a race-condition winner
-        mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
+    // ── Swap geometry based on format ───────────────────────────────────────
+    const ar = scene.aspectRatio ?? 2;
+    const oldGeo = mesh.geometry;
+    let newGeo: THREE.BufferGeometry;
+    switch (scene.format) {
+      case 'cylindrical': {
+        const height = Math.min(800, 500 / Math.max(ar, 0.5));
+        newGeo = new THREE.CylinderGeometry(500, 500, height, 64, 1, true);
+        break;
       }
-    });
+      case 'partial':
+      case 'rectilinear': {
+        const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8;
+        const vFov = hFov / Math.max(ar, 0.1);
+        newGeo = new THREE.SphereGeometry(500, 48, 24, -hFov / 2, hFov, Math.PI / 2 - vFov / 2, vFov);
+        break;
+      }
+      case 'vertical': {
+        const vFov2 = Math.PI * 1.2;
+        const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (ar ?? 0.4));
+        newGeo = new THREE.SphereGeometry(500, 32, 48, -hFov2 / 2, hFov2, Math.PI / 2 - vFov2 / 2, vFov2);
+        break;
+      }
+      default:
+        newGeo = new THREE.SphereGeometry(500, 64, 32);
+    }
+    if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
+
+    const applyTexture = (tex: THREE.Texture) => {
+      if (!sphereRef.current) { tex.dispose(); return; }
+      const mat = sphereRef.current.material as THREE.MeshBasicMaterial;
+      if (mat.map) mat.map.dispose();
+
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const isRightEye = scene.stereoEye === 'right';
+      switch (scene.format) {
+        case 'equirectangular-sbs':
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.ClampToEdgeWrapping;
+          tex.repeat.set(0.5, 1);
+          tex.offset.set(isRightEye ? 0.5 : 0, 0);
+          break;
+        case 'equirectangular-tb':
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.ClampToEdgeWrapping;
+          tex.repeat.set(1, 0.5);
+          tex.offset.set(0, isRightEye ? 0 : 0.5);
+          break;
+        default:
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.ClampToEdgeWrapping;
+          tex.repeat.set(1, 1);
+          tex.offset.set(0, 0);
+      }
+      tex.updateMatrix();
+      tex.needsUpdate = true;
+
+      mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
+    };
+
+    let cancelled = false;
+
+    if (scene.format?.startsWith('fisheye')) {
+      // ── Fisheye image: CPU-convert to equirectangular (with cache) ─────────
+      const cached = fisheyeCache.get(scene.id);
+      if (cached) {
+        if (!cancelled) applyTexture(new THREE.Texture(cached));
+        return;
+      }
+      const img = new window.Image();
+      img.onload = () => {
+        if (cancelled) return;
+        const MAX = 4096;
+        const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
+        const raw = document.createElement('canvas');
+        raw.width  = Math.floor(img.naturalWidth  * scale);
+        raw.height = Math.floor(img.naturalHeight * scale);
+        raw.getContext('2d')!.drawImage(img, 0, 0, raw.width, raw.height);
+        const cfg = scene.fisheyeConfig
+          ? { ...scene.fisheyeConfig }
+          : fisheyeConfigFromFormat(scene.format as PanoramaFormat);
+        const converted = fisheyeToEquirectangular(raw, cfg);
+        fisheyeCache.set(scene.id, converted);
+        if (!cancelled) applyTexture(new THREE.Texture(converted));
+      };
+      img.src = scene.imageUrl;
+    } else {
+      new THREE.TextureLoader().load(scene.imageUrl, (tex) => {
+        if (cancelled) { tex.dispose(); return; }
+        applyTexture(tex);
+      });
+    }
 
     return () => { cancelled = true; };
-  }, [scene?.id, scene?.imageUrl]);
+  }, [scene?.id, scene?.imageUrl, scene?.format]);
 
   // ── Gyroscope ─────────────────────────────────────────────────────────────
   const gyroCleanupRef = useRef<(() => void) | null>(null);
