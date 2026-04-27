@@ -269,8 +269,9 @@ export default function ImmersiveViewer({
   const wristTabRef      = useRef(0);      // 0=Scenes, 1=Map
   const floorPlansRef    = useRef(floorPlans);
 
-  const uploadInputRef  = useRef<HTMLInputElement>(null);
-  const [uploading,     setUploading]    = useState<{ done: number; total: number } | null>(null);
+  const uploadInputRef    = useRef<HTMLInputElement>(null);
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
+  const [uploadQueue,     setUploadQueue]     = useState<Array<{ name: string; status: 'processing' | 'done' | 'error' }>>([]);
 
   const [vrSupported,   setVrSupported]  = useState(false);
   const [gyroActive,    setGyroActive]   = useState(false);
@@ -773,25 +774,21 @@ export default function ImmersiveViewer({
     e.target.value = '';
     if (!files.length || !onAddScene) return;
 
-    setUploading({ done: 0, total: files.length });
-    let firstId: string | null = null;
-
-    for (let i = 0; i < files.length; i++) {
+    for (const file of files) {
+      const name = file.name.replace(/\.[^.]+$/, '');
+      setUploadQueue(q => [...q, { name, status: 'processing' }]);
       try {
-        const detection = await detectPanorama(files[i]);
-        const imageUrl  = await fileToDataUrl(files[i]);
+        const detection = await detectPanorama(file);
+        const imageUrl  = await fileToDataUrl(file);
         const thumbnail = await generateThumbnail(imageUrl);
-        const name      = files[i].name.replace(/\.[^.]+$/, '');
         const id = onAddScene(imageUrl, name, detection.format, detection.mediaType, thumbnail, detection.aspectRatio);
-        if (i === 0) firstId = id;
+        setUploadQueue(q => q.map(item => item.name === name ? { ...item, status: 'done' } : item));
+        onSceneChange(id);
       } catch (err) {
-        console.warn('Upload failed for', files[i].name, err);
+        console.warn('Upload failed for', file.name, err);
+        setUploadQueue(q => q.map(item => item.name === name ? { ...item, status: 'error' } : item));
       }
-      setUploading({ done: i + 1, total: files.length });
     }
-
-    setUploading(null);
-    if (firstId) onSceneChange(firstId);
   }, [onAddScene, onSceneChange]);
 
   // ── Enter WebXR ────────────────────────────────────────────────────────────
@@ -875,16 +872,52 @@ export default function ImmersiveViewer({
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-12 flex flex-col items-center gap-4"
         style={{ background: 'linear-gradient(to top,rgba(0,0,0,0.65),transparent)' }}>
 
-        {/* Hidden file input for batch upload */}
+        {/* Hidden file input — single pick per tap, works on all browsers */}
         {onAddScene && (
           <input
             ref={uploadInputRef}
             type="file"
             accept="image/*"
-            multiple
             className="hidden"
             onChange={handleUploadFiles}
           />
+        )}
+
+        {/* Upload panel */}
+        {uploadPanelOpen && onAddScene && (
+          <div className="w-full max-w-sm rounded-2xl p-4 flex flex-col gap-2"
+            style={{ background: 'rgba(10,10,20,0.95)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-white text-sm font-semibold">Add Panorama Scenes</span>
+              <button onClick={() => { setUploadPanelOpen(false); setUploadQueue([]); }}
+                className="text-white/40 hover:text-white text-lg leading-none">✕</button>
+            </div>
+
+            {/* Queue list */}
+            {uploadQueue.length > 0 && (
+              <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                {uploadQueue.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs py-1">
+                    {item.status === 'processing' && (
+                      <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />
+                    )}
+                    {item.status === 'done'       && <span className="text-green-400 flex-shrink-0">✓</span>}
+                    {item.status === 'error'      && <span className="text-red-400 flex-shrink-0">✗</span>}
+                    <span className="text-white/70 truncate">{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Browse button */}
+            <button onClick={() => uploadInputRef.current?.click()}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
+              style={{ background: 'rgba(224,123,63,0.9)', color: 'white', border: 'none' }}>
+              <Upload size={14} className="inline mr-2" />
+              {uploadQueue.length === 0 ? 'Browse & pick a panorama' : 'Pick another panorama'}
+            </button>
+            <p className="text-white/25 text-xs text-center">Tap once per image — tap again to add more</p>
+          </div>
         )}
 
         <div className="flex items-center gap-3">
@@ -892,34 +925,33 @@ export default function ImmersiveViewer({
             onClick={vrSupported ? enterVR : undefined}
             title={vrSupported ? 'Enter immersive VR' : 'Open in Meta Quest Browser (HTTPS) for VR'}
             className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold border transition-all"
-          style={{
-            background:   vrSupported ? 'rgba(224,123,63,0.9)' : 'rgba(60,60,70,0.75)',
-            borderColor:  vrSupported ? 'rgba(224,123,63,1)'   : 'rgba(255,255,255,0.12)',
-            color:        vrSupported ? 'white'                : 'rgba(255,255,255,0.4)',
-            backdropFilter: 'blur(10px)',
-            cursor:       vrSupported ? 'pointer' : 'default',
-            boxShadow:    vrSupported ? '0 0 24px rgba(224,123,63,0.4)' : 'none',
-          }}>
-          <Glasses size={18} />
-          {vrSupported ? 'Enter VR' : 'VR not available in this browser'}
-        </button>
+            style={{
+              background:   vrSupported ? 'rgba(224,123,63,0.9)' : 'rgba(60,60,70,0.75)',
+              borderColor:  vrSupported ? 'rgba(224,123,63,1)'   : 'rgba(255,255,255,0.12)',
+              color:        vrSupported ? 'white'                : 'rgba(255,255,255,0.4)',
+              backdropFilter: 'blur(10px)',
+              cursor:       vrSupported ? 'pointer' : 'default',
+              boxShadow:    vrSupported ? '0 0 24px rgba(224,123,63,0.4)' : 'none',
+            }}>
+            <Glasses size={18} />
+            {vrSupported ? 'Enter VR' : 'VR not available in this browser'}
+          </button>
 
-        {onAddScene && (
-          uploading ? (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl text-white/70 text-sm"
-              style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              {uploading.done}/{uploading.total} processing…
-            </div>
-          ) : (
-            <button onClick={() => uploadInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium border transition-all hover:bg-white/10"
-              style={{ background: 'rgba(0,0,0,0.55)', borderColor: 'rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)' }}>
+          {onAddScene && (
+            <button onClick={() => setUploadPanelOpen(p => !p)}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium border transition-all hover:bg-white/10"
+              style={{
+                background:  uploadPanelOpen ? 'rgba(224,123,63,0.2)' : 'rgba(0,0,0,0.55)',
+                borderColor: uploadPanelOpen ? 'rgba(224,123,63,0.7)' : 'rgba(255,255,255,0.18)',
+                color: uploadPanelOpen ? '#e07b3f' : 'rgba(255,255,255,0.8)',
+                backdropFilter: 'blur(8px)',
+              }}>
               <Upload size={14} />
-              Add Scenes
+              Add Scenes{uploadQueue.filter(q => q.status === 'done').length > 0
+                ? ` (${uploadQueue.filter(q => q.status === 'done').length} added)`
+                : ''}
             </button>
-          )
-        )}
+          )}
         </div>
 
         <div className="flex items-center gap-4">
