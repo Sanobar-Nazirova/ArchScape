@@ -941,7 +941,9 @@ export default function ImmersiveViewer({
 
     let cancelled = false;
 
-    // Shared image loader: cap to 4096px to limit GPU upload size, then pass to applyTexture
+    // Shared image loader: cap to 4096px to limit GPU upload size, then pass to applyTexture.
+    // Do NOT set crossOrigin for data: URLs — Android Chromium (Quest browser) rejects
+    // CORS preflight on data URLs, causing onload to never fire and the texture to stay blank.
     const loadImage = (src: string, onCanvas: (c: HTMLCanvasElement | HTMLImageElement) => void) => {
       const img = new window.Image();
       img.onload = () => {
@@ -952,13 +954,19 @@ export default function ImmersiveViewer({
           const c = document.createElement('canvas');
           c.width  = Math.floor(img.naturalWidth  * scale);
           c.height = Math.floor(img.naturalHeight * scale);
-          c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
-          onCanvas(c);
+          try {
+            c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+            onCanvas(c);
+          } catch {
+            onCanvas(img); // cross-origin without CORS header — use full-size image directly
+          }
         } else {
           onCanvas(img);
         }
       };
-      img.crossOrigin = 'anonymous';
+      img.onerror = () => console.error('[ImmersiveViewer] panorama load failed');
+      // Only set crossOrigin for real network URLs (CORS canvas drawing) — not for data: URIs
+      if (!src.startsWith('data:')) img.crossOrigin = 'anonymous';
       img.src = src;
     };
 
