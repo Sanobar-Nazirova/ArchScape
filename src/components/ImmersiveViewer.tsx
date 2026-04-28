@@ -683,105 +683,112 @@ export default function ImmersiveViewer({
     const group = hotspotsGroupRef.current;
     if (!group) return;
 
-    // Clear previous sprites — defer gl.deleteTexture() to avoid Adreno GPU flush stall
-    // during XR frames. Synchronous disposal in this effect (which runs after React commit)
-    // can coincide with an in-flight XR render, causing the compositor to time out.
+    // Remove old sprites from the scene graph immediately (fast — just a list splice)
     const toDispose = [...group.children] as THREE.Sprite[];
     group.clear();
-    if (toDispose.length) {
-      setTimeout(() => {
-        toDispose.forEach(child => {
-          (child.material as THREE.SpriteMaterial).map?.dispose();
-          (child.material as THREE.SpriteMaterial).dispose();
-        });
-      }, 100);
-    }
 
-    // If no hotspots, show prev/next navigation arrows so VR navigation is always possible
-    if (!scene?.hotspots?.length) {
-      const idx = scenes.findIndex(s => s.id === scene?.id);
-      const navItems = [
-        idx > 0              ? { scene: scenes[idx - 1], yaw: Math.PI,  label: '◀ Prev' } : null,
-        idx < scenes.length - 1 ? { scene: scenes[idx + 1], yaw: 0,     label: 'Next ▶' } : null,
-      ].filter(Boolean) as { scene: Scene; yaw: number; label: string }[];
+    // Defer ALL canvas drawing and texture work to outside the React commit phase.
+    // ctx.shadowBlur + ctx.arc + ctx.fill with multiple hotspots can block the main
+    // thread for 150-500ms on Quest's mobile GPU, delaying XR frame delivery and
+    // triggering the compositor's comfort/session-end timeout.
+    const timer = setTimeout(() => {
+      // Dispose old sprite textures well after the canvas/upload work is done
+      // — gl.deleteTexture() causes an Adreno GPU flush; doing it 2s after navigation
+      // ensures the XR compositor has long since stabilised.
+      if (toDispose.length) {
+        setTimeout(() => {
+          toDispose.forEach(child => {
+            (child.material as THREE.SpriteMaterial).map?.dispose();
+            (child.material as THREE.SpriteMaterial).dispose();
+          });
+        }, 2000);
+      }
 
-      for (const nav of navItems) {
+      // If no hotspots, show prev/next navigation arrows so VR navigation is always possible
+      if (!scene?.hotspots?.length) {
+        const idx = scenes.findIndex(s => s.id === scene?.id);
+        const navItems = [
+          idx > 0              ? { scene: scenes[idx - 1], yaw: Math.PI,  label: '◀ Prev' } : null,
+          idx < scenes.length - 1 ? { scene: scenes[idx + 1], yaw: 0,     label: 'Next ▶' } : null,
+        ].filter(Boolean) as { scene: Scene; yaw: number; label: string }[];
+
+        for (const nav of navItems) {
+          const c = document.createElement('canvas');
+          c.width = 256; c.height = 128;
+          const ctx2 = c.getContext('2d')!;
+          ctx2.fillStyle = 'rgba(224,123,63,0.85)';
+          ctx2.beginPath(); ctx2.roundRect(8, 8, 240, 112, 24); ctx2.fill();
+          ctx2.fillStyle = 'white';
+          ctx2.font = 'bold 28px system-ui';
+          ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+          ctx2.fillText(nav.label, 128, 44);
+          ctx2.font = '20px system-ui';
+          ctx2.fillStyle = 'rgba(255,255,255,0.7)';
+          const lbl = nav.scene.name.length > 16 ? nav.scene.name.slice(0, 15) + '…' : nav.scene.name;
+          ctx2.fillText(lbl, 128, 84);
+
+          const spriteTex = new THREE.CanvasTexture(c);
+          if (rendererRef.current) rendererRef.current.initTexture(spriteTex);
+          const sprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({ map: spriteTex, transparent: true, depthTest: false }),
+          );
+          sprite.position.set(-8 * Math.sin(nav.yaw), 0, -8 * Math.cos(nav.yaw));
+          sprite.scale.set(2.4, 1.2, 1);
+          sprite.userData = { nav: { targetSceneId: nav.scene.id } };
+          group.add(sprite);
+        }
+        return;
+      }
+
+      const targetSceneMap = new Map(scenes.map(s => [s.id, s.name]));
+
+      for (const hs of scene.hotspots) {
+        if (!hs.targetSceneId) continue;
+        const targetName = targetSceneMap.get(hs.targetSceneId) ?? 'Go';
+
         const c = document.createElement('canvas');
-        c.width = 256; c.height = 128;
-        const ctx2 = c.getContext('2d')!;
-        ctx2.fillStyle = 'rgba(224,123,63,0.85)';
-        ctx2.beginPath(); ctx2.roundRect(8, 8, 240, 112, 24); ctx2.fill();
-        ctx2.fillStyle = 'white';
-        ctx2.font = 'bold 28px system-ui';
-        ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
-        ctx2.fillText(nav.label, 128, 44);
-        ctx2.font = '20px system-ui';
-        ctx2.fillStyle = 'rgba(255,255,255,0.7)';
-        const lbl = nav.scene.name.length > 16 ? nav.scene.name.slice(0,15)+'…' : nav.scene.name;
-        ctx2.fillText(lbl, 128, 84);
+        c.width = 256; c.height = 256;
+        const ctx = c.getContext('2d')!;
+
+        // No shadowBlur — Gaussian blur per-draw-call is expensive on mobile GPUs
+        ctx.fillStyle = 'rgba(224,123,63,0.92)';
+        ctx.beginPath();
+        ctx.arc(128, 128, 90, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 80px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('→', 128, 106);
+
+        const label = targetName.length > 11 ? targetName.slice(0, 10) + '…' : targetName;
+        ctx.font = 'bold 28px system-ui, sans-serif';
+        ctx.fillText(label, 128, 182);
+
+        const spriteTex = new THREE.CanvasTexture(c);
+        // Pre-upload to GPU now (outside XR frame) so the next frame just binds
+        if (rendererRef.current) rendererRef.current.initTexture(spriteTex);
 
         const sprite = new THREE.Sprite(
-          new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }),
+          new THREE.SpriteMaterial({ map: spriteTex, transparent: true, depthTest: false }),
         );
-        sprite.position.set(-8 * Math.sin(nav.yaw), 0, -8 * Math.cos(nav.yaw));
-        sprite.scale.set(2.4, 1.2, 1);
-        sprite.userData = { nav: { targetSceneId: nav.scene.id } };
+        const r = 8;
+        sprite.position.set(
+          -r * Math.cos(hs.pitch) * Math.sin(hs.yaw),
+           r * Math.sin(hs.pitch),
+          -r * Math.cos(hs.pitch) * Math.cos(hs.yaw),
+        );
+        sprite.scale.set(0.9, 0.9, 1);
+        sprite.userData = { hotspot: hs };
         group.add(sprite);
       }
-      return;
-    }
+    }, 0);
 
-    const targetSceneMap = new Map(scenes.map(s => [s.id, s.name]));
-
-    for (const hs of scene.hotspots) {
-      if (!hs.targetSceneId) continue;
-      const targetName = targetSceneMap.get(hs.targetSceneId) ?? 'Go';
-
-      // Draw sprite canvas
-      const c = document.createElement('canvas');
-      c.width = 256; c.height = 256;
-      const ctx = c.getContext('2d')!;
-
-      // Glow
-      ctx.shadowColor = '#e07b3f';
-      ctx.shadowBlur = 28;
-      ctx.fillStyle = 'rgba(224,123,63,0.92)';
-      ctx.beginPath();
-      ctx.arc(128, 128, 90, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 8;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Arrow icon
-      ctx.fillStyle = 'white';
-      ctx.font = 'bold 80px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('→', 128, 106);
-
-      // Target name
-      const label = targetName.length > 11 ? targetName.slice(0, 10) + '…' : targetName;
-      ctx.font = 'bold 28px system-ui, sans-serif';
-      ctx.fillText(label, 128, 182);
-
-      const tex = new THREE.CanvasTexture(c);
-      const sprite = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }),
-      );
-
-      // Position on inner sphere surface (radius 8, close to camera)
-      const r = 8;
-      sprite.position.set(
-        -r * Math.cos(hs.pitch) * Math.sin(hs.yaw),
-         r * Math.sin(hs.pitch),
-        -r * Math.cos(hs.pitch) * Math.cos(hs.yaw),
-      );
-      sprite.scale.set(0.9, 0.9, 1);
-      sprite.userData = { hotspot: hs };
-      group.add(sprite);
-    }
+    return () => clearTimeout(timer);
   }, [scene?.id, scene?.hotspots, scenes]);
 
   // Refresh wrist menu canvas when scene changes while menu is open
@@ -863,9 +870,9 @@ export default function ImmersiveViewer({
 
       mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
 
-      // Defer gl.deleteTexture() — immediate disposal can trigger an Adreno GPU flush
-      // while the compositor is waiting for the current frame, killing the XR session.
-      if (oldTex) setTimeout(() => oldTex.dispose(), 100);
+      // Defer gl.deleteTexture() 2s — immediate or short-delay disposal can trigger an
+      // Adreno GPU flush while the compositor is tracking frame delivery, killing the session.
+      if (oldTex) setTimeout(() => oldTex.dispose(), 2000);
     };
 
     let cancelled = false;
