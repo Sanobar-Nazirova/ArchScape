@@ -906,6 +906,13 @@ export default function ImmersiveViewer({
       if (mat.map) mat.map.dispose();
 
       tex.colorSpace = THREE.SRGBColorSpace;
+      // Disabling mipmap generation is critical on Quest's Adreno GPU.
+      // gl.generateMipmap() causes a 1-3s pipeline stall on mobile GPUs;
+      // LinearFilter without mipmaps avoids it entirely.
+      tex.generateMipmaps = false;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+
       const isRightEye = scene.stereoEye === 'right';
       switch (scene.format) {
         case 'equirectangular-sbs':
@@ -934,6 +941,27 @@ export default function ImmersiveViewer({
 
     let cancelled = false;
 
+    // Shared image loader: cap to 4096px to limit GPU upload size, then pass to applyTexture
+    const loadImage = (src: string, onCanvas: (c: HTMLCanvasElement | HTMLImageElement) => void) => {
+      const img = new window.Image();
+      img.onload = () => {
+        if (cancelled) return;
+        const MAX = 4096;
+        const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
+        if (scale < 1) {
+          const c = document.createElement('canvas');
+          c.width  = Math.floor(img.naturalWidth  * scale);
+          c.height = Math.floor(img.naturalHeight * scale);
+          c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+          onCanvas(c);
+        } else {
+          onCanvas(img);
+        }
+      };
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+    };
+
     if (scene.format?.startsWith('fisheye')) {
       // ── Fisheye image: CPU-convert to equirectangular (with cache) ─────────
       const cached = fisheyeCache.get(scene.id);
@@ -941,26 +969,28 @@ export default function ImmersiveViewer({
         if (!cancelled) applyTexture(new THREE.Texture(cached));
         return;
       }
-      const img = new window.Image();
-      img.onload = () => {
+      loadImage(scene.imageUrl, (source) => {
         if (cancelled) return;
-        const MAX = 4096;
-        const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
-        const raw = document.createElement('canvas');
-        raw.width  = Math.floor(img.naturalWidth  * scale);
-        raw.height = Math.floor(img.naturalHeight * scale);
-        raw.getContext('2d')!.drawImage(img, 0, 0, raw.width, raw.height);
+        const raw = source instanceof HTMLCanvasElement
+          ? source
+          : (() => {
+              const c = document.createElement('canvas');
+              c.width  = (source as HTMLImageElement).naturalWidth;
+              c.height = (source as HTMLImageElement).naturalHeight;
+              c.getContext('2d')!.drawImage(source, 0, 0);
+              return c;
+            })();
         const cfg = scene.fisheyeConfig
           ? { ...scene.fisheyeConfig }
           : fisheyeConfigFromFormat(scene.format as PanoramaFormat);
         const converted = fisheyeToEquirectangular(raw, cfg);
         fisheyeCache.set(scene.id, converted);
         if (!cancelled) applyTexture(new THREE.Texture(converted));
-      };
-      img.src = scene.imageUrl;
+      });
     } else {
-      new THREE.TextureLoader().load(scene.imageUrl, (tex) => {
-        if (cancelled) { tex.dispose(); return; }
+      loadImage(scene.imageUrl, (source) => {
+        if (cancelled) return;
+        const tex = new THREE.Texture(source as HTMLImageElement);
         applyTexture(tex);
       });
     }
