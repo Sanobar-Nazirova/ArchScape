@@ -268,6 +268,8 @@ export default function ImmersiveViewer({
   const leftYLockRef     = useRef(false);  // debounce left-stick Y tab switching
   const wristTabRef      = useRef(0);      // 0=Scenes, 1=Map
   const floorPlansRef    = useRef(floorPlans);
+  const lastNavTimeRef   = useRef(0);      // timestamp of last scene change (for cooldown)
+  const intentionalExitRef = useRef(false); // true only when we explicitly call session.end()
 
   const uploadInputRef    = useRef<HTMLInputElement>(null);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
@@ -421,10 +423,27 @@ export default function ImmersiveViewer({
     renderer.xr.addEventListener('sessionend',   () => {
       camera.rotation.y = -yawRef.current;
       camera.rotation.x =  pitchRef.current;
+      if (!intentionalExitRef.current) {
+        // Session ended without us asking — try to restart automatically after a brief pause
+        setTimeout(() => {
+          navigator.xr?.requestSession('immersive-vr', {
+            optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
+          }).then(s => renderer.xr.setSession(s)).catch(() => {});
+        }, 800);
+      }
+      intentionalExitRef.current = false;
     });
 
     // ── Animation + gamepad loop ───────────────────────────────────────────
+    // Defer navigation outside the XR rAF callback so React re-rendering
+    // (triggered by setActiveScene) never blocks XR frame delivery.
+    const navTo = (id: string) => {
+      lastNavTimeRef.current = Date.now();
+      setTimeout(() => onSceneChangeRef.current(id), 0);
+    };
+
     const animate = (_t: number, xrFrame?: XRFrame) => {
+      try {
       if (xrFrame) {
         const session = renderer.xr.getSession();
         if (session) {
@@ -451,7 +470,8 @@ export default function ImmersiveViewer({
               }
 
               // Trigger (button 0) → menu tap → hotspot ray → gaze fallback
-              if (justPressed(0)) {
+              // 2-second cooldown prevents rapid re-navigation during texture load
+              if (justPressed(0) && Date.now() - lastNavTimeRef.current > 2000) {
                 const origin = new THREE.Vector3();
                 const dir    = new THREE.Vector3();
                 ctrl0.getWorldPosition(origin);
@@ -483,7 +503,7 @@ export default function ImmersiveViewer({
                       const idx = Math.floor((hitY - LIST_TOP) / ROW_H);
                       const target = scenesRef.current[idx];
                       if (idx >= 0 && target) {
-                        onSceneChangeRef.current(target.id);
+                        navTo(target.id);
                         wristOpenRef.current = false;
                         wristMenuRef.current.mesh.visible = false;
                         setWristMenuOpen(false);
@@ -498,7 +518,7 @@ export default function ImmersiveViewer({
                         if (d < minDist) { minDist = d; closest = i; }
                       });
                       if (closest >= 0) {
-                        onSceneChangeRef.current(scenesRef.current[closest].id);
+                        navTo(scenesRef.current[closest].id);
                         wristOpenRef.current = false;
                         wristMenuRef.current.mesh.visible = false;
                         setWristMenuOpen(false);
@@ -513,7 +533,7 @@ export default function ImmersiveViewer({
                   const hits = rc.intersectObjects(hotspotsGroupRef.current.children, true);
                   if (hits.length > 0) {
                     const hs = hits[0].object.userData.hotspot ?? hits[0].object.userData.nav;
-                    if (hs?.targetSceneId) { onSceneChangeRef.current(hs.targetSceneId); handled = true; }
+                    if (hs?.targetSceneId) { navTo(hs.targetSceneId); handled = true; }
                   }
                 }
 
@@ -534,16 +554,16 @@ export default function ImmersiveViewer({
                       const a = fwd.angleTo(d);
                       if (a < bestAngle) { bestAngle = a; best = hs; }
                     }
-                    if (best?.targetSceneId) onSceneChangeRef.current(best.targetSceneId);
+                    if (best?.targetSceneId) navTo(best.targetSceneId);
                   }
                 }
               }
 
-              // A button (4) → next scene
-              if (justPressed(4)) {
+              // A button (4) → next scene (with same 2s cooldown)
+              if (justPressed(4) && Date.now() - lastNavTimeRef.current > 2000) {
                 const all = scenesRef.current;
                 const idx = all.findIndex(s => s.id === sceneRef.current?.id);
-                if (idx < all.length - 1) onSceneChangeRef.current(all[idx + 1].id);
+                if (idx < all.length - 1) navTo(all[idx + 1].id);
               }
 
               // B button intentionally unbound — physically adjacent to trigger thumb
@@ -556,14 +576,18 @@ export default function ImmersiveViewer({
               const sx = gp.axes[2] ?? 0;
               if (sx > 0.7 && !leftNavLockRef.current) {
                 leftNavLockRef.current = true;
-                const all = scenesRef.current;
-                const idx = all.findIndex(s => s.id === sceneRef.current?.id);
-                if (idx < all.length - 1) onSceneChangeRef.current(all[idx + 1].id);
+                if (Date.now() - lastNavTimeRef.current > 2000) {
+                  const all = scenesRef.current;
+                  const idx = all.findIndex(s => s.id === sceneRef.current?.id);
+                  if (idx < all.length - 1) navTo(all[idx + 1].id);
+                }
               } else if (sx < -0.7 && !leftNavLockRef.current) {
                 leftNavLockRef.current = true;
-                const all = scenesRef.current;
-                const idx = all.findIndex(s => s.id === sceneRef.current?.id);
-                if (idx > 0) onSceneChangeRef.current(all[idx - 1].id);
+                if (Date.now() - lastNavTimeRef.current > 2000) {
+                  const all = scenesRef.current;
+                  const idx = all.findIndex(s => s.id === sceneRef.current?.id);
+                  if (idx > 0) navTo(all[idx - 1].id);
+                }
               } else if (Math.abs(sx) < 0.3) {
                 leftNavLockRef.current = false;
               }
@@ -633,6 +657,11 @@ export default function ImmersiveViewer({
         camera.updateProjectionMatrix();
       }
       renderer.render(threeScene, camera);
+      } catch (err) {
+        // Swallow exceptions so they don't propagate through the XR rAF and
+        // potentially cause the Quest compositor to terminate the session.
+        console.error('[ImmersiveViewer] XR frame error:', err);
+      }
     };
     renderer.setAnimationLoop(animate);
 
