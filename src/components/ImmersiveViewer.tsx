@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as THREE from 'three';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 import { X, Glasses, ChevronLeft, ChevronRight, Smartphone, ArrowLeft, Upload } from 'lucide-react';
 import type { Scene, FloorPlan, PanoramaFormat, MediaType, FisheyeConfig } from '../types';
 import { detectPanorama } from '../utils/panoramaDetector';
@@ -331,27 +333,12 @@ export default function ImmersiveViewer({
     threeScene.add(hotspotsGroup);
     hotspotsGroupRef.current = hotspotsGroup;
 
-    // ── Controller models + rays ───────────────────────────────────────────
-    // Simple geometry (no CDN fetch — works on Quest regardless of network)
-    const buildControllerVisual = (tint: number) => {
-      const g = new THREE.Group();
-      const bodyMat = new THREE.MeshBasicMaterial({ color: tint });
-      // Handle
-      const handleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.12, 10);
-      handleGeo.rotateX(Math.PI / 2);
-      g.add(new THREE.Mesh(handleGeo, bodyMat));
-      // Ring guard
-      const ringGeo = new THREE.TorusGeometry(0.03, 0.006, 6, 20);
-      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x888899 }));
-      ring.position.z = 0.018;
-      g.add(ring);
-      // Tip dot (direction indicator)
-      const tipGeo = new THREE.SphereGeometry(0.008, 6, 6);
-      const tip = new THREE.Mesh(tipGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      tip.position.z = -0.065;
-      g.add(tip);
-      return g;
-    };
+    // ── Controller models + hand tracking ─────────────────────────────────
+    // XRControllerModelFactory loads official Meta Quest GLTF models from the
+    // WebXR Input Profiles CDN when the headset connects.
+    // XRHandModelFactory (spheres) renders hand joints without any external assets.
+    const ctrlModelFactory = new XRControllerModelFactory();
+    const handModelFactory = new XRHandModelFactory();
 
     const buildRay = (color: number) => {
       const pts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)];
@@ -363,19 +350,23 @@ export default function ImmersiveViewer({
       return line;
     };
 
-    // Right (index 0) — white ray
+    // Right (index 0)
     const ctrl0     = renderer.xr.getController(0);
     const ctrlGrip0 = renderer.xr.getControllerGrip(0);
+    const hand0     = renderer.xr.getHand(0);
     ctrl0.add(buildRay(0xffffff));
-    ctrlGrip0.add(buildControllerVisual(0x444455));
-    threeScene.add(ctrl0, ctrlGrip0);
+    ctrlGrip0.add(ctrlModelFactory.createControllerModel(ctrlGrip0));
+    hand0.add(handModelFactory.createHandModel(hand0, 'spheres'));
+    threeScene.add(ctrl0, ctrlGrip0, hand0);
 
-    // Left (index 1) — blue-tinted
+    // Left (index 1)
     const ctrl1     = renderer.xr.getController(1);
     const ctrlGrip1 = renderer.xr.getControllerGrip(1);
+    const hand1     = renderer.xr.getHand(1);
     ctrl1.add(buildRay(0x88aaff));
-    ctrlGrip1.add(buildControllerVisual(0x334455));
-    threeScene.add(ctrl1, ctrlGrip1);
+    ctrlGrip1.add(ctrlModelFactory.createControllerModel(ctrlGrip1));
+    hand1.add(handModelFactory.createHandModel(hand1, 'spheres'));
+    threeScene.add(ctrl1, ctrlGrip1, hand1);
 
     // ── selectstart events (reliable fallback alongside gamepad polling) ───
     const doSelect = () => {
@@ -855,14 +846,20 @@ export default function ImmersiveViewer({
     const mesh = sphereRef.current;
     const m = mesh.material as THREE.MeshBasicMaterial;
 
-    // Dispose previous texture before loading new one (critical on Quest — VRAM is limited)
-    if (m.map) { m.map.dispose(); m.map = null; }
-    m.color.set(0x111119); m.needsUpdate = true;
+    // Keep old texture visible during load — do NOT go dark here.
+    // Disposing upfront causes a brief all-black sphere which triggers Quest's
+    // passthrough / guardian comfort system, creating the "half-black" split screen.
+    // The old texture is disposed atomically inside applyTexture when the new one is ready.
 
     yawRef.current   = scene.initialYaw   ?? 0;
     pitchRef.current = scene.initialPitch ?? 0;
 
-    if (!scene.imageUrl) return;
+    if (!scene.imageUrl) {
+      // No image: clear to dark only when there's genuinely nothing to show
+      if (m.map) { m.map.dispose(); m.map = null; }
+      m.color.set(0x111119); m.needsUpdate = true;
+      return;
+    }
 
     // ── Swap geometry based on format (only when it actually changes type) ──
     const ar = scene.aspectRatio ?? 2;
