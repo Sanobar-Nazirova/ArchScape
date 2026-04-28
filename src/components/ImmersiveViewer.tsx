@@ -206,24 +206,9 @@ function drawWristMenu(
     }
   }
 
-  // ── Shared footer: Exit VR ────────────────────────────────────────────────
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(16, FOOT_Y); ctx.lineTo(W - 16, FOOT_Y);
-  ctx.stroke();
-
-  const btnW = 190, btnH = 30;
-  const btnX = (W - btnW) / 2, btnY = FOOT_Y + 6;
-  ctx.fillStyle = 'rgba(224,123,63,0.15)';
-  ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 7); ctx.fill();
-  ctx.strokeStyle = 'rgba(224,123,63,0.55)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 7); ctx.stroke();
-  ctx.fillStyle = '#e07b3f';
-  ctx.font = 'bold 17px system-ui, sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('⏏  Exit VR  (B button)', W / 2, btnY + btnH / 2);
-  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  // Exit VR removed — use Quest's system (Oculus) button to leave VR.
+  // Having an explicit Exit VR tap target in the wrist menu caused accidental
+  // session.end() calls when the right-controller ray clipped the menu edge.
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -491,9 +476,6 @@ export default function ImmersiveViewer({
                         drawWristMenu(menu.ctx, menu.canvas, newTab, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
                         menu.texture.needsUpdate = true;
                       }
-                    } else if (hitY >= FOOT_Y + 6) {
-                      // Exit VR button
-                      renderer.xr.getSession()?.end().catch(() => {});
                     } else if (wristTabRef.current === 0) {
                       // Scenes tab list
                       const LIST_TOP = TAB_H + 14;
