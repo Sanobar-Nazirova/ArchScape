@@ -564,10 +564,8 @@ export default function ImmersiveViewer({
                 if (idx < all.length - 1) onSceneChangeRef.current(all[idx + 1].id);
               }
 
-              // B button (5) → exit VR session
-              if (justPressed(5)) {
-                renderer.xr.getSession()?.end().catch(() => {});
-              }
+              // B button intentionally unbound — physically adjacent to trigger thumb
+              // position on Quest 3; accidental press was ending the XR session.
             }
 
             // ── LEFT controller ───────────────────────────────────────────
@@ -728,7 +726,6 @@ export default function ImmersiveViewer({
           ctx2.fillText(lbl, 128, 84);
 
           const spriteTex = new THREE.CanvasTexture(c);
-          if (rendererRef.current) rendererRef.current.initTexture(spriteTex);
           const sprite = new THREE.Sprite(
             new THREE.SpriteMaterial({ map: spriteTex, transparent: true, depthTest: false }),
           );
@@ -770,8 +767,6 @@ export default function ImmersiveViewer({
         ctx.fillText(label, 128, 182);
 
         const spriteTex = new THREE.CanvasTexture(c);
-        // Pre-upload to GPU now (outside XR frame) so the next frame just binds
-        if (rendererRef.current) rendererRef.current.initTexture(spriteTex);
 
         const sprite = new THREE.Sprite(
           new THREE.SpriteMaterial({ map: spriteTex, transparent: true, depthTest: false }),
@@ -864,9 +859,7 @@ export default function ImmersiveViewer({
       tex.updateMatrix();
       tex.needsUpdate = true;
 
-      // Pre-upload texture to GPU NOW (from img.onload, outside XR frame) so the
-      // next XR render call just binds — no texImage2D stall inside the frame budget.
-      if (rendererRef.current) rendererRef.current.initTexture(tex);
+      // Three.js uploads the texture on first use inside the XR frame.
 
       mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
 
@@ -887,7 +880,7 @@ export default function ImmersiveViewer({
       const img = new window.Image();
       img.onload = () => {
         if (cancelled) return;
-        const MAX = 4096;
+        const MAX = 2048;
         const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
         if (scale < 1) {
           const w = Math.floor(img.naturalWidth  * scale);
