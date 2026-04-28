@@ -861,43 +861,12 @@ export default function ImmersiveViewer({
       return;
     }
 
-    // ── Swap geometry based on format (only when it actually changes type) ──
-    const ar = scene.aspectRatio ?? 2;
-    const oldGeo = mesh.geometry;
-    const isDefaultGeo = oldGeo === defaultSphereGeoRef.current;
-    let newGeo: THREE.BufferGeometry | null = null;
-    switch (scene.format) {
-      case 'cylindrical': {
-        const height = Math.min(800, 500 / Math.max(ar, 0.5));
-        newGeo = new THREE.CylinderGeometry(500, 500, height, 64, 1, true);
-        break;
-      }
-      case 'partial':
-      case 'rectilinear': {
-        const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8;
-        const vFov = hFov / Math.max(ar, 0.1);
-        newGeo = new THREE.SphereGeometry(500, 48, 24, -hFov / 2, hFov, Math.PI / 2 - vFov / 2, vFov);
-        break;
-      }
-      case 'vertical': {
-        const vFov2 = Math.PI * 1.2;
-        const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (ar ?? 0.4));
-        newGeo = new THREE.SphereGeometry(500, 32, 48, -hFov2 / 2, hFov2, Math.PI / 2 - vFov2 / 2, vFov2);
-        break;
-      }
-      default:
-        // Reuse the init-time sphere — no GPU allocation needed
-        if (!isDefaultGeo && defaultSphereGeoRef.current) {
-          // Coming back from a custom geo — swap back to default without dispose (default is persistent)
-          if (!isDefaultGeo) oldGeo.dispose();
-          mesh.geometry = defaultSphereGeoRef.current;
-        }
-        // else: already using default sphere, nothing to do
-    }
-    if (newGeo) {
-      // Custom geometry: dispose previous only if it isn't the default sphere
-      if (!isDefaultGeo) oldGeo.dispose();
-      mesh.geometry = newGeo;
+    // In VR always use the full sphere — partial/cylinder geometries create floating
+    // "flat screen" panels that break immersion. Format-specific geometry only makes
+    // sense in the 2D PanoramaViewer.
+    if (mesh.geometry !== defaultSphereGeoRef.current && defaultSphereGeoRef.current) {
+      mesh.geometry.dispose();
+      mesh.geometry = defaultSphereGeoRef.current;
     }
 
     const applyTexture = (tex: THREE.Texture) => {
