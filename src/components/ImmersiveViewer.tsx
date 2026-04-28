@@ -368,66 +368,12 @@ export default function ImmersiveViewer({
     hand1.add(handModelFactory.createHandModel(hand1, 'spheres'));
     threeScene.add(ctrl1, ctrlGrip1, hand1);
 
-    // ── selectstart events (reliable fallback alongside gamepad polling) ───
-    const doSelect = () => {
-      const origin = new THREE.Vector3();
-      const dir    = new THREE.Vector3();
-      ctrl0.getWorldPosition(origin);
-      ctrl0.getWorldDirection(dir);
-      const rc = new THREE.Raycaster(origin, dir);
-
-      if (wristOpenRef.current && wristMenuRef.current) {
-        const hits = rc.intersectObject(wristMenuRef.current.mesh);
-        if (hits.length > 0 && hits[0].uv) {
-          const uv  = hits[0].uv;
-          const hitX = uv.x * CW;
-          const hitY = (1 - uv.y) * CH;
-          if (hitY < TAB_H) {
-            const newTab = hitX < CW / 2 ? 0 : 1;
-            wristTabRef.current = newTab;
-            const menu = wristMenuRef.current;
-            drawWristMenu(menu.ctx, menu.canvas, newTab, scenesRef.current, sceneRef.current?.id, floorPlansRef.current);
-            menu.texture.needsUpdate = true;
-          } else if (hitY >= FOOT_Y + 6) {
-            renderer.xr.getSession()?.end().catch(() => {});
-          } else if (wristTabRef.current === 0) {
-            const idx = Math.floor((hitY - (TAB_H + 14)) / 44);
-            const target = scenesRef.current[idx];
-            if (idx >= 0 && target) {
-              onSceneChangeRef.current(target.id);
-              wristOpenRef.current = false;
-              wristMenuRef.current.mesh.visible = false;
-              setWristMenuOpen(false);
-            }
-          } else {
-            const positions = getMapPositions(scenesRef.current, floorPlansRef.current);
-            let closest = -1, minDist = 32;
-            positions.forEach((pos, i) => {
-              if (pos.hidden) return;
-              const d = Math.hypot(hitX - pos.x, hitY - pos.y);
-              if (d < minDist) { minDist = d; closest = i; }
-            });
-            if (closest >= 0) {
-              onSceneChangeRef.current(scenesRef.current[closest].id);
-              wristOpenRef.current = false;
-              wristMenuRef.current.mesh.visible = false;
-              setWristMenuOpen(false);
-            }
-          }
-          return;
-        }
-      }
-
-      if (hotspotsGroupRef.current?.children.length) {
-        const hits = rc.intersectObjects(hotspotsGroupRef.current.children, true);
-        if (hits.length > 0) {
-          const hs = hits[0].object.userData.hotspot ?? hits[0].object.userData.nav;
-          if (hs?.targetSceneId) { onSceneChangeRef.current(hs.targetSceneId); return; }
-        }
-      }
-    };
-
-    const doMenuToggle = () => {
+    // ── Left trigger: toggle wrist menu ──────────────────────────────────────
+    // Right trigger navigation is handled exclusively by gamepad polling (justPressed(0))
+    // to avoid double-firing. Keeping both selectstart AND justPressed for the same
+    // controller caused setActiveScene to be called twice per press, which combined with
+    // Adreno GPU flush from gl.deleteTexture() caused the XR compositor to time out.
+    const handleLeftTrigger = () => {
       wristOpenRef.current = !wristOpenRef.current;
       const menu = wristMenuRef.current;
       if (menu) {
@@ -440,8 +386,7 @@ export default function ImmersiveViewer({
       setWristMenuOpen(wristOpenRef.current);
     };
 
-    ctrl0.addEventListener('selectstart', doSelect);
-    ctrl1.addEventListener('selectstart', doMenuToggle);
+    ctrl1.addEventListener('selectstart', handleLeftTrigger);
 
     // ── Wrist menu (attached to left grip) ────────────────────────────────
     const menuCanvas  = document.createElement('canvas');
@@ -581,11 +526,11 @@ export default function ImmersiveViewer({
                   }
                 }
 
-                // 2. Hotspot sprites
+                // 2. Hotspot sprites (also handles userData.nav for prev/next arrows)
                 if (!handled && hotspotsGroupRef.current?.children.length) {
                   const hits = rc.intersectObjects(hotspotsGroupRef.current.children, true);
                   if (hits.length > 0) {
-                    const hs = hits[0].object.userData.hotspot;
+                    const hs = hits[0].object.userData.hotspot ?? hits[0].object.userData.nav;
                     if (hs?.targetSceneId) { onSceneChangeRef.current(hs.targetSceneId); handled = true; }
                   }
                 }
@@ -724,6 +669,7 @@ export default function ImmersiveViewer({
     return () => {
       renderer.setAnimationLoop(null);
       ro.disconnect();
+      ctrl1.removeEventListener('selectstart', handleLeftTrigger);
       renderer.domElement.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
@@ -737,12 +683,18 @@ export default function ImmersiveViewer({
     const group = hotspotsGroupRef.current;
     if (!group) return;
 
-    // Clear previous sprites
-    while (group.children.length) {
-      const child = group.children[0] as THREE.Sprite;
-      (child.material as THREE.SpriteMaterial).map?.dispose();
-      (child.material as THREE.SpriteMaterial).dispose();
-      group.remove(child);
+    // Clear previous sprites — defer gl.deleteTexture() to avoid Adreno GPU flush stall
+    // during XR frames. Synchronous disposal in this effect (which runs after React commit)
+    // can coincide with an in-flight XR render, causing the compositor to time out.
+    const toDispose = [...group.children] as THREE.Sprite[];
+    group.clear();
+    if (toDispose.length) {
+      setTimeout(() => {
+        toDispose.forEach(child => {
+          (child.material as THREE.SpriteMaterial).map?.dispose();
+          (child.material as THREE.SpriteMaterial).dispose();
+        });
+      }, 100);
     }
 
     // If no hotspots, show prev/next navigation arrows so VR navigation is always possible
@@ -872,7 +824,7 @@ export default function ImmersiveViewer({
     const applyTexture = (tex: THREE.Texture) => {
       if (!sphereRef.current) { tex.dispose(); return; }
       const mat = sphereRef.current.material as THREE.MeshBasicMaterial;
-      if (mat.map) mat.map.dispose();
+      const oldTex = mat.map; // saved for deferred disposal below
 
       tex.colorSpace = THREE.SRGBColorSpace;
       // Disabling mipmap generation is critical on Quest's Adreno GPU.
@@ -905,7 +857,15 @@ export default function ImmersiveViewer({
       tex.updateMatrix();
       tex.needsUpdate = true;
 
+      // Pre-upload texture to GPU NOW (from img.onload, outside XR frame) so the
+      // next XR render call just binds — no texImage2D stall inside the frame budget.
+      if (rendererRef.current) rendererRef.current.initTexture(tex);
+
       mat.map = tex; mat.color.set(0xffffff); mat.needsUpdate = true;
+
+      // Defer gl.deleteTexture() — immediate disposal can trigger an Adreno GPU flush
+      // while the compositor is waiting for the current frame, killing the XR session.
+      if (oldTex) setTimeout(() => oldTex.dispose(), 100);
     };
 
     let cancelled = false;
@@ -913,21 +873,43 @@ export default function ImmersiveViewer({
     // Shared image loader: cap to 4096px to limit GPU upload size, then pass to applyTexture.
     // Do NOT set crossOrigin for data: URLs — Android Chromium (Quest browser) rejects
     // CORS preflight on data URLs, causing onload to never fire and the texture to stay blank.
-    const loadImage = (src: string, onCanvas: (c: HTMLCanvasElement | HTMLImageElement) => void) => {
+    // Uses createImageBitmap() for off-thread image scaling when downscaling is needed —
+    // avoids blocking the main thread with synchronous canvas drawImage, which can delay
+    // XR frame delivery long enough for the Quest compositor to end the session.
+    const loadImage = (src: string, onCanvas: (c: HTMLCanvasElement | HTMLImageElement | ImageBitmap) => void) => {
       const img = new window.Image();
       img.onload = () => {
         if (cancelled) return;
         const MAX = 4096;
         const scale = Math.min(1, MAX / img.naturalWidth, MAX / img.naturalHeight);
         if (scale < 1) {
-          const c = document.createElement('canvas');
-          c.width  = Math.floor(img.naturalWidth  * scale);
-          c.height = Math.floor(img.naturalHeight * scale);
-          try {
-            c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
-            onCanvas(c);
-          } catch {
-            onCanvas(img); // cross-origin without CORS header — use full-size image directly
+          const w = Math.floor(img.naturalWidth  * scale);
+          const h = Math.floor(img.naturalHeight * scale);
+          // createImageBitmap decodes + scales off the main thread, keeping the XR loop alive
+          if (typeof createImageBitmap === 'function') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            createImageBitmap(img, { resizeWidth: w, resizeHeight: h, resizeQuality: 'medium' } as any)
+              .then(bmp => {
+                if (cancelled) { bmp.close(); return; }
+                onCanvas(bmp);
+              })
+              .catch(() => {
+                if (cancelled) return;
+                // Fallback: synchronous canvas drawImage
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                try { c.getContext('2d')!.drawImage(img, 0, 0, w, h); onCanvas(c); }
+                catch { onCanvas(img); }
+              });
+          } else {
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            try {
+              c.getContext('2d')!.drawImage(img, 0, 0, w, h);
+              onCanvas(c);
+            } catch {
+              onCanvas(img);
+            }
           }
         } else {
           onCanvas(img);
@@ -952,9 +934,10 @@ export default function ImmersiveViewer({
           ? source
           : (() => {
               const c = document.createElement('canvas');
-              c.width  = (source as HTMLImageElement).naturalWidth;
-              c.height = (source as HTMLImageElement).naturalHeight;
-              c.getContext('2d')!.drawImage(source, 0, 0);
+              // HTMLImageElement uses naturalWidth; ImageBitmap uses width
+              c.width  = (source as HTMLImageElement).naturalWidth ?? (source as ImageBitmap).width;
+              c.height = (source as HTMLImageElement).naturalHeight ?? (source as ImageBitmap).height;
+              c.getContext('2d')!.drawImage(source as CanvasImageSource, 0, 0);
               return c;
             })();
         const cfg = scene.fisheyeConfig
@@ -967,7 +950,8 @@ export default function ImmersiveViewer({
     } else {
       loadImage(scene.imageUrl, (source) => {
         if (cancelled) return;
-        const tex = new THREE.Texture(source as HTMLImageElement);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tex = new THREE.Texture(source as any);
         applyTexture(tex);
       });
     }
