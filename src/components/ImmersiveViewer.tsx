@@ -388,11 +388,10 @@ export default function ImmersiveViewer({
         side: THREE.DoubleSide, depthTest: false,
       }),
     );
-    // Float above the wrist, angled so it faces the user when palm is up
-    menuMesh.position.set(0, 0.07, -0.04);
-    menuMesh.rotation.set(-0.65, Math.PI, 0);
     menuMesh.visible = false;
-    ctrlGrip1.add(menuMesh);
+    // Added directly to the scene (not the grip) so we can billboard it
+    // to always face the camera regardless of wrist rotation.
+    threeScene.add(menuMesh);
     wristMenuRef.current = { mesh: menuMesh, canvas: menuCanvas, ctx: menuCtx, texture: menuTex };
 
     // ── Mouse / touch drag (non-VR) ────────────────────────────────────────
@@ -477,6 +476,9 @@ export default function ImmersiveViewer({
                 ctrl0.getWorldPosition(origin);
                 ctrl0.getWorldDirection(dir);
                 const rc = new THREE.Raycaster(origin, dir);
+                // Required for Sprite.raycast() — Three.js uses the camera to
+                // project sprite bounds into screen space for intersection.
+                rc.camera = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera;
                 let handled = false;
 
                 // 1. Check wrist menu (highest priority)
@@ -656,6 +658,31 @@ export default function ImmersiveViewer({
         camera.rotation.x =  pitchRef.current;
         camera.updateProjectionMatrix();
       }
+
+      // Billboard wrist menu: float above left wrist and always face the camera
+      // so the user can read it regardless of how they hold their hand.
+      if (wristMenuRef.current) {
+        const menu = wristMenuRef.current;
+        const wristPos = new THREE.Vector3();
+        ctrlGrip1.getWorldPosition(wristPos);
+        wristPos.y += 0.18; // float 18 cm above the grip
+        menu.mesh.position.copy(wristPos);
+
+        if (menu.mesh.visible) {
+          const camPos = new THREE.Vector3();
+          camera.getWorldPosition(camPos);
+          const toCamera = new THREE.Vector3().subVectors(camPos, wristPos).normalize();
+          const worldUp  = new THREE.Vector3(0, 1, 0);
+          const right    = new THREE.Vector3().crossVectors(worldUp, toCamera).normalize();
+          if (right.lengthSq() > 0.0001) {
+            const up = new THREE.Vector3().crossVectors(toCamera, right);
+            menu.mesh.quaternion.setFromRotationMatrix(
+              new THREE.Matrix4().makeBasis(right, up, toCamera),
+            );
+          }
+        }
+      }
+
       renderer.render(threeScene, camera);
       } catch (err) {
         // Swallow exceptions so they don't propagate through the XR rAF and
