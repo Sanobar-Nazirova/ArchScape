@@ -677,7 +677,7 @@ export default function PanoramaViewer({
     // ── Helpers for drawing floor plan markers ─────────────────────────
     const getFpImage = (fp: { id: string; imageUrl: string }): HTMLImageElement | null => {
       if (fpImgCache.has(fp.id)) return fpImgCache.get(fp.id)!;
-      const img = new Image();
+      const img = new window.Image() as HTMLImageElement;
       img.src = fp.imageUrl;
       // Data URLs decode synchronously — img.complete is true immediately
       if (img.complete) { fpImgCache.set(fp.id, img); return img; }
@@ -688,7 +688,13 @@ export default function PanoramaViewer({
       return null;
     };
 
+    let panelRedrawing = false;
     const redrawPanel = () => {
+      if (panelRedrawing) return;
+      panelRedrawing = true;
+      try { _redrawPanel(); } finally { panelRedrawing = false; }
+    };
+    const _redrawPanel = () => {
       const allSc    = scenesRef.current;
       const activeSc = sceneRef.current;
       pc.clearRect(0, 0, PX, PY);
@@ -730,8 +736,12 @@ export default function PanoramaViewer({
 
       const contentTop = tabBarH + PY * 0.01;
 
-      // Rebuild hit planes
-      panelBtns.forEach(b => panelMesh.remove(b.mesh));
+      // Rebuild hit planes — dispose GPU resources from previous draw
+      panelBtns.forEach(b => {
+        panelMesh.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        (b.mesh.material as THREE.MeshBasicMaterial).dispose();
+      });
       panelBtns = [];
       // Tab buttons always present
       tabs.forEach((t, i) => {
