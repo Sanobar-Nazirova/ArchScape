@@ -985,7 +985,9 @@ export default function PanoramaViewer({
 
     // ── Set up left (0) and right (1) controllers ──────────────────────
     const controllerModelFactory = new XRControllerModelFactory();
-    const handModelFactory       = new XRHandModelFactory();
+    // Serve profiles locally so the models load without CDN access on-device
+    controllerModelFactory.path = './xr-profiles/';
+    const handModelFactory = new XRHandModelFactory();
 
     const leftCtrl  = renderer.xr.getController(0);
     const rightCtrl = renderer.xr.getController(1);
