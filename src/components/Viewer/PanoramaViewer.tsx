@@ -839,31 +839,80 @@ export default function PanoramaViewer({
               pc.drawImage(img, dx, dy, dw, dh);
               pc.restore();
 
-              // Draw scene markers
-              for (const fp of [activeFp]) {
-                for (const marker of fp.markers) {
-                  const sc = allSc.find(s => s.id === marker.sceneId);
-                  if (!sc) continue;
-                  const mx = dx + marker.x * dw;
-                  const my = dy + marker.y * dh;
-                  const isAct = sc.id === activeSc?.id;
-                  const r = isAct ? 10 : 7;
-                  // Outer ring
-                  pc.beginPath(); pc.arc(mx, my, r + 3, 0, Math.PI * 2);
-                  pc.fillStyle = isAct ? 'rgba(224,123,63,0.4)' : 'rgba(59,191,181,0.25)'; pc.fill();
-                  // Filled dot
-                  pc.beginPath(); pc.arc(mx, my, r, 0, Math.PI * 2);
-                  pc.fillStyle = isAct ? '#e07b3f' : '#3bbfb5'; pc.fill();
-                  // Index label
+              // Draw scene markers with name tags
+              for (const marker of activeFp.markers) {
+                const sc = allSc.find(s => s.id === marker.sceneId);
+                if (!sc) continue;
+                const mx = dx + marker.x * dw;
+                const my = dy + marker.y * dh;
+                const isAct = sc.id === activeSc?.id;
+                const r = isAct ? 11 : 8;
+                const dotColor  = isAct ? '#e07b3f' : '#3bbfb5';
+                const ringColor = isAct ? 'rgba(224,123,63,0.35)' : 'rgba(59,191,181,0.25)';
+
+                // Ping ring for active scene
+                pc.beginPath(); pc.arc(mx, my, r + 5, 0, Math.PI * 2);
+                pc.fillStyle = ringColor; pc.fill();
+
+                // Dot
+                pc.beginPath(); pc.arc(mx, my, r, 0, Math.PI * 2);
+                pc.fillStyle = dotColor; pc.fill();
+
+                // Direction arrow for active scene (using current yaw)
+                if (isAct) {
+                  const yw = yawRef.current;
+                  pc.save();
+                  pc.translate(mx, my);
+                  pc.rotate(-yw);
+                  pc.fillStyle = '#fff';
+                  pc.beginPath();
+                  pc.moveTo(0, -r + 2);
+                  pc.lineTo(-3, 2);
+                  pc.lineTo(3, 2);
+                  pc.closePath();
+                  pc.fill();
+                  pc.restore();
+                } else {
+                  // Index number for non-active
                   const idx = allSc.findIndex(s => s.id === sc.id) + 1;
                   pc.fillStyle = '#fff';
-                  pc.font = `bold ${r * 1.3}px Inter,sans-serif`;
+                  pc.font = `bold ${r * 1.2}px Inter,sans-serif`;
                   pc.textAlign = 'center'; pc.textBaseline = 'middle';
                   pc.fillText(String(idx), mx, my);
-                  // Hit plane for each marker (normalised to full panel)
-                  const hitR = (r + 6) / PX;
-                  panelBtns.push({ mesh: makePanelHitPlane((mx - hitR * PX) / PX, (my - hitR * PY) / PY, hitR * 2, hitR * 2 * (PX / PY), `scene:${sc.id}`), action: `scene:${sc.id}` });
                 }
+
+                // Name tag pill below the dot
+                const tagFontSz = 13;
+                pc.font = `${isAct ? 'bold ' : ''}${tagFontSz}px Inter,sans-serif`;
+                const maxTagW = 110;
+                let tagText = sc.name;
+                while (pc.measureText(tagText).width > maxTagW - 12 && tagText.length > 3)
+                  tagText = tagText.slice(0, -2) + '…';
+                const tagW = Math.min(pc.measureText(tagText).width + 14, maxTagW);
+                const tagH = tagFontSz + 8;
+                const tagX = mx - tagW / 2;
+                const tagY = my + r + 5;
+
+                // Clamp tag inside image area
+                const clampedTagX = Math.max(imgAreaX + 2, Math.min(imgAreaX + imgAreaW - tagW - 2, tagX));
+
+                fillRR(clampedTagX, tagY, tagW, tagH, 4, isAct ? 'rgba(224,123,63,0.88)' : 'rgba(20,20,32,0.82)');
+                if (!isAct) strokeRR(clampedTagX, tagY, tagW, tagH, 4, dotColor, 1);
+                pc.fillStyle = isAct ? '#fff' : dotColor;
+                pc.font = `${isAct ? 'bold ' : ''}${tagFontSz}px Inter,sans-serif`;
+                pc.textAlign = 'center'; pc.textBaseline = 'middle';
+                pc.fillText(tagText, clampedTagX + tagW / 2, tagY + tagH / 2);
+
+                // Hit plane covers dot + tag area
+                const hitTop  = my - r - 4;
+                const hitBot  = tagY + tagH + 2;
+                const hitLeft = Math.min(mx - r - 4, clampedTagX);
+                const hitRight = Math.max(mx + r + 4, clampedTagX + tagW);
+                const hnx = hitLeft / PX;
+                const hny = hitTop  / PY;
+                const hnw = (hitRight - hitLeft) / PX;
+                const hnh = (hitBot - hitTop)  / PY;
+                panelBtns.push({ mesh: makePanelHitPlane(hnx, hny, hnw, hnh, `scene:${sc.id}`), action: `scene:${sc.id}` });
               }
             } else {
               pc.fillStyle = 'rgba(224,221,216,0.3)';
