@@ -229,6 +229,36 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* ── Print / PDF styles ──────────────────────────────────────────────────── */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  body {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    font-size: 11pt;
+  }
+
+  :root {
+    --nm-base: #ffffff;
+    --nm-surface: #f5f5f5;
+    --nm-text: #1a1a1a;
+    --nm-muted: #555555;
+    --nm-accent: #c96928;
+    --nm-border: #dddddd;
+    --sh-d: rgba(0,0,0,0.08);
+    --sh-l: rgba(255,255,255,0.9);
+    --sh-d-in: rgba(0,0,0,0.06);
+    --sh-l-in: rgba(255,255,255,0.8);
+  }
+
+  .print\:hidden { display: none !important; }
+
+  main { padding: 0 !important; }
+
+  section { page-break-inside: avoid; }
+}
+
 /* Tooltip */
 .tooltip {
   position: relative;
