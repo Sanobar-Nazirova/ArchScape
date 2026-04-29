@@ -208,7 +208,7 @@ export default function ResumeScreen() {
       >
         <div className="flex items-center gap-2.5">
           <img
-            src="logo-512.png"
+            src="/logo-512.png"
             alt="ArchScape"
             className="w-8 h-8 rounded-full object-cover"
             style={{ boxShadow: '3px 3px 8px var(--sh-d), -2px -2px 5px var(--sh-l)' }}

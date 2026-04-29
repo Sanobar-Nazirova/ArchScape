@@ -11,6 +11,8 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get('page') === 'resume',
   );
 
+  // Handle share links: ?project=<id>&tour=<id>&mode=present
+  // Handle resume page: ?page=resume
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const page      = params.get('page');
@@ -26,6 +28,7 @@ export default function App() {
     if (projectId && tourId) {
       openTour(projectId, tourId);
       if (mode === 'present') setTimeout(() => togglePreviewMode(), 150);
+      // Clean URL without reload
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);

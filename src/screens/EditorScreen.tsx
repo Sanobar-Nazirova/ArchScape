@@ -6,7 +6,7 @@ import PropertiesPanel from '../components/PropertiesPanel/PropertiesPanel';
 import ScenePicker from '../components/ScenePicker';
 import { useTourStore } from '../store/useTourStore';
 import type { Hotspot } from '../types';
-import { ChevronLeft, ChevronRight, Maximize2, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Headphones } from 'lucide-react';
 
 /* ─── Presentation HUD (overlay during preview) ───────────────────────── */
 function PresentationHUD() {
@@ -14,6 +14,15 @@ function PresentationHUD() {
   const idx  = scenes.findIndex(s => s.id === activeSceneId);
   const prev = scenes[idx - 1];
   const next = scenes[idx + 1];
+
+  const [vrSupported, setVrSupported] = React.useState(false);
+  React.useEffect(() => {
+    if ('xr' in navigator) {
+      (navigator as any).xr?.isSessionSupported('immersive-vr')
+        .then((ok: boolean) => setVrSupported(ok))
+        .catch(() => {});
+    }
+  }, []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
@@ -70,6 +79,25 @@ function PresentationHUD() {
       >
         <Maximize2 size={14} />
       </button>
+
+      {/* Enter VR — only shown when WebXR immersive-vr is available (e.g. Meta Quest) */}
+      {vrSupported && (
+        <button
+          onClick={async () => {
+            try {
+              // The VR button in PanoramaViewer handles the actual session;
+              // this gives a tap-target in the HUD for Quest users
+              const btn = document.querySelector<HTMLButtonElement>('[data-enter-vr]');
+              btn?.click();
+            } catch {}
+          }}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-orange-500/80 backdrop-blur-sm rounded-full transition-all hover:bg-orange-500"
+          title="Enter immersive VR"
+        >
+          <Headphones size={13} />
+          Enter VR
+        </button>
+      )}
     </div>
   );
 }
