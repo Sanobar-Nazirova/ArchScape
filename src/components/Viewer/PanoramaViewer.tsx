@@ -2,6 +2,8 @@ import React, {
   useEffect, useRef, useCallback, useState,
 } from 'react';
 import * as THREE from 'three';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 import { yawPitchToWorld, worldToYawPitch } from '../../utils/sphereCoords';
 import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
@@ -980,6 +982,9 @@ export default function PanoramaViewer({
     };
 
     // ── Set up left (0) and right (1) controllers ──────────────────────
+    const controllerModelFactory = new XRControllerModelFactory();
+    const handModelFactory       = new XRHandModelFactory();
+
     const leftCtrl  = renderer.xr.getController(0);
     const rightCtrl = renderer.xr.getController(1);
 
@@ -991,6 +996,22 @@ export default function PanoramaViewer({
     // Right: bright teal ray — primary interaction controller
     rightCtrl.add(makeRay(0x3bbfb5));
     threeScene.add(rightCtrl);
+
+    // Grip spaces → physical controller models (shown when holding controllers)
+    const leftGrip  = renderer.xr.getControllerGrip(0);
+    const rightGrip = renderer.xr.getControllerGrip(1);
+    leftGrip.add(controllerModelFactory.createControllerModel(leftGrip));
+    rightGrip.add(controllerModelFactory.createControllerModel(rightGrip));
+    threeScene.add(leftGrip);
+    threeScene.add(rightGrip);
+
+    // Hand spaces → hand mesh models (shown when using hand tracking)
+    const leftHand  = renderer.xr.getHand(0);
+    const rightHand = renderer.xr.getHand(1);
+    leftHand.add(handModelFactory.createHandModel(leftHand, 'mesh'));
+    rightHand.add(handModelFactory.createHandModel(rightHand, 'mesh'));
+    threeScene.add(leftHand);
+    threeScene.add(rightHand);
 
     // Right trigger → interact with panel buttons OR scene hotspots
     rightCtrl.addEventListener('select', () => {
