@@ -532,6 +532,40 @@ export default function PanoramaViewer({
     threeScene.add(mesh);
     sphereRef.current = mesh;
 
+    // ── WebXR controllers (ray + trigger navigation) ───────────────────
+    const rayLineMat = new THREE.LineBasicMaterial({ color: 0xe07b3f, transparent: true, opacity: 0.75 });
+    const tempMatrix = new THREE.Matrix4();
+
+    for (let ci = 0; ci < 2; ci++) {
+      const controller = renderer.xr.getController(ci);
+      const rayGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -500),
+      ]);
+      controller.add(new THREE.Line(rayGeo, rayLineMat));
+      threeScene.add(controller);
+
+      controller.addEventListener('select', () => {
+        // Raycast controller direction against hotspot world positions
+        tempMatrix.identity().extractRotation(controller.matrixWorld);
+        const rayOrigin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
+        const rayDir    = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+        const sc = sceneRef.current;
+        if (!sc) return;
+        let best: { hs: typeof sc.hotspots[0]; dist: number } | null = null;
+        for (const hs of sc.hotspots) {
+          const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
+          const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(490);
+          // Distance from ray to point
+          const toPoint = pos.clone().sub(rayOrigin);
+          const proj    = toPoint.dot(rayDir);
+          const dist    = toPoint.clone().sub(rayDir.clone().multiplyScalar(proj)).length();
+          if (dist < 35 && (!best || proj > 0)) best = { hs, dist };
+        }
+        if (best) onHotspotClickRef.current(best.hs);
+      });
+    }
+
     // Animation loop (setAnimationLoop required for WebXR)
     let frame = 0;
     const animate = () => {
@@ -608,6 +642,43 @@ export default function PanoramaViewer({
       }
     };
   }, []);
+
+  // ── 3D hotspot markers for WebXR (update when scene changes) ─────────
+  useEffect(() => {
+    const threeScene = threeSceneRef.current;
+    if (!threeScene || !scene) return;
+
+    // Remove any existing VR hotspot markers
+    const toRemove = threeScene.children.filter(c => c.userData.vrHotspot);
+    toRemove.forEach(c => threeScene.remove(c));
+
+    // Add a glowing sphere at each hotspot world position
+    for (const hs of scene.hotspots) {
+      const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
+      const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(470);
+      const markerGeo = new THREE.SphereGeometry(8, 12, 8);
+      const markerMat = new THREE.MeshBasicMaterial({ color: 0xe07b3f, transparent: true, opacity: 0.85 });
+      const marker = new THREE.Mesh(markerGeo, markerMat);
+      marker.position.copy(pos);
+      marker.userData.vrHotspot = true;
+      marker.userData.hotspotId = hs.id;
+      threeScene.add(marker);
+
+      // Outer ring for visibility
+      const ringGeo = new THREE.TorusGeometry(12, 1.5, 8, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(pos);
+      ring.lookAt(0, 0, 0);
+      ring.userData.vrHotspot = true;
+      threeScene.add(ring);
+    }
+
+    return () => {
+      const markers = threeScene.children.filter(c => c.userData.vrHotspot);
+      markers.forEach(c => threeScene.remove(c));
+    };
+  }, [scene?.id, scene?.hotspots]);
 
   // ── Load texture when scene changes ───────────────────────────────────
   useEffect(() => {
