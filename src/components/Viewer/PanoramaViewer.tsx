@@ -1256,6 +1256,13 @@ export default function PanoramaViewer({
         if (frame % 10 === 0) setMinimapYaw(yawRef.current);
       }
 
+      // In VR, keep the panorama sphere centred on the user's head so the
+      // local-floor reference space offset doesn't shift the viewer away from
+      // the sphere's centre (which would make the panorama look magnified).
+      if (renderer.xr.isPresenting && sphereRef.current) {
+        sphereRef.current.position.copy(renderer.xr.getCamera().position);
+      }
+
       // Update wrist menu button hover highlight every 3 frames
       if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover();
 
