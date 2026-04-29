@@ -1,9 +1,10 @@
-name: Deploy Sphera to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches:
-      - claude/sphera-virtual-tour-TtJOk
+      - main
+      - claude/build-resume-website-o9aga
   workflow_dispatch:
 
 permissions:
@@ -34,7 +35,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_PATH: /ArchScape/
+          VITE_BASE_PATH: /archscape/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
