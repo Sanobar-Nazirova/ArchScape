@@ -678,9 +678,14 @@ export default function PanoramaViewer({
     const getFpImage = (fp: { id: string; imageUrl: string }): HTMLImageElement | null => {
       if (fpImgCache.has(fp.id)) return fpImgCache.get(fp.id)!;
       const img = new Image();
-      img.onload = () => { fpImgCache.set(fp.id, img); redrawPanel(); };
       img.src = fp.imageUrl;
-      return null; // will trigger redraw once loaded
+      // Data URLs decode synchronously — img.complete is true immediately
+      if (img.complete) { fpImgCache.set(fp.id, img); return img; }
+      // Network URLs: redraw once loaded, but defer with setTimeout to avoid
+      // re-entering redrawPanel before the current call has finished
+      img.onload  = () => { fpImgCache.set(fp.id, img); setTimeout(redrawPanel, 0); };
+      img.onerror = () => { fpImgCache.set(fp.id, img); }; // cache even on error
+      return null;
     };
 
     const redrawPanel = () => {
