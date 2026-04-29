@@ -178,6 +178,59 @@ const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
   exit:   <LogOut        size={14} />,
 };
 
+/** Renders the same hotspot icon used in the 2D overlay onto a canvas, returns a Three.js CanvasTexture. */
+function makeHotspotCanvasTexture(iconStyle: HotspotIconStyle): THREE.CanvasTexture {
+  const S = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d')!;
+  const cx = S / 2, cy = S / 2, r = S / 2 - 3;
+
+  // Dark circle background
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  // Orange border (matches --nm-accent #e07b3f)
+  ctx.strokeStyle = '#e07b3f'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(cx, cy, r - 2, 0, Math.PI * 2); ctx.stroke();
+
+  // Icon path (lucide 24×24 viewBox scaled to canvas)
+  const scale = S / 24;
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.strokeStyle = '#e07b3f'; ctx.lineWidth = 5 / scale;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.fillStyle = '#e07b3f';
+
+  switch (iconStyle) {
+    case 'arrow': // ArrowRight
+      ctx.beginPath(); ctx.moveTo(5,12); ctx.lineTo(19,12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(12,5); ctx.lineTo(19,12); ctx.lineTo(12,19); ctx.stroke();
+      break;
+    case 'door': // DoorOpen — simplified door silhouette
+      ctx.beginPath();
+      ctx.moveTo(13,4); ctx.lineTo(7,5.5); ctx.lineTo(7,20); ctx.lineTo(13,20); ctx.lineTo(13,4);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(10.5, 12, 1.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(2,20); ctx.lineTo(22,20); ctx.stroke();
+      break;
+    case 'circle': // Circle
+      ctx.beginPath(); ctx.arc(12,12,7,0,Math.PI*2); ctx.stroke();
+      break;
+    case 'stairs': // ArrowUpRight
+      ctx.beginPath(); ctx.moveTo(7,7); ctx.lineTo(17,7); ctx.lineTo(17,17); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(7,17); ctx.lineTo(17,7); ctx.stroke();
+      break;
+    case 'exit': // LogOut
+      ctx.beginPath(); ctx.moveTo(9,21); ctx.lineTo(5,21); ctx.lineTo(5,3); ctx.lineTo(9,3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(16,17); ctx.lineTo(21,12); ctx.lineTo(16,7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(21,12); ctx.lineTo(9,12); ctx.stroke();
+      break;
+  }
+  ctx.restore();
+  return new THREE.CanvasTexture(c);
+}
+
 function HotspotMarker({
   hotspot, isSelected, isPreview, targetSceneName,
 }: {
@@ -643,40 +696,33 @@ export default function PanoramaViewer({
     };
   }, []);
 
-  // ── 3D hotspot markers for WebXR (update when scene changes) ─────────
+  // ── 3D hotspot sprites for WebXR — same icons as 2D overlay ──────────
   useEffect(() => {
     const threeScene = threeSceneRef.current;
     if (!threeScene || !scene) return;
 
-    // Remove any existing VR hotspot markers
-    const toRemove = threeScene.children.filter(c => c.userData.vrHotspot);
-    toRemove.forEach(c => threeScene.remove(c));
+    // Remove old markers
+    const old = threeScene.children.filter(c => c.userData.vrHotspot);
+    old.forEach(c => { (c as THREE.Sprite).material?.map?.dispose(); threeScene.remove(c); });
 
-    // Add a glowing sphere at each hotspot world position
     for (const hs of scene.hotspots) {
       const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
       const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(470);
-      const markerGeo = new THREE.SphereGeometry(8, 12, 8);
-      const markerMat = new THREE.MeshBasicMaterial({ color: 0xe07b3f, transparent: true, opacity: 0.85 });
-      const marker = new THREE.Mesh(markerGeo, markerMat);
-      marker.position.copy(pos);
-      marker.userData.vrHotspot = true;
-      marker.userData.hotspotId = hs.id;
-      threeScene.add(marker);
 
-      // Outer ring for visibility
-      const ringGeo = new THREE.TorusGeometry(12, 1.5, 8, 24);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.position.copy(pos);
-      ring.lookAt(0, 0, 0);
-      ring.userData.vrHotspot = true;
-      threeScene.add(ring);
+      // Sprite with the same icon as the 2D hotspot button
+      const tex  = makeHotspotCanvasTexture(hs.iconStyle);
+      const mat  = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+      const sprite = new THREE.Sprite(mat);
+      sprite.position.copy(pos);
+      sprite.scale.set(38, 38, 1);
+      sprite.userData.vrHotspot = true;
+      sprite.userData.hotspotId = hs.id;
+      threeScene.add(sprite);
     }
 
     return () => {
       const markers = threeScene.children.filter(c => c.userData.vrHotspot);
-      markers.forEach(c => threeScene.remove(c));
+      markers.forEach(c => { (c as THREE.Sprite).material?.map?.dispose(); threeScene.remove(c); });
     };
   }, [scene?.id, scene?.hotspots]);
 
