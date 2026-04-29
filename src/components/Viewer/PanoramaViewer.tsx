@@ -893,23 +893,48 @@ export default function PanoramaViewer({
           // Scale the panel bigger when in detail view
           panelMesh.scale.set(1.25, 1.4, 1);
 
-          // Header: back button + floor plan name
+          // Header: back button + prev/next floor plan arrows + name
           const hdrH = PY * 0.09;
+          const fpIdx  = allFp.findIndex(f => f.id === fpDetailId);
+          const hasPrev = fpIdx > 0;
+          const hasNext = fpIdx < allFp.length - 1;
+
           const bkHov = hoveredAction === 'fp-back', bkPrs = pressedAction === 'fp-back';
-          fillRR(PX * 0.03, contentTop + PY * 0.005, PX * 0.22, hdrH * 0.78, 8,
+          fillRR(PX * 0.03, contentTop + PY * 0.005, PX * 0.18, hdrH * 0.78, 8,
             bkPrs ? 'rgba(255,255,255,0.25)' : bkHov ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)');
           pc.fillStyle = bkPrs ? '#fff' : 'rgba(224,221,216,0.7)';
-          pc.font = `bold ${PX * 0.04}px Inter,sans-serif`;
+          pc.font = `bold ${PX * 0.038}px Inter,sans-serif`;
           pc.textAlign = 'center'; pc.textBaseline = 'middle';
-          pc.fillText('‹ Back', PX * 0.14, contentTop + hdrH * 0.44);
-          panelBtns.push({ mesh: makePanelHitPlane(0.03, (contentTop + PY * 0.005) / PY, 0.22, hdrH * 0.78 / PY, 'fp-back'), action: 'fp-back' });
+          pc.fillText('‹ Back', PX * 0.12, contentTop + hdrH * 0.44);
+          panelBtns.push({ mesh: makePanelHitPlane(0.03, (contentTop + PY * 0.005) / PY, 0.18, hdrH * 0.78 / PY, 'fp-back'), action: 'fp-back' });
 
+          // Prev arrow
+          const pvHov = hoveredAction === 'fp-prev', pvPrs = pressedAction === 'fp-prev';
+          fillRR(PX * 0.23, contentTop + PY * 0.005, PX * 0.1, hdrH * 0.78, 6,
+            !hasPrev ? 'rgba(255,255,255,0.02)' : pvPrs ? 'rgba(59,191,181,0.45)' : pvHov ? 'rgba(59,191,181,0.2)' : 'rgba(255,255,255,0.06)');
+          pc.fillStyle = !hasPrev ? 'rgba(255,255,255,0.15)' : pvPrs || pvHov ? '#3bbfb5' : 'rgba(224,221,216,0.7)';
+          pc.font = `bold ${PX * 0.045}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText('◀', PX * 0.28, contentTop + hdrH * 0.44);
+          if (hasPrev) panelBtns.push({ mesh: makePanelHitPlane(0.23, (contentTop + PY * 0.005) / PY, 0.1, hdrH * 0.78 / PY, 'fp-prev'), action: 'fp-prev' });
+
+          // Floor plan name (center)
           pc.fillStyle = '#3bbfb5';
-          pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
-          pc.textAlign = 'left'; pc.textBaseline = 'middle';
+          pc.font = `bold ${PX * 0.038}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
           let hdrName = detailFp.name;
-          while (pc.measureText(hdrName).width > PX * 0.6 && hdrName.length > 3) hdrName = hdrName.slice(0, -2) + '…';
-          pc.fillText(hdrName, PX * 0.28, contentTop + hdrH * 0.44);
+          while (pc.measureText(hdrName).width > PX * 0.36 && hdrName.length > 3) hdrName = hdrName.slice(0, -2) + '…';
+          pc.fillText(hdrName, PX * 0.5, contentTop + hdrH * 0.44);
+
+          // Next arrow
+          const nxHov = hoveredAction === 'fp-next', nxPrs = pressedAction === 'fp-next';
+          fillRR(PX * 0.67, contentTop + PY * 0.005, PX * 0.1, hdrH * 0.78, 6,
+            !hasNext ? 'rgba(255,255,255,0.02)' : nxPrs ? 'rgba(59,191,181,0.45)' : nxHov ? 'rgba(59,191,181,0.2)' : 'rgba(255,255,255,0.06)');
+          pc.fillStyle = !hasNext ? 'rgba(255,255,255,0.15)' : nxPrs || nxHov ? '#3bbfb5' : 'rgba(224,221,216,0.7)';
+          pc.font = `bold ${PX * 0.045}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText('▶', PX * 0.72, contentTop + hdrH * 0.44);
+          if (hasNext) panelBtns.push({ mesh: makePanelHitPlane(0.67, (contentTop + PY * 0.005) / PY, 0.1, hdrH * 0.78 / PY, 'fp-next'), action: 'fp-next' });
 
           // Image area
           const imgPad   = PX * 0.03;
@@ -939,10 +964,13 @@ export default function PanoramaViewer({
               const mx = dx + marker.x * dw;
               const my = dy + marker.y * dh;
               const isAct = sc.id === activeSc?.id;
-              const r = isAct ? 11 : 8;
-              const dotColor  = isAct ? '#e07b3f' : '#3bbfb5';
+              const isHov = hoveredAction === `scene:${sc.id}`;
+              const isPrs = pressedAction === `scene:${sc.id}`;
+              const r = isAct ? 11 : isHov || isPrs ? 10 : 8;
+              const dotColor = isAct ? '#e07b3f' : isPrs ? '#fff' : isHov ? '#7fe8e2' : '#3bbfb5';
+              // Outer glow
               pc.beginPath(); pc.arc(mx, my, r + 5, 0, Math.PI * 2);
-              pc.fillStyle = isAct ? 'rgba(224,123,63,0.35)' : 'rgba(59,191,181,0.25)'; pc.fill();
+              pc.fillStyle = isAct ? 'rgba(224,123,63,0.35)' : isPrs ? 'rgba(59,191,181,0.55)' : isHov ? 'rgba(59,191,181,0.4)' : 'rgba(59,191,181,0.25)'; pc.fill();
               pc.beginPath(); pc.arc(mx, my, r, 0, Math.PI * 2);
               pc.fillStyle = dotColor; pc.fill();
               if (isAct) {
@@ -951,28 +979,30 @@ export default function PanoramaViewer({
                 pc.moveTo(0, -r + 2); pc.lineTo(-3, 2); pc.lineTo(3, 2); pc.closePath(); pc.fill();
                 pc.restore();
               } else {
-                pc.fillStyle = '#fff'; pc.font = `bold ${r * 1.2}px Inter,sans-serif`;
+                pc.fillStyle = isHov || isPrs ? '#003a38' : '#fff';
+                pc.font = `bold ${r * 1.2}px Inter,sans-serif`;
                 pc.textAlign = 'center'; pc.textBaseline = 'middle';
                 pc.fillText(String(allSc.findIndex(s => s.id === sc.id) + 1), mx, my);
               }
               // Name tag
               const tagFz = 13;
-              pc.font = `${isAct ? 'bold ' : ''}${tagFz}px Inter,sans-serif`;
+              pc.font = `bold ${tagFz}px Inter,sans-serif`;
               let tagTxt = sc.name;
               while (pc.measureText(tagTxt).width > 106 && tagTxt.length > 3) tagTxt = tagTxt.slice(0, -2) + '…';
               const tagW = pc.measureText(tagTxt).width + 14;
               const tagH = tagFz + 8;
               const tagX = Math.max(imgAreaX + 2, Math.min(imgAreaX + imgAreaW - tagW - 2, mx - tagW / 2));
               const tagY = my + r + 5;
-              fillRR(tagX, tagY, tagW, tagH, 4, isAct ? 'rgba(224,123,63,0.88)' : 'rgba(20,20,32,0.82)');
-              if (!isAct) strokeRR(tagX, tagY, tagW, tagH, 4, dotColor, 1);
-              pc.fillStyle = isAct ? '#fff' : dotColor;
-              pc.font = `${isAct ? 'bold ' : ''}${tagFz}px Inter,sans-serif`;
+              fillRR(tagX, tagY, tagW, tagH, 4,
+                isAct ? 'rgba(224,123,63,0.88)' : isPrs ? 'rgba(59,191,181,0.9)' : isHov ? 'rgba(59,191,181,0.65)' : 'rgba(20,20,32,0.82)');
+              strokeRR(tagX, tagY, tagW, tagH, 4, dotColor, isPrs || isHov ? 2 : 1);
+              pc.fillStyle = isAct || isPrs || isHov ? '#fff' : dotColor;
+              pc.font = `bold ${tagFz}px Inter,sans-serif`;
               pc.textAlign = 'center'; pc.textBaseline = 'middle';
               pc.fillText(tagTxt, tagX + tagW / 2, tagY + tagH / 2);
               // Hit plane
               const hl = Math.min(mx - r - 4, tagX), hr = Math.max(mx + r + 4, tagX + tagW);
-              panelBtns.push({ mesh: makePanelHitPlane(hl / PX, (my - r - 4) / PY, (hr - hl) / PX, (tagY + tagH + 2 - (my - r - 4)) / PY, `scene:${sc.id}`), action: `scene:${sc.id}` });
+              if (!isAct) panelBtns.push({ mesh: makePanelHitPlane(hl / PX, (my - r - 4) / PY, (hr - hl) / PX, (tagY + tagH + 2 - (my - r - 4)) / PY, `scene:${sc.id}`), action: `scene:${sc.id}` });
             }
           } else {
             pc.fillStyle = 'rgba(224,221,216,0.3)'; pc.font = `${PX * 0.04}px Inter,sans-serif`;
@@ -1028,6 +1058,13 @@ export default function PanoramaViewer({
         if (action === 'fp-back') {
           fpDetailId = null;
           panelMesh.scale.set(1, 1, 1);
+          redrawPanel(); return;
+        }
+        if (action === 'fp-prev' || action === 'fp-next') {
+          const allFp = floorPlansRef.current;
+          const idx = allFp.findIndex(f => f.id === fpDetailId);
+          if (action === 'fp-prev' && idx > 0) fpDetailId = allFp[idx - 1].id;
+          if (action === 'fp-next' && idx < allFp.length - 1) fpDetailId = allFp[idx + 1].id;
           redrawPanel(); return;
         }
         switch (action) {
