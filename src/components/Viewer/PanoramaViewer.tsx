@@ -592,12 +592,15 @@ export default function PanoramaViewer({
     const threeScene = new THREE.Scene();
     threeSceneRef.current = threeScene;
 
-    const camera = new THREE.PerspectiveCamera(90, container.clientWidth / container.clientHeight, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(90, container.clientWidth / container.clientHeight, 0.01, 50);
     camera.rotation.order = 'YXZ';
     cameraRef.current = camera;
 
-    // Panorama sphere (inside surface)
-    const geo  = new THREE.SphereGeometry(500, 64, 32);
+    // Panorama sphere (inside surface).
+    // Radius 10 = 10 m in WebXR scale. Keeping it at human-room scale prevents
+    // the VR depth-reprojection system from placing the surface at "infinity",
+    // which otherwise makes every object in the panorama look enormous.
+    const geo  = new THREE.SphereGeometry(10, 64, 32);
     const mat  = new THREE.MeshBasicMaterial({ color: 0x111119, side: THREE.BackSide });
     const mesh = new THREE.Mesh(geo, mat);
     threeScene.add(mesh);
