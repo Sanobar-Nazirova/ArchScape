@@ -985,49 +985,25 @@ export default function PanoramaViewer({
 
     // ── Set up left (0) and right (1) controllers ──────────────────────
     const controllerModelFactory = new XRControllerModelFactory();
-    // Serve profiles locally so the models load without CDN access on-device
+    // Profiles are bundled in public/xr-profiles/ — no CDN needed
     controllerModelFactory.path = './xr-profiles/';
     const handModelFactory = new XRHandModelFactory();
 
     const leftCtrl  = renderer.xr.getController(0);
     const rightCtrl = renderer.xr.getController(1);
 
-    // Left: dim orange ray + panel group
+    // Left: orange ray + panel group
     leftCtrl.add(makeRay(0xe07b3f));
     leftCtrl.add(panelGroup);
     threeScene.add(leftCtrl);
 
-    // Right: bright teal ray — primary interaction controller
+    // Right: teal ray — primary interaction controller
     rightCtrl.add(makeRay(0x3bbfb5));
     threeScene.add(rightCtrl);
 
-    // Helper: simple controller body so something is always visible even if the
-    // XRControllerModelFactory CDN fetch fails (network-free environments).
-    const makeControllerBody = (color: number) => {
-      const g = new THREE.Group();
-      // Grip body — tapered cylinder approximating a controller handle
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.018, 0.12, 10),
-        new THREE.MeshBasicMaterial({ color }),
-      );
-      body.position.set(0, -0.03, -0.02);
-      body.rotation.x = Math.PI * 0.15;
-      g.add(body);
-      // Small trigger bump
-      const bump = new THREE.Mesh(
-        new THREE.SphereGeometry(0.014, 8, 6),
-        new THREE.MeshBasicMaterial({ color }),
-      );
-      bump.position.set(0, 0.01, -0.04);
-      g.add(bump);
-      return g;
-    };
-
-    // Grip spaces — try the CDN model first; fallback geometry always present
+    // Grip spaces — official Quest Touch Plus GLB models loaded from local profiles
     const leftGrip  = renderer.xr.getControllerGrip(0);
     const rightGrip = renderer.xr.getControllerGrip(1);
-    leftGrip.add(makeControllerBody(0xe07b3f));   // orange
-    rightGrip.add(makeControllerBody(0x3bbfb5));  // teal
     leftGrip.add(controllerModelFactory.createControllerModel(leftGrip));
     rightGrip.add(controllerModelFactory.createControllerModel(rightGrip));
     threeScene.add(leftGrip);
