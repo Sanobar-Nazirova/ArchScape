@@ -2,6 +2,8 @@ import React, {
   useEffect, useRef, useCallback, useState,
 } from 'react';
 import * as THREE from 'three';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { XRHandModelFactory }       from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 import { yawPitchToWorld, worldToYawPitch } from '../../utils/sphereCoords';
 import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
@@ -504,6 +506,10 @@ export default function PanoramaViewer({
   useEffect(() => { onHotspotSelectRef.current = onHotspotSelect; }, [onHotspotSelect]);
   useEffect(() => { onHotspotRepositionRef.current = onHotspotReposition; }, [onHotspotReposition]);
 
+  // Shared ref so the VR mute button can reach live audio elements
+  const audioElemsRef  = useRef<HTMLAudioElement[]>([]);
+  const audioGainsRef  = useRef<GainNode[]>([]);
+
   // ── UI state ──────────────────────────────────────────────────────────
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
@@ -623,6 +629,7 @@ export default function PanoramaViewer({
     let prevSqueeze  = false;           // for edge detection
     let hoveredAction: string | null = null;  // button under right-ray cursor
     let pressedAction: string | null = null;  // button being pressed (flash)
+    let fpDetailId:   string | null = null;   // floor plan open in detail view
     const fpImgCache = new Map<string, HTMLImageElement>(); // floor plan image cache
 
     // Panel canvas + mesh
@@ -812,159 +819,165 @@ export default function PanoramaViewer({
 
       // ── FLOOR PLAN tab ───────────────────────────────────────────────
       if (panelTab === 'floorplan') {
-        const allFp  = floorPlansRef.current;
-        const actFpId = activeFloorPlanIdRef.current;
-        const activeFp = allFp.find(f => f.id === actFpId) ?? allFp[0] ?? null;
+        const allFp   = floorPlansRef.current;
+        const detailFp = allFp.find(f => f.id === fpDetailId) ?? null;
 
         if (allFp.length === 0) {
+          // Empty state
           pc.fillStyle = 'rgba(224,221,216,0.4)';
           pc.font = `${PX * 0.044}px Inter,sans-serif`;
           pc.textAlign = 'center'; pc.textBaseline = 'middle';
           pc.fillText('No floor plans added', PX / 2, contentTop + (PY - contentTop) / 2);
-        } else {
-          // Floor selector row (if multiple floors)
-          let fpContentTop = contentTop;
-          if (allFp.length > 1) {
-            const floorRowH = PY * 0.07;
-            const fpW = Math.min((PX * 0.92) / allFp.length - PX * 0.01, PX * 0.28);
-            allFp.forEach((fp, i) => {
-              const fx = PX * 0.04 + i * (fpW + PX * 0.01);
-              const isAct = fp.id === actFpId;
-              fillRR(fx, fpContentTop, fpW, floorRowH, 8, isAct ? 'rgba(59,191,181,0.22)' : 'rgba(255,255,255,0.05)');
-              strokeRR(fx, fpContentTop, fpW, floorRowH, 8, isAct ? '#3bbfb5' : 'rgba(255,255,255,0.1)', isAct ? 2 : 1);
-              pc.fillStyle = isAct ? '#3bbfb5' : 'rgba(224,221,216,0.55)';
-              pc.font = `${isAct ? 'bold ' : ''}${PX * 0.038}px Inter,sans-serif`;
-              pc.textAlign = 'center'; pc.textBaseline = 'middle';
-              let lbl = fp.name.length > 8 ? fp.name.slice(0, 7) + '…' : fp.name;
-              pc.fillText(lbl, fx + fpW / 2, fpContentTop + floorRowH / 2);
-              panelBtns.push({ mesh: makePanelHitPlane(fx / PX, fpContentTop / PY, fpW / PX, floorRowH / PY, `fp:${fp.id}`), action: `fp:${fp.id}` });
-            });
-            fpContentTop += floorRowH + PY * 0.015;
-          }
 
-          // Floor plan image area
-          const imgPad  = PX * 0.03;
-          const imgAreaX = imgPad;
-          const imgAreaY = fpContentTop + PY * 0.01;
-          const imgAreaW = PX - imgPad * 2;
-          const footerH  = PY * 0.07;
-          const imgAreaH = PY - imgAreaY - footerH - PY * 0.01;
+        } else if (!detailFp) {
+          // ── List view: show uploaded floor plans ───────────────────────
+          pc.fillStyle = 'rgba(224,221,216,0.5)';
+          pc.font = `${PX * 0.036}px Inter,sans-serif`;
+          pc.textAlign = 'left'; pc.textBaseline = 'middle';
+          pc.fillText('Select a floor plan', PX * 0.05, contentTop + PY * 0.03);
 
-          // Border
-          strokeRR(imgAreaX, imgAreaY, imgAreaW, imgAreaH, 10, 'rgba(59,191,181,0.35)', 1.5);
-
-          if (activeFp) {
-            const img = getFpImage(activeFp);
-            if (img) {
-              // Fit image into area preserving aspect ratio
-              const scale = Math.min(imgAreaW / img.width, imgAreaH / img.height);
-              const dw = img.width  * scale;
-              const dh = img.height * scale;
-              const dx = imgAreaX + (imgAreaW - dw) / 2;
-              const dy = imgAreaY + (imgAreaH - dh) / 2;
-              pc.save();
-              pc.beginPath(); pc.roundRect(imgAreaX, imgAreaY, imgAreaW, imgAreaH, 10); pc.clip();
-              pc.drawImage(img, dx, dy, dw, dh);
-              pc.restore();
-
-              // Draw scene markers with name tags
-              for (const marker of activeFp.markers) {
-                const sc = allSc.find(s => s.id === marker.sceneId);
-                if (!sc) continue;
-                const mx = dx + marker.x * dw;
-                const my = dy + marker.y * dh;
-                const isAct = sc.id === activeSc?.id;
-                const r = isAct ? 11 : 8;
-                const dotColor  = isAct ? '#e07b3f' : '#3bbfb5';
-                const ringColor = isAct ? 'rgba(224,123,63,0.35)' : 'rgba(59,191,181,0.25)';
-
-                // Ping ring for active scene
-                pc.beginPath(); pc.arc(mx, my, r + 5, 0, Math.PI * 2);
-                pc.fillStyle = ringColor; pc.fill();
-
-                // Dot
-                pc.beginPath(); pc.arc(mx, my, r, 0, Math.PI * 2);
-                pc.fillStyle = dotColor; pc.fill();
-
-                // Direction arrow for active scene (using current yaw)
-                if (isAct) {
-                  const yw = yawRef.current;
-                  pc.save();
-                  pc.translate(mx, my);
-                  pc.rotate(-yw);
-                  pc.fillStyle = '#fff';
-                  pc.beginPath();
-                  pc.moveTo(0, -r + 2);
-                  pc.lineTo(-3, 2);
-                  pc.lineTo(3, 2);
-                  pc.closePath();
-                  pc.fill();
-                  pc.restore();
-                } else {
-                  // Index number for non-active
-                  const idx = allSc.findIndex(s => s.id === sc.id) + 1;
-                  pc.fillStyle = '#fff';
-                  pc.font = `bold ${r * 1.2}px Inter,sans-serif`;
-                  pc.textAlign = 'center'; pc.textBaseline = 'middle';
-                  pc.fillText(String(idx), mx, my);
-                }
-
-                // Name tag pill below the dot
-                const tagFontSz = 13;
-                pc.font = `${isAct ? 'bold ' : ''}${tagFontSz}px Inter,sans-serif`;
-                const maxTagW = 110;
-                let tagText = sc.name;
-                while (pc.measureText(tagText).width > maxTagW - 12 && tagText.length > 3)
-                  tagText = tagText.slice(0, -2) + '…';
-                const tagW = Math.min(pc.measureText(tagText).width + 14, maxTagW);
-                const tagH = tagFontSz + 8;
-                const tagX = mx - tagW / 2;
-                const tagY = my + r + 5;
-
-                // Clamp tag inside image area
-                const clampedTagX = Math.max(imgAreaX + 2, Math.min(imgAreaX + imgAreaW - tagW - 2, tagX));
-
-                fillRR(clampedTagX, tagY, tagW, tagH, 4, isAct ? 'rgba(224,123,63,0.88)' : 'rgba(20,20,32,0.82)');
-                if (!isAct) strokeRR(clampedTagX, tagY, tagW, tagH, 4, dotColor, 1);
-                pc.fillStyle = isAct ? '#fff' : dotColor;
-                pc.font = `${isAct ? 'bold ' : ''}${tagFontSz}px Inter,sans-serif`;
-                pc.textAlign = 'center'; pc.textBaseline = 'middle';
-                pc.fillText(tagText, clampedTagX + tagW / 2, tagY + tagH / 2);
-
-                // Hit plane covers dot + tag area
-                const hitTop  = my - r - 4;
-                const hitBot  = tagY + tagH + 2;
-                const hitLeft = Math.min(mx - r - 4, clampedTagX);
-                const hitRight = Math.max(mx + r + 4, clampedTagX + tagW);
-                const hnx = hitLeft / PX;
-                const hny = hitTop  / PY;
-                const hnw = (hitRight - hitLeft) / PX;
-                const hnh = (hitBot - hitTop)  / PY;
-                panelBtns.push({ mesh: makePanelHitPlane(hnx, hny, hnw, hnh, `scene:${sc.id}`), action: `scene:${sc.id}` });
-              }
-            } else {
-              pc.fillStyle = 'rgba(224,221,216,0.3)';
-              pc.font = `${PX * 0.04}px Inter,sans-serif`;
-              pc.textAlign = 'center'; pc.textBaseline = 'middle';
-              pc.fillText('Loading…', imgAreaX + imgAreaW / 2, imgAreaY + imgAreaH / 2);
-            }
-
-            // Footer: floor name + exit
-            const footY = PY - footerH - PY * 0.005;
-            pc.fillStyle = 'rgba(224,221,216,0.35)';
-            pc.font = `${PX * 0.038}px Inter,sans-serif`;
-            pc.textAlign = 'left'; pc.textBaseline = 'middle';
-            pc.fillText(activeFp.name, PX * 0.04, footY + footerH / 2);
-            // Exit VR button
-            const exitW = PX * 0.28;
-            fillRR(PX * 0.69, footY, exitW, footerH * 0.75, 8, 'rgba(224,84,84,0.18)');
-            strokeRR(PX * 0.69, footY, exitW, footerH * 0.75, 8, '#e05454', 1.5);
-            pc.fillStyle = '#e05454'; pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
+          const rowH  = PY * 0.115;
+          const rowGap = PY * 0.014;
+          allFp.forEach((fp, i) => {
+            const y   = contentTop + PY * 0.07 + i * (rowH + rowGap);
+            const act = hoveredAction === `fp-detail:${fp.id}`;
+            const prs = pressedAction === `fp-detail:${fp.id}`;
+            const hasMark = fp.markers.some(m => allSc.find(s => s.id === m.sceneId)?.id === activeSc?.id);
+            fillRR(PX * 0.04, y, PX * 0.92, rowH, 10,
+              prs ? 'rgba(59,191,181,0.45)' : act ? 'rgba(59,191,181,0.2)' : 'rgba(255,255,255,0.05)');
+            strokeRR(PX * 0.04, y, PX * 0.92, rowH, 10,
+              prs ? '#3bbfb5' : act ? '#3bbfb5' : 'rgba(255,255,255,0.1)', prs ? 2.5 : act ? 2 : 1);
+            // Floor icon
+            pc.fillStyle = '#3bbfb5';
+            pc.font = `bold ${PX * 0.05}px Inter,sans-serif`;
             pc.textAlign = 'center'; pc.textBaseline = 'middle';
-            pc.fillText('✕ Exit VR', PX * 0.69 + exitW / 2, footY + footerH * 0.375);
-            panelBtns.push({ mesh: makePanelHitPlane(0.69, footY / PY, 0.28, footerH * 0.75 / PY, 'exit'), action: 'exit' });
+            pc.fillText('🗺', PX * 0.11, y + rowH * 0.5);
+            // Name
+            pc.fillStyle = act || prs ? '#fff' : 'rgba(224,221,216,0.9)';
+            pc.font = `${act || prs ? 'bold ' : ''}${PX * 0.044}px Inter,sans-serif`;
+            pc.textAlign = 'left'; pc.textBaseline = 'middle';
+            let nm = fp.name;
+            while (pc.measureText(nm).width > PX * 0.55 && nm.length > 3) nm = nm.slice(0, -2) + '…';
+            pc.fillText(nm, PX * 0.18, y + rowH * 0.38);
+            // Marker count
+            pc.fillStyle = 'rgba(224,221,216,0.4)';
+            pc.font = `${PX * 0.033}px Inter,sans-serif`;
+            pc.fillText(`${fp.markers.length} location${fp.markers.length !== 1 ? 's' : ''}`, PX * 0.18, y + rowH * 0.68);
+            // "You are here" indicator
+            if (hasMark) {
+              fillRR(PX * 0.72, y + rowH * 0.22, PX * 0.195, rowH * 0.56, 6, 'rgba(224,123,63,0.25)');
+              pc.fillStyle = '#e07b3f'; pc.font = `bold ${PX * 0.03}px Inter,sans-serif`;
+              pc.textAlign = 'center'; pc.textBaseline = 'middle';
+              pc.fillText('📍 Here', PX * 0.815, y + rowH * 0.5);
+            }
+            panelBtns.push({ mesh: makePanelHitPlane(0.04, y / PY, 0.92, rowH / PY, `fp-detail:${fp.id}`), action: `fp-detail:${fp.id}` });
+          });
+
+        } else {
+          // ── Detail view: show floor plan image with markers ────────────
+          // Scale the panel bigger when in detail view
+          panelMesh.scale.set(1.25, 1.4, 1);
+
+          // Header: back button + floor plan name
+          const hdrH = PY * 0.09;
+          const bkHov = hoveredAction === 'fp-back', bkPrs = pressedAction === 'fp-back';
+          fillRR(PX * 0.03, contentTop + PY * 0.005, PX * 0.22, hdrH * 0.78, 8,
+            bkPrs ? 'rgba(255,255,255,0.25)' : bkHov ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)');
+          pc.fillStyle = bkPrs ? '#fff' : 'rgba(224,221,216,0.7)';
+          pc.font = `bold ${PX * 0.04}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText('‹ Back', PX * 0.14, contentTop + hdrH * 0.44);
+          panelBtns.push({ mesh: makePanelHitPlane(0.03, (contentTop + PY * 0.005) / PY, 0.22, hdrH * 0.78 / PY, 'fp-back'), action: 'fp-back' });
+
+          pc.fillStyle = '#3bbfb5';
+          pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
+          pc.textAlign = 'left'; pc.textBaseline = 'middle';
+          let hdrName = detailFp.name;
+          while (pc.measureText(hdrName).width > PX * 0.6 && hdrName.length > 3) hdrName = hdrName.slice(0, -2) + '…';
+          pc.fillText(hdrName, PX * 0.28, contentTop + hdrH * 0.44);
+
+          // Image area
+          const imgPad   = PX * 0.03;
+          const imgAreaX = imgPad;
+          const imgAreaY = contentTop + hdrH + PY * 0.01;
+          const imgAreaW = PX - imgPad * 2;
+          const footerH  = PY * 0.075;
+          const imgAreaH = PY - imgAreaY - footerH - PY * 0.01;
+          strokeRR(imgAreaX, imgAreaY, imgAreaW, imgAreaH, 10, 'rgba(59,191,181,0.4)', 1.5);
+
+          const img = getFpImage(detailFp);
+          if (img) {
+            const sc2img = Math.min(imgAreaW / img.width, imgAreaH / img.height);
+            const dw = img.width  * sc2img;
+            const dh = img.height * sc2img;
+            const dx = imgAreaX + (imgAreaW - dw) / 2;
+            const dy = imgAreaY + (imgAreaH - dh) / 2;
+            pc.save();
+            pc.beginPath(); pc.roundRect(imgAreaX, imgAreaY, imgAreaW, imgAreaH, 10); pc.clip();
+            pc.drawImage(img, dx, dy, dw, dh);
+            pc.restore();
+
+            // Markers with name tags
+            for (const marker of detailFp.markers) {
+              const sc = allSc.find(s => s.id === marker.sceneId);
+              if (!sc) continue;
+              const mx = dx + marker.x * dw;
+              const my = dy + marker.y * dh;
+              const isAct = sc.id === activeSc?.id;
+              const r = isAct ? 11 : 8;
+              const dotColor  = isAct ? '#e07b3f' : '#3bbfb5';
+              pc.beginPath(); pc.arc(mx, my, r + 5, 0, Math.PI * 2);
+              pc.fillStyle = isAct ? 'rgba(224,123,63,0.35)' : 'rgba(59,191,181,0.25)'; pc.fill();
+              pc.beginPath(); pc.arc(mx, my, r, 0, Math.PI * 2);
+              pc.fillStyle = dotColor; pc.fill();
+              if (isAct) {
+                pc.save(); pc.translate(mx, my); pc.rotate(-yawRef.current);
+                pc.fillStyle = '#fff'; pc.beginPath();
+                pc.moveTo(0, -r + 2); pc.lineTo(-3, 2); pc.lineTo(3, 2); pc.closePath(); pc.fill();
+                pc.restore();
+              } else {
+                pc.fillStyle = '#fff'; pc.font = `bold ${r * 1.2}px Inter,sans-serif`;
+                pc.textAlign = 'center'; pc.textBaseline = 'middle';
+                pc.fillText(String(allSc.findIndex(s => s.id === sc.id) + 1), mx, my);
+              }
+              // Name tag
+              const tagFz = 13;
+              pc.font = `${isAct ? 'bold ' : ''}${tagFz}px Inter,sans-serif`;
+              let tagTxt = sc.name;
+              while (pc.measureText(tagTxt).width > 106 && tagTxt.length > 3) tagTxt = tagTxt.slice(0, -2) + '…';
+              const tagW = pc.measureText(tagTxt).width + 14;
+              const tagH = tagFz + 8;
+              const tagX = Math.max(imgAreaX + 2, Math.min(imgAreaX + imgAreaW - tagW - 2, mx - tagW / 2));
+              const tagY = my + r + 5;
+              fillRR(tagX, tagY, tagW, tagH, 4, isAct ? 'rgba(224,123,63,0.88)' : 'rgba(20,20,32,0.82)');
+              if (!isAct) strokeRR(tagX, tagY, tagW, tagH, 4, dotColor, 1);
+              pc.fillStyle = isAct ? '#fff' : dotColor;
+              pc.font = `${isAct ? 'bold ' : ''}${tagFz}px Inter,sans-serif`;
+              pc.textAlign = 'center'; pc.textBaseline = 'middle';
+              pc.fillText(tagTxt, tagX + tagW / 2, tagY + tagH / 2);
+              // Hit plane
+              const hl = Math.min(mx - r - 4, tagX), hr = Math.max(mx + r + 4, tagX + tagW);
+              panelBtns.push({ mesh: makePanelHitPlane(hl / PX, (my - r - 4) / PY, (hr - hl) / PX, (tagY + tagH + 2 - (my - r - 4)) / PY, `scene:${sc.id}`), action: `scene:${sc.id}` });
+            }
+          } else {
+            pc.fillStyle = 'rgba(224,221,216,0.3)'; pc.font = `${PX * 0.04}px Inter,sans-serif`;
+            pc.textAlign = 'center'; pc.textBaseline = 'middle';
+            pc.fillText('Loading…', imgAreaX + imgAreaW / 2, imgAreaY + imgAreaH / 2);
           }
+
+          // Footer: exit VR
+          const footY  = PY - footerH;
+          const exitHov = hoveredAction === 'exit', exitPrs = pressedAction === 'exit';
+          fillRR(PX * 0.69, footY, PX * 0.28, footerH * 0.78, 8, exitPrs ? '#e05454cc' : exitHov ? '#e0545455' : '#e0545422');
+          strokeRR(PX * 0.69, footY, PX * 0.28, footerH * 0.78, 8, '#e05454', exitPrs ? 2.5 : 1.5);
+          pc.fillStyle = exitPrs ? '#fff' : '#e05454'; pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText('✕ Exit VR', PX * 0.69 + PX * 0.14, footY + footerH * 0.39);
+          panelBtns.push({ mesh: makePanelHitPlane(0.69, footY / PY, 0.28, footerH * 0.78 / PY, 'exit'), action: 'exit' });
         }
+
+        // Reset panel scale when not in detail view
+        if (!detailFp) panelMesh.scale.set(1, 1, 1);
       }
 
       panelTex.needsUpdate = true;
@@ -985,10 +998,21 @@ export default function PanoramaViewer({
         }
         if (action.startsWith('tab:')) {
           panelTab = action.slice(4) as 'scenes' | 'floorplan';
+          fpDetailId = null;
+          panelMesh.scale.set(1, 1, 1);
           redrawPanel(); return;
         }
         if (action.startsWith('fp:')) {
           setActiveFloorPlanRef.current(action.slice(3));
+          redrawPanel(); return;
+        }
+        if (action.startsWith('fp-detail:')) {
+          fpDetailId = action.slice(10);
+          redrawPanel(); return;
+        }
+        if (action === 'fp-back') {
+          fpDetailId = null;
+          panelMesh.scale.set(1, 1, 1);
           redrawPanel(); return;
         }
         switch (action) {
@@ -1005,7 +1029,8 @@ export default function PanoramaViewer({
           }
           case 'mute':
             audioMuted = !audioMuted;
-            document.querySelectorAll<HTMLAudioElement>('audio').forEach(a => { a.muted = audioMuted; });
+            audioElemsRef.current.forEach(a => { a.muted = audioMuted; });
+            audioGainsRef.current.forEach(g => { g.gain.value = audioMuted ? 0 : (g as any)._baseVol ?? 1; });
             redrawPanel(); break;
           case 'exit':
             renderer.xr.getSession()?.end();
@@ -1015,8 +1040,13 @@ export default function PanoramaViewer({
     };
 
     // ── Set up left (0) and right (1) controllers ──────────────────────
-    // We only add functional overlays (ray beam + wrist panel) and let
-    // Meta's OS compositor render the native controller/hand visuals.
+    // Absolute URL avoids path resolution issues inside the XR frame.
+    // No trailing slash — fetchProfile constructs its own slash separator.
+    const xrProfilesBase = window.location.href.replace(/\/[^/]*$/, '') + '/xr-profiles';
+    const controllerModelFactory = new XRControllerModelFactory();
+    controllerModelFactory.path  = xrProfilesBase;
+    const handModelFactory = new XRHandModelFactory();
+
     const leftCtrl  = renderer.xr.getController(0);
     const rightCtrl = renderer.xr.getController(1);
 
@@ -1028,6 +1058,22 @@ export default function PanoramaViewer({
     // Right: teal ray — primary interaction
     rightCtrl.add(makeRay(0x3bbfb5));
     threeScene.add(rightCtrl);
+
+    // Grip spaces — real Quest 3 Touch Plus GLB models
+    const leftGrip  = renderer.xr.getControllerGrip(0);
+    const rightGrip = renderer.xr.getControllerGrip(1);
+    leftGrip.add(controllerModelFactory.createControllerModel(leftGrip));
+    rightGrip.add(controllerModelFactory.createControllerModel(rightGrip));
+    threeScene.add(leftGrip);
+    threeScene.add(rightGrip);
+
+    // Hand spaces — 'spheres' profile uses Three.js geometry (offline)
+    const leftHand  = renderer.xr.getHand(0);
+    const rightHand = renderer.xr.getHand(1);
+    leftHand.add(handModelFactory.createHandModel(leftHand, 'spheres'));
+    rightHand.add(handModelFactory.createHandModel(rightHand, 'spheres'));
+    threeScene.add(leftHand);
+    threeScene.add(rightHand);
 
     // Right trigger → interact with panel buttons OR scene hotspots
     rightCtrl.addEventListener('select', () => {
@@ -1078,6 +1124,9 @@ export default function PanoramaViewer({
               if (panelOpen) {
                 panelScroll = Math.max(0, (scenesRef.current.findIndex(s => s.id === sceneRef.current?.id) ?? 0) - 1);
                 redrawPanel();
+              } else {
+                fpDetailId = null;
+                panelMesh.scale.set(1, 1, 1);
               }
             }
             prevSqueeze = squeeze;
@@ -1222,6 +1271,8 @@ export default function PanoramaViewer({
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const nodes: { source: AudioBufferSourceNode | null; gain: GainNode; panner?: PannerNode }[] = [];
     const htmlEls: HTMLAudioElement[] = [];
+    audioElemsRef.current = htmlEls;
+    audioGainsRef.current = [];
 
     // Use Web Audio API for spatial, HTMLAudioElement for ambient (simpler + loopable)
     for (const as of sources) {
@@ -1229,6 +1280,8 @@ export default function PanoramaViewer({
         // Spatial: positional audio via PannerNode
         const gain   = audioCtx.createGain();
         gain.gain.value = as.volume ?? 1;
+        (gain as any)._baseVol = gain.gain.value;
+        audioGainsRef.current.push(gain);
         const panner = audioCtx.createPanner();
         panner.panningModel   = 'HRTF';
         panner.distanceModel  = 'inverse';
@@ -1272,6 +1325,8 @@ export default function PanoramaViewer({
     }
 
     return () => {
+      audioElemsRef.current = [];
+      audioGainsRef.current = [];
       htmlEls.forEach(el => { el.pause(); el.src = ''; });
       nodes.forEach(n => { try { n.source?.stop(); } catch {} });
       audioCtx.close().catch(console.warn);
