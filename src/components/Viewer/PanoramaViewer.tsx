@@ -479,7 +479,7 @@ export default function PanoramaViewer({
   // ── Camera state refs (avoid stale closures in rAF) ─────────────────
   const yawRef        = useRef(0);
   const pitchRef      = useRef(0);
-  const fovRef        = useRef(75);
+  const fovRef        = useRef(90);
   const draggingRef   = useRef(false);
   const lastMouseRef  = useRef({ x: 0, y: 0 });
 
@@ -586,7 +586,7 @@ export default function PanoramaViewer({
     const threeScene = new THREE.Scene();
     threeSceneRef.current = threeScene;
 
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(90, container.clientWidth / container.clientHeight, 0.1, 2000);
     camera.rotation.order = 'YXZ';
     cameraRef.current = camera;
 
@@ -1469,7 +1469,7 @@ export default function PanoramaViewer({
     const dy = e.clientY - lastMouseRef.current.y;
     lastMouseRef.current = { x: e.clientX, y: e.clientY };
 
-    const sensitivity = (fovRef.current / 75) * 0.25 * (Math.PI / 180);
+    const sensitivity = (fovRef.current / 90) * 0.25 * (Math.PI / 180);
     yawRef.current   += dx * sensitivity;
     pitchRef.current -= dy * sensitivity;
     pitchRef.current  = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitchRef.current));
@@ -1503,7 +1503,7 @@ export default function PanoramaViewer({
       const dx = e.touches[0].clientX - lastTouchRef.current.x;
       const dy = e.touches[0].clientY - lastTouchRef.current.y;
       lastTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      const s = (fovRef.current / 75) * 0.3 * (Math.PI / 180);
+      const s = (fovRef.current / 90) * 0.3 * (Math.PI / 180);
       yawRef.current   += dx * s;
       pitchRef.current -= dy * s;
       pitchRef.current  = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitchRef.current));
