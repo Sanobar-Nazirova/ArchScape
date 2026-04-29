@@ -451,6 +451,12 @@ export default function PanoramaViewer({
   onHotspotReposition,
 }: PanoramaViewerProps) {
   const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes, setPendingStartView } = useTourStore();
+
+  // Stable refs so XR event handlers always see fresh values
+  const scenesRef        = useRef(scenes);
+  const setActiveSceneRef = useRef(setActiveScene);
+  useEffect(() => { scenesRef.current = scenes; },           [scenes]);
+  useEffect(() => { setActiveSceneRef.current = setActiveScene; }, [setActiveScene]);
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
   // ── Three.js refs ──────────────────────────────────────────────────────
@@ -585,39 +591,191 @@ export default function PanoramaViewer({
     threeScene.add(mesh);
     sphereRef.current = mesh;
 
-    // ── WebXR controllers (ray + trigger navigation) ───────────────────
+    // ── WebXR controllers + left wrist menu ───────────────────────────
     const rayLineMat = new THREE.LineBasicMaterial({ color: 0xe07b3f, transparent: true, opacity: 0.75 });
     const tempMatrix = new THREE.Matrix4();
+    const raycaster  = new THREE.Raycaster();
+
+    // ── Build wrist menu panel (attached to left controller) ───────────
+    const BTN_DEFS = [
+      { id: 'prev',  label: '◀',  sub: 'Prev',  col: '#e07b3f' },
+      { id: 'next',  label: '▶',  sub: 'Next',  col: '#e07b3f' },
+      { id: 'reset', label: '⟳',  sub: 'Reset', col: '#3bbfb5' },
+      { id: 'mute',  label: '🔊', sub: 'Mute',  col: '#3bbfb5' },
+      { id: 'exit',  label: '✕',  sub: 'Exit',  col: '#e05454' },
+    ] as const;
+    type BtnId = typeof BTN_DEFS[number]['id'];
+
+    const BTN_SIZE = 0.030;  // metres each button square
+    const BTN_GAP  = 0.008;
+    const PANEL_W  = BTN_DEFS.length * BTN_SIZE + (BTN_DEFS.length + 1) * BTN_GAP;
+    const PANEL_H  = BTN_SIZE + BTN_GAP * 2 + 0.018; // extra row for label
+
+    // Canvas panel background
+    const PC = 256, PR = Math.round(PC * (PANEL_H / PANEL_W));
+    const panelCvs = document.createElement('canvas');
+    panelCvs.width = PC; panelCvs.height = PR;
+    const pctx = panelCvs.getContext('2d')!;
+    pctx.clearRect(0, 0, PC, PR);
+    pctx.fillStyle = 'rgba(18,18,28,0.92)';
+    pctx.roundRect(0, 0, PC, PR, 14); pctx.fill();
+    pctx.strokeStyle = 'rgba(224,123,63,0.55)'; pctx.lineWidth = 2;
+    pctx.roundRect(1, 1, PC - 2, PR - 2, 13); pctx.stroke();
+    // Title
+    pctx.fillStyle = 'rgba(224,221,216,0.6)';
+    pctx.font = `bold ${Math.round(PR * 0.14)}px Inter,sans-serif`;
+    pctx.textAlign = 'center';
+    pctx.fillText('MENU', PC / 2, PR * 0.18);
+
+    const wristGroup = new THREE.Group();
+    const panelMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(PANEL_W, PANEL_H),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(panelCvs), transparent: true, side: THREE.DoubleSide, depthTest: false }),
+    );
+    wristGroup.add(panelMesh);
+
+    // Build individual button meshes
+    const btnMeshes: Array<{ mesh: THREE.Mesh; id: BtnId }> = [];
+
+    BTN_DEFS.forEach((def, i) => {
+      const bCvs = document.createElement('canvas');
+      bCvs.width = bCvs.height = 128;
+      const bctx = bCvs.getContext('2d')!;
+
+      const drawBtn = (hovered: boolean) => {
+        bctx.clearRect(0, 0, 128, 128);
+        bctx.fillStyle = hovered ? def.col : 'rgba(35,35,50,0.95)';
+        bctx.roundRect(4, 4, 120, 120, 18); bctx.fill();
+        bctx.strokeStyle = def.col; bctx.lineWidth = hovered ? 0 : 3;
+        bctx.roundRect(4, 4, 120, 120, 18); bctx.stroke();
+        // Icon
+        bctx.fillStyle = hovered ? '#fff' : def.col;
+        bctx.font = 'bold 40px Inter,sans-serif';
+        bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
+        bctx.fillText(def.label, 64, 56);
+        // Sub-label
+        bctx.font = `bold 20px Inter,sans-serif`;
+        bctx.fillStyle = hovered ? 'rgba(255,255,255,0.9)' : 'rgba(224,221,216,0.55)';
+        bctx.fillText(def.sub, 64, 100);
+      };
+      drawBtn(false);
+
+      const tex = new THREE.CanvasTexture(bCvs);
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(BTN_SIZE, BTN_SIZE),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthTest: false }),
+      );
+
+      // Layout horizontally across panel
+      const totalW = BTN_DEFS.length * BTN_SIZE + (BTN_DEFS.length - 1) * BTN_GAP;
+      const startX = -totalW / 2 + BTN_SIZE / 2;
+      mesh.position.set(startX + i * (BTN_SIZE + BTN_GAP), -BTN_GAP * 0.5, 0.001);
+      mesh.userData.btnId = def.id;
+      mesh.userData.drawBtn = drawBtn;
+      mesh.userData.btnTex  = tex;
+      wristGroup.add(mesh);
+      btnMeshes.push({ mesh, id: def.id });
+    });
+
+    // Attach above left controller (wrist position)
+    wristGroup.position.set(0, 0.055, -0.01);
+    wristGroup.rotation.x = -0.6; // tilt face up toward user
+    wristGroup.userData.wristMenu = true;
+
+    // Audio mute state
+    let audioMuted = false;
+
+    const activateBtn = (id: BtnId) => {
+      const sc    = sceneRef.current;
+      const allSc = scenesRef.current;
+      const idx   = allSc.findIndex(s => s.id === sc?.id);
+      switch (id) {
+        case 'prev':
+          if (idx > 0) setActiveSceneRef.current(allSc[idx - 1].id);
+          break;
+        case 'next':
+          if (idx < allSc.length - 1) setActiveSceneRef.current(allSc[idx + 1].id);
+          break;
+        case 'reset':
+          if (sc) { yawRef.current = sc.initialYaw; pitchRef.current = sc.initialPitch; }
+          break;
+        case 'mute':
+          audioMuted = !audioMuted;
+          document.querySelectorAll<HTMLAudioElement>('audio').forEach(a => { a.muted = audioMuted; });
+          // Update mute button label
+          btnMeshes.find(b => b.id === 'mute')?.mesh.userData.drawBtn?.(false);
+          btnMeshes.find(b => b.id === 'mute')!.mesh.userData.btnTex.needsUpdate = true;
+          break;
+        case 'exit':
+          renderer.xr.getSession()?.end();
+          break;
+      }
+    };
 
     for (let ci = 0; ci < 2; ci++) {
       const controller = renderer.xr.getController(ci);
+      // Ray line
       const rayGeo = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0, 0, -500),
       ]);
-      controller.add(new THREE.Line(rayGeo, rayLineMat));
+      controller.add(new THREE.Line(rayGeo, rayLineMat.clone()));
       threeScene.add(controller);
 
+      // Attach wrist menu to left controller (index 0 / left handedness)
+      if (ci === 0) controller.add(wristGroup);
+
       controller.addEventListener('select', () => {
-        // Raycast controller direction against hotspot world positions
         tempMatrix.identity().extractRotation(controller.matrixWorld);
-        const rayOrigin = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-        const rayDir    = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+        raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+
+        // Check wrist menu buttons first
+        const btnHits = raycaster.intersectObjects(btnMeshes.map(b => b.mesh));
+        if (btnHits.length > 0) {
+          const hit = btnHits[0].object as THREE.Mesh;
+          activateBtn(hit.userData.btnId as BtnId);
+          return;
+        }
+
+        // Otherwise navigate via hotspot proximity
+        const rayOrigin = raycaster.ray.origin.clone();
+        const rayDir    = raycaster.ray.direction.clone();
         const sc = sceneRef.current;
         if (!sc) return;
-        let best: { hs: typeof sc.hotspots[0]; dist: number } | null = null;
+        let best: { hs: typeof sc.hotspots[0]; proj: number } | null = null;
         for (const hs of sc.hotspots) {
           const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
           const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(490);
-          // Distance from ray to point
           const toPoint = pos.clone().sub(rayOrigin);
           const proj    = toPoint.dot(rayDir);
           const dist    = toPoint.clone().sub(rayDir.clone().multiplyScalar(proj)).length();
-          if (dist < 35 && (!best || proj > 0)) best = { hs, dist };
+          if (dist < 35 && (!best || proj > best.proj)) best = { hs, proj };
         }
         if (best) onHotspotClickRef.current(best.hs);
       });
     }
+
+    // Hover highlight — check every frame in animate, update button textures
+    const updateBtnHover = () => {
+      for (let ci = 0; ci < 2; ci++) {
+        const ctrl = renderer.xr.getController(ci);
+        if (!ctrl.visible) continue;
+        tempMatrix.identity().extractRotation(ctrl.matrixWorld);
+        raycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+        const hits = raycaster.intersectObjects(btnMeshes.map(b => b.mesh));
+        const hitId = hits[0]?.object.userData.btnId ?? null;
+        btnMeshes.forEach(({ mesh, id }) => {
+          const hov = id === hitId;
+          if (mesh.userData.lastHover !== hov) {
+            mesh.userData.lastHover = hov;
+            mesh.userData.drawBtn?.(hov);
+            (mesh.userData.btnTex as THREE.CanvasTexture).needsUpdate = true;
+          }
+        });
+      }
+    };
 
     // Animation loop (setAnimationLoop required for WebXR)
     let frame = 0;
@@ -671,6 +829,9 @@ export default function PanoramaViewer({
         }
         if (frame % 10 === 0) setMinimapYaw(yawRef.current);
       }
+
+      // Update wrist menu button hover highlight every 3 frames
+      if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover();
 
       renderer.render(threeScene, cam);
     };
