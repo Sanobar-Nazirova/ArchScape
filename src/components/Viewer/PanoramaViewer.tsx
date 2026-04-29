@@ -591,191 +591,278 @@ export default function PanoramaViewer({
     threeScene.add(mesh);
     sphereRef.current = mesh;
 
-    // ── WebXR controllers + left wrist menu ───────────────────────────
-    const rayLineMat = new THREE.LineBasicMaterial({ color: 0xe07b3f, transparent: true, opacity: 0.75 });
-    const tempMatrix = new THREE.Matrix4();
-    const raycaster  = new THREE.Raycaster();
+    // ── WebXR controllers ─────────────────────────────────────────────
+    const raycaster   = new THREE.Raycaster();
+    const tmpMat      = new THREE.Matrix4();
 
-    // ── Build wrist menu panel (attached to left controller) ───────────
-    const BTN_DEFS = [
-      { id: 'prev',  label: '◀',  sub: 'Prev',  col: '#e07b3f' },
-      { id: 'next',  label: '▶',  sub: 'Next',  col: '#e07b3f' },
-      { id: 'reset', label: '⟳',  sub: 'Reset', col: '#3bbfb5' },
-      { id: 'mute',  label: '🔊', sub: 'Mute',  col: '#3bbfb5' },
-      { id: 'exit',  label: '✕',  sub: 'Exit',  col: '#e05454' },
-    ] as const;
-    type BtnId = typeof BTN_DEFS[number]['id'];
+    // Helper: make a ray line mesh
+    const makeRay = (color: number) => {
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -500),
+      ]);
+      return new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.8 }));
+    };
 
-    const BTN_SIZE = 0.030;  // metres each button square
-    const BTN_GAP  = 0.008;
-    const PANEL_W  = BTN_DEFS.length * BTN_SIZE + (BTN_DEFS.length + 1) * BTN_GAP;
-    const PANEL_H  = BTN_SIZE + BTN_GAP * 2 + 0.018; // extra row for label
+    // ── Left controller panel (popup) ─────────────────────────────────
+    const PW = 0.22, PH = 0.28;           // panel dimensions (metres)
+    const PX = 512,  PY = Math.round(512 * PH / PW);  // canvas resolution
+    const ROWS_VISIBLE = 5;
 
-    // Canvas panel background
-    const PC = 256, PR = Math.round(PC * (PANEL_H / PANEL_W));
+    let panelOpen    = false;
+    let panelScroll  = 0;               // first visible scene index
+    let audioMuted   = false;
+    let prevSqueeze  = false;           // for edge detection
+
+    // Panel canvas + mesh
     const panelCvs = document.createElement('canvas');
-    panelCvs.width = PC; panelCvs.height = PR;
-    const pctx = panelCvs.getContext('2d')!;
-    pctx.clearRect(0, 0, PC, PR);
-    pctx.fillStyle = 'rgba(18,18,28,0.92)';
-    pctx.roundRect(0, 0, PC, PR, 14); pctx.fill();
-    pctx.strokeStyle = 'rgba(224,123,63,0.55)'; pctx.lineWidth = 2;
-    pctx.roundRect(1, 1, PC - 2, PR - 2, 13); pctx.stroke();
-    // Title
-    pctx.fillStyle = 'rgba(224,221,216,0.6)';
-    pctx.font = `bold ${Math.round(PR * 0.14)}px Inter,sans-serif`;
-    pctx.textAlign = 'center';
-    pctx.fillText('MENU', PC / 2, PR * 0.18);
-
-    const wristGroup = new THREE.Group();
+    panelCvs.width = PX; panelCvs.height = PY;
+    const panelTex = new THREE.CanvasTexture(panelCvs);
     const panelMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(PANEL_W, PANEL_H),
-      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(panelCvs), transparent: true, side: THREE.DoubleSide, depthTest: false }),
+      new THREE.PlaneGeometry(PW, PH),
+      new THREE.MeshBasicMaterial({ map: panelTex, transparent: true, side: THREE.DoubleSide, depthTest: false }),
     );
-    wristGroup.add(panelMesh);
+    panelMesh.visible = false;
+    // Floats in front of and above the left controller
+    panelMesh.position.set(0.01, 0.18, -0.08);
+    panelMesh.rotation.x = -0.4;
+    panelMesh.userData.isPanel = true;
 
-    // Build individual button meshes
-    const btnMeshes: Array<{ mesh: THREE.Mesh; id: BtnId }> = [];
+    // All interactive meshes inside the panel (rebuilt each redraw)
+    type PanelBtn = { mesh: THREE.Mesh; action: string };
+    let panelBtns: PanelBtn[] = [];
+    const panelGroup = new THREE.Group();
+    panelGroup.add(panelMesh);
 
-    BTN_DEFS.forEach((def, i) => {
-      const bCvs = document.createElement('canvas');
-      bCvs.width = bCvs.height = 128;
-      const bctx = bCvs.getContext('2d')!;
+    // Canvas drawing helpers
+    const pc = panelCvs.getContext('2d')!;
+    const fillRR = (x: number, y: number, w: number, h: number, r: number, fill: string) => {
+      pc.fillStyle = fill; pc.beginPath(); pc.roundRect(x, y, w, h, r); pc.fill();
+    };
+    const strokeRR = (x: number, y: number, w: number, h: number, r: number, stroke: string, lw: number) => {
+      pc.strokeStyle = stroke; pc.lineWidth = lw; pc.beginPath(); pc.roundRect(x, y, w, h, r); pc.stroke();
+    };
 
-      const drawBtn = (hovered: boolean) => {
-        bctx.clearRect(0, 0, 128, 128);
-        bctx.fillStyle = hovered ? def.col : 'rgba(35,35,50,0.95)';
-        bctx.roundRect(4, 4, 120, 120, 18); bctx.fill();
-        bctx.strokeStyle = def.col; bctx.lineWidth = hovered ? 0 : 3;
-        bctx.roundRect(4, 4, 120, 120, 18); bctx.stroke();
-        // Icon
-        bctx.fillStyle = hovered ? '#fff' : def.col;
-        bctx.font = 'bold 40px Inter,sans-serif';
-        bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
-        bctx.fillText(def.label, 64, 56);
-        // Sub-label
-        bctx.font = `bold 20px Inter,sans-serif`;
-        bctx.fillStyle = hovered ? 'rgba(255,255,255,0.9)' : 'rgba(224,221,216,0.55)';
-        bctx.fillText(def.sub, 64, 100);
-      };
-      drawBtn(false);
-
-      const tex = new THREE.CanvasTexture(bCvs);
+    // Build an invisible hit-test plane for each row/button, parented to panelMesh
+    const makePanelHitPlane = (nx: number, ny: number, nw: number, nh: number, action: string): THREE.Mesh => {
+      // nx,ny,nw,nh are 0-1 normalised positions on the panel canvas
       const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(BTN_SIZE, BTN_SIZE),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthTest: false }),
+        new THREE.PlaneGeometry(nw * PW, nh * PH),
+        new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide, depthTest: false }),
       );
+      mesh.position.set((nx + nw / 2 - 0.5) * PW, -(ny + nh / 2 - 0.5) * PH, 0.002);
+      mesh.userData.action = action;
+      panelMesh.add(mesh);
+      return mesh;
+    };
 
-      // Layout horizontally across panel
-      const totalW = BTN_DEFS.length * BTN_SIZE + (BTN_DEFS.length - 1) * BTN_GAP;
-      const startX = -totalW / 2 + BTN_SIZE / 2;
-      mesh.position.set(startX + i * (BTN_SIZE + BTN_GAP), -BTN_GAP * 0.5, 0.001);
-      mesh.userData.btnId = def.id;
-      mesh.userData.drawBtn = drawBtn;
-      mesh.userData.btnTex  = tex;
-      wristGroup.add(mesh);
-      btnMeshes.push({ mesh, id: def.id });
-    });
+    const redrawPanel = () => {
+      const allSc    = scenesRef.current;
+      const activeSc = sceneRef.current;
+      pc.clearRect(0, 0, PX, PY);
 
-    // Attach above left controller (wrist position)
-    wristGroup.position.set(0, 0.055, -0.01);
-    wristGroup.rotation.x = -0.6; // tilt face up toward user
-    wristGroup.userData.wristMenu = true;
+      // Background
+      fillRR(0, 0, PX, PY, 24, 'rgba(14,14,22,0.96)');
+      strokeRR(1, 1, PX - 2, PY - 2, 23, 'rgba(224,123,63,0.6)', 3);
 
-    // Audio mute state
-    let audioMuted = false;
+      // Header
+      fillRR(0, 0, PX, PY * 0.12, 24, 'rgba(224,123,63,0.15)');
+      pc.fillStyle = '#e07b3f';
+      pc.font = `bold ${PX * 0.052}px Inter,sans-serif`;
+      pc.textAlign = 'left'; pc.textBaseline = 'middle';
+      pc.fillText('📍 SCENES', PX * 0.06, PY * 0.06);
+      pc.fillStyle = 'rgba(224,221,216,0.45)';
+      pc.font      = `${PX * 0.038}px Inter,sans-serif`;
+      pc.textAlign = 'right';
+      pc.fillText(`${allSc.findIndex(s => s.id === activeSc?.id) + 1} / ${allSc.length}`, PX * 0.94, PY * 0.06);
 
-    const activateBtn = (id: BtnId) => {
-      const sc    = sceneRef.current;
-      const allSc = scenesRef.current;
-      const idx   = allSc.findIndex(s => s.id === sc?.id);
-      switch (id) {
-        case 'prev':
-          if (idx > 0) setActiveSceneRef.current(allSc[idx - 1].id);
-          break;
-        case 'next':
-          if (idx < allSc.length - 1) setActiveSceneRef.current(allSc[idx + 1].id);
-          break;
-        case 'reset':
+      // Scene rows
+      const rowH    = PY * 0.115;
+      const rowTop  = PY * 0.13;
+      const visible = allSc.slice(panelScroll, panelScroll + ROWS_VISIBLE);
+      visible.forEach((sc, i) => {
+        const isActive = sc.id === activeSc?.id;
+        const y = rowTop + i * (rowH + PY * 0.012);
+        if (isActive) fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(224,123,63,0.22)');
+        strokeRR(PX * 0.03, y, PX * 0.94, rowH, 10, isActive ? '#e07b3f' : 'rgba(255,255,255,0.08)', isActive ? 2.5 : 1);
+        // Index pill
+        fillRR(PX * 0.055, y + rowH * 0.2, PX * 0.09, rowH * 0.6, 6, isActive ? '#e07b3f' : 'rgba(255,255,255,0.1)');
+        pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.6)';
+        pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
+        pc.textAlign = 'center'; pc.textBaseline = 'middle';
+        pc.fillText(String(panelScroll + i + 1), PX * 0.1, y + rowH * 0.5);
+        // Name
+        pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.85)';
+        pc.font = `${isActive ? 'bold ' : ''}${PX * 0.044}px Inter,sans-serif`;
+        pc.textAlign = 'left'; pc.textBaseline = 'middle';
+        const maxW = PX * 0.72;
+        let name = sc.name;
+        while (pc.measureText(name).width > maxW && name.length > 3) name = name.slice(0, -2) + '…';
+        pc.fillText(name, PX * 0.175, y + rowH * 0.5);
+      });
+
+      // Scroll arrows
+      const arrowY = rowTop + ROWS_VISIBLE * (rowH + PY * 0.012) + PY * 0.01;
+      const canUp   = panelScroll > 0;
+      const canDown = panelScroll + ROWS_VISIBLE < allSc.length;
+      fillRR(PX * 0.03,  arrowY, PX * 0.44, PY * 0.065, 10, canUp   ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
+      fillRR(PX * 0.53,  arrowY, PX * 0.44, PY * 0.065, 10, canDown ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
+      pc.font = `bold ${PX * 0.05}px Inter,sans-serif`; pc.textAlign = 'center'; pc.textBaseline = 'middle';
+      pc.fillStyle = canUp   ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▲', PX * 0.25,  arrowY + PY * 0.032);
+      pc.fillStyle = canDown ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▼', PX * 0.75,  arrowY + PY * 0.032);
+
+      // Footer action buttons: Reset · Mute · Exit
+      const footerY = arrowY + PY * 0.085;
+      const footBtns = [
+        { label: '⟳ Reset', col: '#3bbfb5', action: 'reset' },
+        { label: audioMuted ? '🔇 Unmute' : '🔊 Mute', col: '#3bbfb5', action: 'mute' },
+        { label: '✕ Exit',  col: '#e05454', action: 'exit'  },
+      ];
+      const fbW = (PX * 0.94 - 2 * PX * 0.02) / 3;
+      footBtns.forEach((fb, i) => {
+        const fx = PX * 0.03 + i * (fbW + PX * 0.02);
+        fillRR(fx, footerY, fbW, PY * 0.07, 10, `${fb.col}22`);
+        strokeRR(fx, footerY, fbW, PY * 0.07, 10, fb.col, 1.5);
+        pc.fillStyle = fb.col; pc.font = `bold ${PX * 0.038}px Inter,sans-serif`;
+        pc.textAlign = 'center'; pc.textBaseline = 'middle';
+        pc.fillText(fb.label, fx + fbW / 2, footerY + PY * 0.035);
+      });
+
+      panelTex.needsUpdate = true;
+
+      // Rebuild hit planes
+      panelBtns.forEach(b => panelMesh.remove(b.mesh));
+      panelBtns = [];
+      visible.forEach((sc, i) => {
+        const rowNY = (rowTop + i * (rowH + PY * 0.012)) / PY;
+        const mesh  = makePanelHitPlane(0.03, rowNY, 0.94, rowH / PY, `scene:${sc.id}`);
+        panelBtns.push({ mesh, action: `scene:${sc.id}` });
+      });
+      // Scroll arrows
+      const arrowNY = arrowY / PY;
+      panelBtns.push({ mesh: makePanelHitPlane(0.03, arrowNY, 0.44, 0.065, 'scrollUp'),   action: 'scrollUp' });
+      panelBtns.push({ mesh: makePanelHitPlane(0.53, arrowNY, 0.44, 0.065, 'scrollDown'), action: 'scrollDown' });
+      // Footer buttons
+      const footNY = arrowY / PY + 0.085;
+      footBtns.forEach((fb, i) => {
+        const nw = (0.94 - 2 * 0.02) / 3;
+        const nx = 0.03 + i * (nw + 0.02);
+        panelBtns.push({ mesh: makePanelHitPlane(nx, footNY, nw, 0.07, fb.action), action: fb.action });
+      });
+    };
+
+    const activatePanelAction = (action: string) => {
+      if (action.startsWith('scene:')) {
+        setActiveSceneRef.current(action.slice(6));
+        panelOpen = false;
+        panelMesh.visible = false;
+        return;
+      }
+      switch (action) {
+        case 'scrollUp':
+          panelScroll = Math.max(0, panelScroll - 1);
+          redrawPanel(); break;
+        case 'scrollDown':
+          panelScroll = Math.min(Math.max(0, scenesRef.current.length - ROWS_VISIBLE), panelScroll + 1);
+          redrawPanel(); break;
+        case 'reset': {
+          const sc = sceneRef.current;
           if (sc) { yawRef.current = sc.initialYaw; pitchRef.current = sc.initialPitch; }
           break;
+        }
         case 'mute':
           audioMuted = !audioMuted;
           document.querySelectorAll<HTMLAudioElement>('audio').forEach(a => { a.muted = audioMuted; });
-          // Update mute button label
-          btnMeshes.find(b => b.id === 'mute')?.mesh.userData.drawBtn?.(false);
-          btnMeshes.find(b => b.id === 'mute')!.mesh.userData.btnTex.needsUpdate = true;
-          break;
+          redrawPanel(); break;
         case 'exit':
           renderer.xr.getSession()?.end();
           break;
       }
     };
 
-    for (let ci = 0; ci < 2; ci++) {
-      const controller = renderer.xr.getController(ci);
-      // Ray line
-      const rayGeo = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, -500),
-      ]);
-      controller.add(new THREE.Line(rayGeo, rayLineMat.clone()));
-      threeScene.add(controller);
+    // ── Set up left (0) and right (1) controllers ──────────────────────
+    const leftCtrl  = renderer.xr.getController(0);
+    const rightCtrl = renderer.xr.getController(1);
 
-      // Attach wrist menu to left controller (index 0 / left handedness)
-      if (ci === 0) controller.add(wristGroup);
+    // Left: dim orange ray + panel group
+    leftCtrl.add(makeRay(0xc96928));
+    leftCtrl.add(panelGroup);
+    threeScene.add(leftCtrl);
 
-      controller.addEventListener('select', () => {
-        tempMatrix.identity().extractRotation(controller.matrixWorld);
-        raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix).normalize();
+    // Right: bright teal ray — primary interaction controller
+    rightCtrl.add(makeRay(0x3bbfb5));
+    threeScene.add(rightCtrl);
 
-        // Check wrist menu buttons first
-        const btnHits = raycaster.intersectObjects(btnMeshes.map(b => b.mesh));
-        if (btnHits.length > 0) {
-          const hit = btnHits[0].object as THREE.Mesh;
-          activateBtn(hit.userData.btnId as BtnId);
+    // Right trigger → interact with panel buttons OR scene hotspots
+    rightCtrl.addEventListener('select', () => {
+      tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
+      raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
+      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
+
+      // Panel buttons (when open)
+      if (panelOpen && panelBtns.length > 0) {
+        const hits = raycaster.intersectObjects(panelBtns.map(b => b.mesh));
+        if (hits.length > 0) {
+          activatePanelAction(hits[0].object.userData.action as string);
           return;
         }
+      }
 
-        // Otherwise navigate via hotspot proximity
-        const rayOrigin = raycaster.ray.origin.clone();
-        const rayDir    = raycaster.ray.direction.clone();
-        const sc = sceneRef.current;
-        if (!sc) return;
-        let best: { hs: typeof sc.hotspots[0]; proj: number } | null = null;
-        for (const hs of sc.hotspots) {
-          const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
-          const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(490);
-          const toPoint = pos.clone().sub(rayOrigin);
-          const proj    = toPoint.dot(rayDir);
-          const dist    = toPoint.clone().sub(rayDir.clone().multiplyScalar(proj)).length();
-          if (dist < 35 && (!best || proj > best.proj)) best = { hs, proj };
-        }
-        if (best) onHotspotClickRef.current(best.hs);
-      });
-    }
+      // Scene hotspot navigation
+      const sc = sceneRef.current;
+      if (!sc) return;
+      const origin = raycaster.ray.origin.clone();
+      const dir    = raycaster.ray.direction.clone();
+      let best: { hs: typeof sc.hotspots[0]; proj: number } | null = null;
+      for (const hs of sc.hotspots) {
+        const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
+        const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(490);
+        const toP = pos.clone().sub(origin);
+        const proj = toP.dot(dir);
+        const dist = toP.clone().sub(dir.clone().multiplyScalar(proj)).length();
+        if (dist < 35 && (!best || proj > best.proj)) best = { hs, proj };
+      }
+      if (best) onHotspotClickRef.current(best.hs);
+    });
 
-    // Hover highlight — check every frame in animate, update button textures
+    // Left squeeze (grip) → toggle panel
+    // Detected in animate loop via gamepad API
     const updateBtnHover = () => {
-      for (let ci = 0; ci < 2; ci++) {
-        const ctrl = renderer.xr.getController(ci);
-        if (!ctrl.visible) continue;
-        tempMatrix.identity().extractRotation(ctrl.matrixWorld);
-        raycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
-        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix).normalize();
-        const hits = raycaster.intersectObjects(btnMeshes.map(b => b.mesh));
-        const hitId = hits[0]?.object.userData.btnId ?? null;
-        btnMeshes.forEach(({ mesh, id }) => {
-          const hov = id === hitId;
-          if (mesh.userData.lastHover !== hov) {
-            mesh.userData.lastHover = hov;
-            mesh.userData.drawBtn?.(hov);
-            (mesh.userData.btnTex as THREE.CanvasTexture).needsUpdate = true;
+      if (!renderer.xr.isPresenting) return;
+
+      // Left squeeze: toggle panel on press edge
+      const session = renderer.xr.getSession();
+      if (session) {
+        for (const src of session.inputSources) {
+          if (src.handedness === 'left' && src.gamepad) {
+            const squeeze = src.gamepad.buttons[1]?.pressed ?? false;
+            if (squeeze && !prevSqueeze) {
+              panelOpen = !panelOpen;
+              panelMesh.visible = panelOpen;
+              if (panelOpen) {
+                panelScroll = Math.max(0, (scenesRef.current.findIndex(s => s.id === sceneRef.current?.id) ?? 0) - 1);
+                redrawPanel();
+              }
+            }
+            prevSqueeze = squeeze;
           }
-        });
+        }
+      }
+
+      // Hover highlight: right controller over panel buttons
+      if (panelOpen && panelBtns.length > 0) {
+        tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
+        raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
+        const hits   = raycaster.intersectObjects(panelBtns.map(b => b.mesh));
+        const hitAction = hits[0]?.object.userData.action ?? null;
+        // Visual pulse: tint the panel border slightly when hovering
+        if (hitAction !== updateBtnHover._lastHit) {
+          updateBtnHover._lastHit = hitAction;
+          // Simple feedback: just redraw to reflect active state if needed
+        }
       }
     };
+    (updateBtnHover as any)._lastHit = null;
 
     // Animation loop (setAnimationLoop required for WebXR)
     let frame = 0;
