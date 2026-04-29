@@ -603,12 +603,14 @@ export default function PanoramaViewer({
     const raycaster   = new THREE.Raycaster();
     const tmpMat      = new THREE.Matrix4();
 
-    // Helper: make a ray line mesh
+    // Helper: make a visible ray beam (thin cylinder — WebGL ignores linewidth > 1)
     const makeRay = (color: number) => {
-      const geo = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -500),
-      ]);
-      return new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.8 }));
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthTest: false });
+      // 2 m beam; the raycaster still uses 500 for hotspot proximity
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.001, 2, 6), mat);
+      mesh.position.set(0, 0, -1);   // centred 1 m in front of controller
+      mesh.rotation.x = Math.PI / 2; // align cylinder with -Z axis
+      return mesh;
     };
 
     // ── Left controller panel (popup) ─────────────────────────────────
@@ -989,7 +991,7 @@ export default function PanoramaViewer({
     const rightCtrl = renderer.xr.getController(1);
 
     // Left: dim orange ray + panel group
-    leftCtrl.add(makeRay(0xc96928));
+    leftCtrl.add(makeRay(0xe07b3f));
     leftCtrl.add(panelGroup);
     threeScene.add(leftCtrl);
 
@@ -997,19 +999,43 @@ export default function PanoramaViewer({
     rightCtrl.add(makeRay(0x3bbfb5));
     threeScene.add(rightCtrl);
 
-    // Grip spaces → physical controller models (shown when holding controllers)
+    // Helper: simple controller body so something is always visible even if the
+    // XRControllerModelFactory CDN fetch fails (network-free environments).
+    const makeControllerBody = (color: number) => {
+      const g = new THREE.Group();
+      // Grip body — tapered cylinder approximating a controller handle
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.012, 0.018, 0.12, 10),
+        new THREE.MeshBasicMaterial({ color }),
+      );
+      body.position.set(0, -0.03, -0.02);
+      body.rotation.x = Math.PI * 0.15;
+      g.add(body);
+      // Small trigger bump
+      const bump = new THREE.Mesh(
+        new THREE.SphereGeometry(0.014, 8, 6),
+        new THREE.MeshBasicMaterial({ color }),
+      );
+      bump.position.set(0, 0.01, -0.04);
+      g.add(bump);
+      return g;
+    };
+
+    // Grip spaces — try the CDN model first; fallback geometry always present
     const leftGrip  = renderer.xr.getControllerGrip(0);
     const rightGrip = renderer.xr.getControllerGrip(1);
+    leftGrip.add(makeControllerBody(0xe07b3f));   // orange
+    rightGrip.add(makeControllerBody(0x3bbfb5));  // teal
     leftGrip.add(controllerModelFactory.createControllerModel(leftGrip));
     rightGrip.add(controllerModelFactory.createControllerModel(rightGrip));
     threeScene.add(leftGrip);
     threeScene.add(rightGrip);
 
-    // Hand spaces → hand mesh models (shown when using hand tracking)
+    // Hand spaces — 'spheres' uses Three.js geometry (no network required)
     const leftHand  = renderer.xr.getHand(0);
     const rightHand = renderer.xr.getHand(1);
-    leftHand.add(handModelFactory.createHandModel(leftHand, 'mesh'));
-    rightHand.add(handModelFactory.createHandModel(rightHand, 'mesh'));
+    leftHand.add(handModelFactory.createHandModel(leftHand, 'spheres'));
+    rightHand.add(handModelFactory.createHandModel(rightHand, 'spheres'));
     threeScene.add(leftHand);
     threeScene.add(rightHand);
 
