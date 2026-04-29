@@ -453,10 +453,16 @@ export default function PanoramaViewer({
   const { floorPlans, activeFloorPlanId, setActiveFloorPlan, setActiveScene, scenes, setPendingStartView } = useTourStore();
 
   // Stable refs so XR event handlers always see fresh values
-  const scenesRef        = useRef(scenes);
-  const setActiveSceneRef = useRef(setActiveScene);
-  useEffect(() => { scenesRef.current = scenes; },           [scenes]);
-  useEffect(() => { setActiveSceneRef.current = setActiveScene; }, [setActiveScene]);
+  const scenesRef             = useRef(scenes);
+  const setActiveSceneRef     = useRef(setActiveScene);
+  const floorPlansRef         = useRef(floorPlans);
+  const activeFloorPlanIdRef  = useRef(activeFloorPlanId);
+  const setActiveFloorPlanRef = useRef(setActiveFloorPlan);
+  useEffect(() => { scenesRef.current = scenes; },                        [scenes]);
+  useEffect(() => { setActiveSceneRef.current = setActiveScene; },        [setActiveScene]);
+  useEffect(() => { floorPlansRef.current = floorPlans; },                [floorPlans]);
+  useEffect(() => { activeFloorPlanIdRef.current = activeFloorPlanId; },  [activeFloorPlanId]);
+  useEffect(() => { setActiveFloorPlanRef.current = setActiveFloorPlan; },[setActiveFloorPlan]);
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
   // ── Three.js refs ──────────────────────────────────────────────────────
@@ -609,9 +615,11 @@ export default function PanoramaViewer({
     const ROWS_VISIBLE = 5;
 
     let panelOpen    = false;
+    let panelTab: 'scenes' | 'floorplan' = 'scenes';
     let panelScroll  = 0;               // first visible scene index
     let audioMuted   = false;
     let prevSqueeze  = false;           // for edge detection
+    const fpImgCache = new Map<string, HTMLImageElement>(); // floor plan image cache
 
     // Panel canvas + mesh
     const panelCvs = document.createElement('canvas');
@@ -655,6 +663,15 @@ export default function PanoramaViewer({
       return mesh;
     };
 
+    // ── Helpers for drawing floor plan markers ─────────────────────────
+    const getFpImage = (fp: { id: string; imageUrl: string }): HTMLImageElement | null => {
+      if (fpImgCache.has(fp.id)) return fpImgCache.get(fp.id)!;
+      const img = new Image();
+      img.onload = () => { fpImgCache.set(fp.id, img); redrawPanel(); };
+      img.src = fp.imageUrl;
+      return null; // will trigger redraw once loaded
+    };
+
     const redrawPanel = () => {
       const allSc    = scenesRef.current;
       const activeSc = sceneRef.current;
@@ -664,90 +681,216 @@ export default function PanoramaViewer({
       fillRR(0, 0, PX, PY, 24, 'rgba(14,14,22,0.96)');
       strokeRR(1, 1, PX - 2, PY - 2, 23, 'rgba(224,123,63,0.6)', 3);
 
-      // Header
-      fillRR(0, 0, PX, PY * 0.12, 24, 'rgba(224,123,63,0.15)');
-      pc.fillStyle = '#e07b3f';
-      pc.font = `bold ${PX * 0.052}px Inter,sans-serif`;
-      pc.textAlign = 'left'; pc.textBaseline = 'middle';
-      pc.fillText('📍 SCENES', PX * 0.06, PY * 0.06);
-      pc.fillStyle = 'rgba(224,221,216,0.45)';
-      pc.font      = `${PX * 0.038}px Inter,sans-serif`;
-      pc.textAlign = 'right';
-      pc.fillText(`${allSc.findIndex(s => s.id === activeSc?.id) + 1} / ${allSc.length}`, PX * 0.94, PY * 0.06);
-
-      // Scene rows
-      const rowH    = PY * 0.115;
-      const rowTop  = PY * 0.13;
-      const visible = allSc.slice(panelScroll, panelScroll + ROWS_VISIBLE);
-      visible.forEach((sc, i) => {
-        const isActive = sc.id === activeSc?.id;
-        const y = rowTop + i * (rowH + PY * 0.012);
-        if (isActive) fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(224,123,63,0.22)');
-        strokeRR(PX * 0.03, y, PX * 0.94, rowH, 10, isActive ? '#e07b3f' : 'rgba(255,255,255,0.08)', isActive ? 2.5 : 1);
-        // Index pill
-        fillRR(PX * 0.055, y + rowH * 0.2, PX * 0.09, rowH * 0.6, 6, isActive ? '#e07b3f' : 'rgba(255,255,255,0.1)');
-        pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.6)';
-        pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
-        pc.textAlign = 'center'; pc.textBaseline = 'middle';
-        pc.fillText(String(panelScroll + i + 1), PX * 0.1, y + rowH * 0.5);
-        // Name
-        pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.85)';
-        pc.font = `${isActive ? 'bold ' : ''}${PX * 0.044}px Inter,sans-serif`;
-        pc.textAlign = 'left'; pc.textBaseline = 'middle';
-        const maxW = PX * 0.72;
-        let name = sc.name;
-        while (pc.measureText(name).width > maxW && name.length > 3) name = name.slice(0, -2) + '…';
-        pc.fillText(name, PX * 0.175, y + rowH * 0.5);
-      });
-
-      // Scroll arrows
-      const arrowY = rowTop + ROWS_VISIBLE * (rowH + PY * 0.012) + PY * 0.01;
-      const canUp   = panelScroll > 0;
-      const canDown = panelScroll + ROWS_VISIBLE < allSc.length;
-      fillRR(PX * 0.03,  arrowY, PX * 0.44, PY * 0.065, 10, canUp   ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
-      fillRR(PX * 0.53,  arrowY, PX * 0.44, PY * 0.065, 10, canDown ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
-      pc.font = `bold ${PX * 0.05}px Inter,sans-serif`; pc.textAlign = 'center'; pc.textBaseline = 'middle';
-      pc.fillStyle = canUp   ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▲', PX * 0.25,  arrowY + PY * 0.032);
-      pc.fillStyle = canDown ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▼', PX * 0.75,  arrowY + PY * 0.032);
-
-      // Footer action buttons: Reset · Mute · Exit
-      const footerY = arrowY + PY * 0.085;
-      const footBtns = [
-        { label: '⟳ Reset', col: '#3bbfb5', action: 'reset' },
-        { label: audioMuted ? '🔇 Unmute' : '🔊 Mute', col: '#3bbfb5', action: 'mute' },
-        { label: '✕ Exit',  col: '#e05454', action: 'exit'  },
+      // ── Tab bar ──────────────────────────────────────────────────────
+      const tabBarH = PY * 0.10;
+      const tabBarY = PY * 0.0;
+      const tabW    = PX * 0.47;
+      const tabGap  = PX * 0.02;
+      const tabs = [
+        { label: '📍 Scenes',    key: 'scenes'    as const },
+        { label: '🗺 Floor Plan', key: 'floorplan' as const },
       ];
-      const fbW = (PX * 0.94 - 2 * PX * 0.02) / 3;
-      footBtns.forEach((fb, i) => {
-        const fx = PX * 0.03 + i * (fbW + PX * 0.02);
-        fillRR(fx, footerY, fbW, PY * 0.07, 10, `${fb.col}22`);
-        strokeRR(fx, footerY, fbW, PY * 0.07, 10, fb.col, 1.5);
-        pc.fillStyle = fb.col; pc.font = `bold ${PX * 0.038}px Inter,sans-serif`;
+      tabs.forEach((t, i) => {
+        const tx = PX * 0.02 + i * (tabW + tabGap);
+        const active = panelTab === t.key;
+        fillRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
+          active ? 'rgba(224,123,63,0.28)' : 'rgba(255,255,255,0.05)');
+        strokeRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
+          active ? '#e07b3f' : 'rgba(255,255,255,0.12)', active ? 2 : 1);
+        pc.fillStyle = active ? '#e07b3f' : 'rgba(224,221,216,0.55)';
+        pc.font = `${active ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
         pc.textAlign = 'center'; pc.textBaseline = 'middle';
-        pc.fillText(fb.label, fx + fbW / 2, footerY + PY * 0.035);
+        pc.fillText(t.label, tx + tabW / 2, tabBarY + tabBarH * 0.45);
       });
 
-      panelTex.needsUpdate = true;
+      // Separator
+      pc.strokeStyle = 'rgba(224,123,63,0.25)'; pc.lineWidth = 1;
+      pc.beginPath(); pc.moveTo(PX * 0.03, tabBarH); pc.lineTo(PX * 0.97, tabBarH); pc.stroke();
+
+      const contentTop = tabBarH + PY * 0.01;
 
       // Rebuild hit planes
       panelBtns.forEach(b => panelMesh.remove(b.mesh));
       panelBtns = [];
-      visible.forEach((sc, i) => {
-        const rowNY = (rowTop + i * (rowH + PY * 0.012)) / PY;
-        const mesh  = makePanelHitPlane(0.03, rowNY, 0.94, rowH / PY, `scene:${sc.id}`);
-        panelBtns.push({ mesh, action: `scene:${sc.id}` });
+      // Tab buttons always present
+      tabs.forEach((t, i) => {
+        const nx = 0.02 + i * ((0.47 + 0.02));
+        panelBtns.push({ mesh: makePanelHitPlane(nx, 0.01, 0.47, tabBarH / PY * 0.82, `tab:${t.key}`), action: `tab:${t.key}` });
       });
-      // Scroll arrows
-      const arrowNY = arrowY / PY;
-      panelBtns.push({ mesh: makePanelHitPlane(0.03, arrowNY, 0.44, 0.065, 'scrollUp'),   action: 'scrollUp' });
-      panelBtns.push({ mesh: makePanelHitPlane(0.53, arrowNY, 0.44, 0.065, 'scrollDown'), action: 'scrollDown' });
-      // Footer buttons
-      const footNY = arrowY / PY + 0.085;
-      footBtns.forEach((fb, i) => {
-        const nw = (0.94 - 2 * 0.02) / 3;
-        const nx = 0.03 + i * (nw + 0.02);
-        panelBtns.push({ mesh: makePanelHitPlane(nx, footNY, nw, 0.07, fb.action), action: fb.action });
-      });
+
+      // ── SCENES tab ───────────────────────────────────────────────────
+      if (panelTab === 'scenes') {
+        // Scene count label
+        pc.fillStyle = 'rgba(224,221,216,0.45)';
+        pc.font = `${PX * 0.038}px Inter,sans-serif`;
+        pc.textAlign = 'right'; pc.textBaseline = 'middle';
+        pc.fillText(`${allSc.findIndex(s => s.id === activeSc?.id) + 1} / ${allSc.length}`, PX * 0.97, contentTop + PY * 0.025);
+
+        const rowH    = PY * 0.107;
+        const rowTop  = contentTop + PY * 0.05;
+        const visible = allSc.slice(panelScroll, panelScroll + ROWS_VISIBLE);
+        visible.forEach((sc, i) => {
+          const isActive = sc.id === activeSc?.id;
+          const y = rowTop + i * (rowH + PY * 0.012);
+          if (isActive) fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(224,123,63,0.22)');
+          strokeRR(PX * 0.03, y, PX * 0.94, rowH, 10, isActive ? '#e07b3f' : 'rgba(255,255,255,0.08)', isActive ? 2.5 : 1);
+          fillRR(PX * 0.055, y + rowH * 0.2, PX * 0.09, rowH * 0.6, 6, isActive ? '#e07b3f' : 'rgba(255,255,255,0.1)');
+          pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.6)';
+          pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText(String(panelScroll + i + 1), PX * 0.1, y + rowH * 0.5);
+          pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.85)';
+          pc.font = `${isActive ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
+          pc.textAlign = 'left'; pc.textBaseline = 'middle';
+          const maxW = PX * 0.72;
+          let name = sc.name;
+          while (pc.measureText(name).width > maxW && name.length > 3) name = name.slice(0, -2) + '…';
+          pc.fillText(name, PX * 0.175, y + rowH * 0.5);
+          const rowNY = (rowTop + i * (rowH + PY * 0.012)) / PY;
+          panelBtns.push({ mesh: makePanelHitPlane(0.03, rowNY, 0.94, rowH / PY, `scene:${sc.id}`), action: `scene:${sc.id}` });
+        });
+
+        const arrowY  = rowTop + ROWS_VISIBLE * (rowH + PY * 0.012) + PY * 0.01;
+        const canUp   = panelScroll > 0;
+        const canDown = panelScroll + ROWS_VISIBLE < allSc.length;
+        fillRR(PX * 0.03, arrowY, PX * 0.44, PY * 0.06, 10, canUp   ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
+        fillRR(PX * 0.53, arrowY, PX * 0.44, PY * 0.06, 10, canDown ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
+        pc.font = `bold ${PX * 0.05}px Inter,sans-serif`; pc.textAlign = 'center'; pc.textBaseline = 'middle';
+        pc.fillStyle = canUp   ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▲', PX * 0.25, arrowY + PY * 0.03);
+        pc.fillStyle = canDown ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▼', PX * 0.75, arrowY + PY * 0.03);
+        const arrowNY = arrowY / PY;
+        panelBtns.push({ mesh: makePanelHitPlane(0.03, arrowNY, 0.44, 0.06, 'scrollUp'),   action: 'scrollUp' });
+        panelBtns.push({ mesh: makePanelHitPlane(0.53, arrowNY, 0.44, 0.06, 'scrollDown'), action: 'scrollDown' });
+
+        const footerY  = arrowY + PY * 0.08;
+        const footBtns = [
+          { label: '⟳ Reset', col: '#3bbfb5', action: 'reset' },
+          { label: audioMuted ? '🔇 Unmute' : '🔊 Mute', col: '#3bbfb5', action: 'mute' },
+          { label: '✕ Exit',  col: '#e05454', action: 'exit'  },
+        ];
+        const fbW = (PX * 0.94 - 2 * PX * 0.02) / 3;
+        footBtns.forEach((fb, i) => {
+          const fx = PX * 0.03 + i * (fbW + PX * 0.02);
+          fillRR(fx, footerY, fbW, PY * 0.065, 10, `${fb.col}22`);
+          strokeRR(fx, footerY, fbW, PY * 0.065, 10, fb.col, 1.5);
+          pc.fillStyle = fb.col; pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText(fb.label, fx + fbW / 2, footerY + PY * 0.032);
+          const nw = (0.94 - 2 * 0.02) / 3;
+          const nx = 0.03 + i * (nw + 0.02);
+          panelBtns.push({ mesh: makePanelHitPlane(nx, footerY / PY, nw, 0.065, fb.action), action: fb.action });
+        });
+      }
+
+      // ── FLOOR PLAN tab ───────────────────────────────────────────────
+      if (panelTab === 'floorplan') {
+        const allFp  = floorPlansRef.current;
+        const actFpId = activeFloorPlanIdRef.current;
+        const activeFp = allFp.find(f => f.id === actFpId) ?? allFp[0] ?? null;
+
+        if (allFp.length === 0) {
+          pc.fillStyle = 'rgba(224,221,216,0.4)';
+          pc.font = `${PX * 0.044}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText('No floor plans added', PX / 2, contentTop + (PY - contentTop) / 2);
+        } else {
+          // Floor selector row (if multiple floors)
+          let fpContentTop = contentTop;
+          if (allFp.length > 1) {
+            const floorRowH = PY * 0.07;
+            const fpW = Math.min((PX * 0.92) / allFp.length - PX * 0.01, PX * 0.28);
+            allFp.forEach((fp, i) => {
+              const fx = PX * 0.04 + i * (fpW + PX * 0.01);
+              const isAct = fp.id === actFpId;
+              fillRR(fx, fpContentTop, fpW, floorRowH, 8, isAct ? 'rgba(59,191,181,0.22)' : 'rgba(255,255,255,0.05)');
+              strokeRR(fx, fpContentTop, fpW, floorRowH, 8, isAct ? '#3bbfb5' : 'rgba(255,255,255,0.1)', isAct ? 2 : 1);
+              pc.fillStyle = isAct ? '#3bbfb5' : 'rgba(224,221,216,0.55)';
+              pc.font = `${isAct ? 'bold ' : ''}${PX * 0.038}px Inter,sans-serif`;
+              pc.textAlign = 'center'; pc.textBaseline = 'middle';
+              let lbl = fp.name.length > 8 ? fp.name.slice(0, 7) + '…' : fp.name;
+              pc.fillText(lbl, fx + fpW / 2, fpContentTop + floorRowH / 2);
+              panelBtns.push({ mesh: makePanelHitPlane(fx / PX, fpContentTop / PY, fpW / PX, floorRowH / PY, `fp:${fp.id}`), action: `fp:${fp.id}` });
+            });
+            fpContentTop += floorRowH + PY * 0.015;
+          }
+
+          // Floor plan image area
+          const imgPad  = PX * 0.03;
+          const imgAreaX = imgPad;
+          const imgAreaY = fpContentTop + PY * 0.01;
+          const imgAreaW = PX - imgPad * 2;
+          const footerH  = PY * 0.07;
+          const imgAreaH = PY - imgAreaY - footerH - PY * 0.01;
+
+          // Border
+          strokeRR(imgAreaX, imgAreaY, imgAreaW, imgAreaH, 10, 'rgba(59,191,181,0.35)', 1.5);
+
+          if (activeFp) {
+            const img = getFpImage(activeFp);
+            if (img) {
+              // Fit image into area preserving aspect ratio
+              const scale = Math.min(imgAreaW / img.width, imgAreaH / img.height);
+              const dw = img.width  * scale;
+              const dh = img.height * scale;
+              const dx = imgAreaX + (imgAreaW - dw) / 2;
+              const dy = imgAreaY + (imgAreaH - dh) / 2;
+              pc.save();
+              pc.beginPath(); pc.roundRect(imgAreaX, imgAreaY, imgAreaW, imgAreaH, 10); pc.clip();
+              pc.drawImage(img, dx, dy, dw, dh);
+              pc.restore();
+
+              // Draw scene markers
+              for (const fp of [activeFp]) {
+                for (const marker of fp.markers) {
+                  const sc = allSc.find(s => s.id === marker.sceneId);
+                  if (!sc) continue;
+                  const mx = dx + marker.x * dw;
+                  const my = dy + marker.y * dh;
+                  const isAct = sc.id === activeSc?.id;
+                  const r = isAct ? 10 : 7;
+                  // Outer ring
+                  pc.beginPath(); pc.arc(mx, my, r + 3, 0, Math.PI * 2);
+                  pc.fillStyle = isAct ? 'rgba(224,123,63,0.4)' : 'rgba(59,191,181,0.25)'; pc.fill();
+                  // Filled dot
+                  pc.beginPath(); pc.arc(mx, my, r, 0, Math.PI * 2);
+                  pc.fillStyle = isAct ? '#e07b3f' : '#3bbfb5'; pc.fill();
+                  // Index label
+                  const idx = allSc.findIndex(s => s.id === sc.id) + 1;
+                  pc.fillStyle = '#fff';
+                  pc.font = `bold ${r * 1.3}px Inter,sans-serif`;
+                  pc.textAlign = 'center'; pc.textBaseline = 'middle';
+                  pc.fillText(String(idx), mx, my);
+                  // Hit plane for each marker (normalised to full panel)
+                  const hitR = (r + 6) / PX;
+                  panelBtns.push({ mesh: makePanelHitPlane((mx - hitR * PX) / PX, (my - hitR * PY) / PY, hitR * 2, hitR * 2 * (PX / PY), `scene:${sc.id}`), action: `scene:${sc.id}` });
+                }
+              }
+            } else {
+              pc.fillStyle = 'rgba(224,221,216,0.3)';
+              pc.font = `${PX * 0.04}px Inter,sans-serif`;
+              pc.textAlign = 'center'; pc.textBaseline = 'middle';
+              pc.fillText('Loading…', imgAreaX + imgAreaW / 2, imgAreaY + imgAreaH / 2);
+            }
+
+            // Footer: floor name + exit
+            const footY = PY - footerH - PY * 0.005;
+            pc.fillStyle = 'rgba(224,221,216,0.35)';
+            pc.font = `${PX * 0.038}px Inter,sans-serif`;
+            pc.textAlign = 'left'; pc.textBaseline = 'middle';
+            pc.fillText(activeFp.name, PX * 0.04, footY + footerH / 2);
+            // Exit VR button
+            const exitW = PX * 0.28;
+            fillRR(PX * 0.69, footY, exitW, footerH * 0.75, 8, 'rgba(224,84,84,0.18)');
+            strokeRR(PX * 0.69, footY, exitW, footerH * 0.75, 8, '#e05454', 1.5);
+            pc.fillStyle = '#e05454'; pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
+            pc.textAlign = 'center'; pc.textBaseline = 'middle';
+            pc.fillText('✕ Exit VR', PX * 0.69 + exitW / 2, footY + footerH * 0.375);
+            panelBtns.push({ mesh: makePanelHitPlane(0.69, footY / PY, 0.28, footerH * 0.75 / PY, 'exit'), action: 'exit' });
+          }
+        }
+      }
+
+      panelTex.needsUpdate = true;
     };
 
     const activatePanelAction = (action: string) => {
@@ -756,6 +899,14 @@ export default function PanoramaViewer({
         panelOpen = false;
         panelMesh.visible = false;
         return;
+      }
+      if (action.startsWith('tab:')) {
+        panelTab = action.slice(4) as 'scenes' | 'floorplan';
+        redrawPanel(); return;
+      }
+      if (action.startsWith('fp:')) {
+        setActiveFloorPlanRef.current(action.slice(3));
+        redrawPanel(); return;
       }
       switch (action) {
         case 'scrollUp':
