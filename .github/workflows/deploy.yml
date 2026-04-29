@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/build-resume-website-o9aga
   workflow_dispatch:
 
 permissions:
@@ -33,9 +32,9 @@ jobs:
         run: npm install
 
       - name: Build
-        run: npm run build
+        run: npx vite build
         env:
-          VITE_BASE_PATH: /archscape/
+          VITE_BASE_PATH: ./
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
