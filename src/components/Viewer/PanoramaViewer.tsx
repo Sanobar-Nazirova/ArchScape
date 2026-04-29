@@ -443,6 +443,33 @@ export default function PanoramaViewer({
   const [activeMedia, setActiveMedia] = useState<MediaPoint | null>(null);
   const [minimapYaw, setMinimapYaw]   = useState(0);
   const [openVariantHotspotId, setOpenVariantHotspotId] = useState<string | null>(null);
+  const [vrSupported, setVrSupported] = useState(false);
+  const [isInVR, setIsInVR]           = useState(false);
+
+  // ── WebXR support detection ────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'xr' in navigator) {
+      (navigator as any).xr?.isSessionSupported('immersive-vr')
+        .then((supported: boolean) => setVrSupported(supported))
+        .catch(() => setVrSupported(false));
+    }
+  }, []);
+
+  // ── Enter / exit immersive VR ─────────────────────────────────────────
+  const enterVR = async () => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    try {
+      const session = await (navigator as any).xr.requestSession('immersive-vr', {
+        optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
+      });
+      await renderer.xr.setSession(session);
+      setIsInVR(true);
+      session.addEventListener('end', () => setIsInVR(false));
+    } catch (err) {
+      console.warn('WebXR session failed:', err);
+    }
+  };
 
   // ── Expose fisheye yaw rotation helper (for real-time slider feedback) ──
   useEffect(() => {
@@ -487,6 +514,7 @@ export default function PanoramaViewer({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth || 800, container.clientHeight || 600);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -504,10 +532,9 @@ export default function PanoramaViewer({
     threeScene.add(mesh);
     sphereRef.current = mesh;
 
-    // Animation loop
+    // Animation loop (setAnimationLoop required for WebXR)
     let frame = 0;
     const animate = () => {
-      rafRef.current = requestAnimationFrame(animate);
       frame++;
 
       const cam = cameraRef.current!;
@@ -560,7 +587,7 @@ export default function PanoramaViewer({
 
       renderer.render(threeScene, cam);
     };
-    animate();
+    renderer.setAnimationLoop(animate);
 
     // Resize observer
     const ro = new ResizeObserver(() => {
@@ -573,7 +600,7 @@ export default function PanoramaViewer({
     ro.observe(container);
 
     return () => {
-      cancelAnimationFrame(rafRef.current);
+      renderer.setAnimationLoop(null);
       ro.disconnect();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
@@ -1163,6 +1190,27 @@ export default function PanoramaViewer({
           {/* ── Media panel ── */}
           {activeMedia && (
             <MediaPanel media={activeMedia} onClose={() => setActiveMedia(null)} />
+          )}
+
+          {/* ── WebXR / Immersive VR button (preview mode, supported device) ── */}
+          {isPreviewMode && vrSupported && (
+            <button
+              data-enter-vr
+              onClick={isInVR ? undefined : enterVR}
+              className="absolute top-4 right-4 z-20 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white transition-all"
+              style={{
+                background: isInVR ? 'rgba(59,191,181,0.85)' : 'rgba(224,123,63,0.90)',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              }}
+              title={isInVR ? 'In VR mode — remove headset to exit' : 'Enter immersive VR'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8z"/>
+                <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
+              </svg>
+              {isInVR ? 'In VR' : 'Enter VR'}
+            </button>
           )}
 
           {/* ── Scene navigation arrows (editor only — preview uses PresentationHUD) ── */}
