@@ -2,8 +2,6 @@ import React, {
   useEffect, useRef, useCallback, useState,
 } from 'react';
 import * as THREE from 'three';
-import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
-import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 import { yawPitchToWorld, worldToYawPitch } from '../../utils/sphereCoords';
 import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
@@ -623,6 +621,8 @@ export default function PanoramaViewer({
     let panelScroll  = 0;               // first visible scene index
     let audioMuted   = false;
     let prevSqueeze  = false;           // for edge detection
+    let hoveredAction: string | null = null;  // button under right-ray cursor
+    let pressedAction: string | null = null;  // button being pressed (flash)
     const fpImgCache = new Map<string, HTMLImageElement>(); // floor plan image cache
 
     // Panel canvas + mesh
@@ -695,14 +695,19 @@ export default function PanoramaViewer({
         { label: '🗺 Floor Plan', key: 'floorplan' as const },
       ];
       tabs.forEach((t, i) => {
-        const tx = PX * 0.02 + i * (tabW + tabGap);
-        const active = panelTab === t.key;
+        const tx      = PX * 0.02 + i * (tabW + tabGap);
+        const active  = panelTab === t.key;
+        const hovered = hoveredAction === `tab:${t.key}`;
+        const pressed = pressedAction === `tab:${t.key}`;
         fillRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
-          active ? 'rgba(224,123,63,0.28)' : 'rgba(255,255,255,0.05)');
+          pressed ? 'rgba(224,123,63,0.55)' :
+          hovered ? 'rgba(224,123,63,0.38)' :
+          active  ? 'rgba(224,123,63,0.28)' : 'rgba(255,255,255,0.05)');
         strokeRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
-          active ? '#e07b3f' : 'rgba(255,255,255,0.12)', active ? 2 : 1);
-        pc.fillStyle = active ? '#e07b3f' : 'rgba(224,221,216,0.55)';
-        pc.font = `${active ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
+          (active || hovered || pressed) ? '#e07b3f' : 'rgba(255,255,255,0.12)',
+          pressed ? 3 : active ? 2 : hovered ? 2 : 1);
+        pc.fillStyle = (active || hovered || pressed) ? '#e07b3f' : 'rgba(224,221,216,0.55)';
+        pc.font = `${(active || hovered) ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
         pc.textAlign = 'center'; pc.textBaseline = 'middle';
         pc.fillText(t.label, tx + tabW / 2, tabBarY + tabBarH * 0.45);
       });
@@ -734,17 +739,28 @@ export default function PanoramaViewer({
         const rowTop  = contentTop + PY * 0.05;
         const visible = allSc.slice(panelScroll, panelScroll + ROWS_VISIBLE);
         visible.forEach((sc, i) => {
-          const isActive = sc.id === activeSc?.id;
+          const isActive  = sc.id === activeSc?.id;
+          const isHovered = hoveredAction === `scene:${sc.id}`;
+          const isPressed = pressedAction === `scene:${sc.id}`;
           const y = rowTop + i * (rowH + PY * 0.012);
-          if (isActive) fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(224,123,63,0.22)');
-          strokeRR(PX * 0.03, y, PX * 0.94, rowH, 10, isActive ? '#e07b3f' : 'rgba(255,255,255,0.08)', isActive ? 2.5 : 1);
-          fillRR(PX * 0.055, y + rowH * 0.2, PX * 0.09, rowH * 0.6, 6, isActive ? '#e07b3f' : 'rgba(255,255,255,0.1)');
-          pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.6)';
+          // Background
+          if (isPressed)      fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(255,255,255,0.18)');
+          else if (isActive)  fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(224,123,63,0.22)');
+          else if (isHovered) fillRR(PX * 0.03, y, PX * 0.94, rowH, 10, 'rgba(255,255,255,0.08)');
+          // Border
+          strokeRR(PX * 0.03, y, PX * 0.94, rowH, 10,
+            isPressed ? '#fff' : isActive ? '#e07b3f' : isHovered ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.08)',
+            isPressed ? 2.5 : isActive ? 2.5 : isHovered ? 1.5 : 1);
+          // Index pill
+          fillRR(PX * 0.055, y + rowH * 0.2, PX * 0.09, rowH * 0.6, 6,
+            isPressed ? '#fff' : isActive ? '#e07b3f' : isHovered ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)');
+          pc.fillStyle = (isActive || isHovered || isPressed) ? (isPressed ? '#222' : '#fff') : 'rgba(224,221,216,0.6)';
           pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
           pc.textAlign = 'center'; pc.textBaseline = 'middle';
           pc.fillText(String(panelScroll + i + 1), PX * 0.1, y + rowH * 0.5);
-          pc.fillStyle = isActive ? '#fff' : 'rgba(224,221,216,0.85)';
-          pc.font = `${isActive ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
+          // Name
+          pc.fillStyle = isPressed ? '#222' : (isActive || isHovered) ? '#fff' : 'rgba(224,221,216,0.85)';
+          pc.font = `${(isActive || isHovered || isPressed) ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
           pc.textAlign = 'left'; pc.textBaseline = 'middle';
           const maxW = PX * 0.72;
           let name = sc.name;
@@ -757,11 +773,15 @@ export default function PanoramaViewer({
         const arrowY  = rowTop + ROWS_VISIBLE * (rowH + PY * 0.012) + PY * 0.01;
         const canUp   = panelScroll > 0;
         const canDown = panelScroll + ROWS_VISIBLE < allSc.length;
-        fillRR(PX * 0.03, arrowY, PX * 0.44, PY * 0.06, 10, canUp   ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
-        fillRR(PX * 0.53, arrowY, PX * 0.44, PY * 0.06, 10, canDown ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
+        const upHov   = hoveredAction === 'scrollUp',   upPrs  = pressedAction === 'scrollUp';
+        const dnHov   = hoveredAction === 'scrollDown', dnPrs  = pressedAction === 'scrollDown';
+        fillRR(PX * 0.03, arrowY, PX * 0.44, PY * 0.06, 10,
+          upPrs ? 'rgba(255,255,255,0.22)' : upHov ? 'rgba(224,123,63,0.3)' : canUp ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
+        fillRR(PX * 0.53, arrowY, PX * 0.44, PY * 0.06, 10,
+          dnPrs ? 'rgba(255,255,255,0.22)' : dnHov ? 'rgba(224,123,63,0.3)' : canDown ? 'rgba(224,123,63,0.18)' : 'rgba(255,255,255,0.04)');
         pc.font = `bold ${PX * 0.05}px Inter,sans-serif`; pc.textAlign = 'center'; pc.textBaseline = 'middle';
-        pc.fillStyle = canUp   ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▲', PX * 0.25, arrowY + PY * 0.03);
-        pc.fillStyle = canDown ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▼', PX * 0.75, arrowY + PY * 0.03);
+        pc.fillStyle = upPrs ? '#fff' : canUp ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▲', PX * 0.25, arrowY + PY * 0.03);
+        pc.fillStyle = dnPrs ? '#fff' : canDown ? '#e07b3f' : 'rgba(255,255,255,0.2)'; pc.fillText('▼', PX * 0.75, arrowY + PY * 0.03);
         const arrowNY = arrowY / PY;
         panelBtns.push({ mesh: makePanelHitPlane(0.03, arrowNY, 0.44, 0.06, 'scrollUp'),   action: 'scrollUp' });
         panelBtns.push({ mesh: makePanelHitPlane(0.53, arrowNY, 0.44, 0.06, 'scrollDown'), action: 'scrollDown' });
@@ -774,10 +794,14 @@ export default function PanoramaViewer({
         ];
         const fbW = (PX * 0.94 - 2 * PX * 0.02) / 3;
         footBtns.forEach((fb, i) => {
-          const fx = PX * 0.03 + i * (fbW + PX * 0.02);
-          fillRR(fx, footerY, fbW, PY * 0.065, 10, `${fb.col}22`);
-          strokeRR(fx, footerY, fbW, PY * 0.065, 10, fb.col, 1.5);
-          pc.fillStyle = fb.col; pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
+          const fx  = PX * 0.03 + i * (fbW + PX * 0.02);
+          const fHov = hoveredAction === fb.action;
+          const fPrs = pressedAction === fb.action;
+          fillRR(fx, footerY, fbW, PY * 0.065, 10,
+            fPrs ? fb.col + 'cc' : fHov ? fb.col + '55' : fb.col + '22');
+          strokeRR(fx, footerY, fbW, PY * 0.065, 10, fb.col, fPrs ? 2.5 : fHov ? 2 : 1.5);
+          pc.fillStyle = fPrs ? '#fff' : fb.col;
+          pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
           pc.textAlign = 'center'; pc.textBaseline = 'middle';
           pc.fillText(fb.label, fx + fbW / 2, footerY + PY * 0.032);
           const nw = (0.94 - 2 * 0.02) / 3;
@@ -947,75 +971,63 @@ export default function PanoramaViewer({
     };
 
     const activatePanelAction = (action: string) => {
-      if (action.startsWith('scene:')) {
-        setActiveSceneRef.current(action.slice(6));
-        panelOpen = false;
-        panelMesh.visible = false;
-        return;
-      }
-      if (action.startsWith('tab:')) {
-        panelTab = action.slice(4) as 'scenes' | 'floorplan';
-        redrawPanel(); return;
-      }
-      if (action.startsWith('fp:')) {
-        setActiveFloorPlanRef.current(action.slice(3));
-        redrawPanel(); return;
-      }
-      switch (action) {
-        case 'scrollUp':
-          panelScroll = Math.max(0, panelScroll - 1);
-          redrawPanel(); break;
-        case 'scrollDown':
-          panelScroll = Math.min(Math.max(0, scenesRef.current.length - ROWS_VISIBLE), panelScroll + 1);
-          redrawPanel(); break;
-        case 'reset': {
-          const sc = sceneRef.current;
-          if (sc) { yawRef.current = sc.initialYaw; pitchRef.current = sc.initialPitch; }
-          break;
+      // Flash pressed state, then execute after short delay
+      pressedAction = action;
+      hoveredAction = null;
+      redrawPanel();
+      setTimeout(() => {
+        pressedAction = null;
+        if (action.startsWith('scene:')) {
+          setActiveSceneRef.current(action.slice(6));
+          panelOpen = false;
+          panelMesh.visible = false;
+          return;
         }
-        case 'mute':
-          audioMuted = !audioMuted;
-          document.querySelectorAll<HTMLAudioElement>('audio').forEach(a => { a.muted = audioMuted; });
-          redrawPanel(); break;
-        case 'exit':
-          renderer.xr.getSession()?.end();
-          break;
-      }
+        if (action.startsWith('tab:')) {
+          panelTab = action.slice(4) as 'scenes' | 'floorplan';
+          redrawPanel(); return;
+        }
+        if (action.startsWith('fp:')) {
+          setActiveFloorPlanRef.current(action.slice(3));
+          redrawPanel(); return;
+        }
+        switch (action) {
+          case 'scrollUp':
+            panelScroll = Math.max(0, panelScroll - 1);
+            redrawPanel(); break;
+          case 'scrollDown':
+            panelScroll = Math.min(Math.max(0, scenesRef.current.length - ROWS_VISIBLE), panelScroll + 1);
+            redrawPanel(); break;
+          case 'reset': {
+            const sc = sceneRef.current;
+            if (sc) { yawRef.current = sc.initialYaw; pitchRef.current = sc.initialPitch; }
+            redrawPanel(); break;
+          }
+          case 'mute':
+            audioMuted = !audioMuted;
+            document.querySelectorAll<HTMLAudioElement>('audio').forEach(a => { a.muted = audioMuted; });
+            redrawPanel(); break;
+          case 'exit':
+            renderer.xr.getSession()?.end();
+            break;
+        }
+      }, 130);
     };
 
     // ── Set up left (0) and right (1) controllers ──────────────────────
-    const controllerModelFactory = new XRControllerModelFactory();
-    // Profiles are bundled in public/xr-profiles/ — no CDN needed
-    controllerModelFactory.path = './xr-profiles/';
-    const handModelFactory = new XRHandModelFactory();
-
+    // We only add functional overlays (ray beam + wrist panel) and let
+    // Meta's OS compositor render the native controller/hand visuals.
     const leftCtrl  = renderer.xr.getController(0);
     const rightCtrl = renderer.xr.getController(1);
 
-    // Left: orange ray + panel group
+    // Left: orange ray + wrist panel
     leftCtrl.add(makeRay(0xe07b3f));
     leftCtrl.add(panelGroup);
     threeScene.add(leftCtrl);
 
-    // Right: teal ray — primary interaction controller
+    // Right: teal ray — primary interaction
     rightCtrl.add(makeRay(0x3bbfb5));
     threeScene.add(rightCtrl);
-
-    // Grip spaces — official Quest Touch Plus GLB models loaded from local profiles
-    const leftGrip  = renderer.xr.getControllerGrip(0);
-    const rightGrip = renderer.xr.getControllerGrip(1);
-    leftGrip.add(controllerModelFactory.createControllerModel(leftGrip));
-    rightGrip.add(controllerModelFactory.createControllerModel(rightGrip));
-    threeScene.add(leftGrip);
-    threeScene.add(rightGrip);
-
-    // Hand spaces — 'spheres' uses Three.js geometry (no network required)
-    const leftHand  = renderer.xr.getHand(0);
-    const rightHand = renderer.xr.getHand(1);
-    leftHand.add(handModelFactory.createHandModel(leftHand, 'spheres'));
-    rightHand.add(handModelFactory.createHandModel(rightHand, 'spheres'));
-    threeScene.add(leftHand);
-    threeScene.add(rightHand);
 
     // Right trigger → interact with panel buttons OR scene hotspots
     rightCtrl.addEventListener('select', () => {
@@ -1073,21 +1085,22 @@ export default function PanoramaViewer({
         }
       }
 
-      // Hover highlight: right controller over panel buttons
+      // Hover highlight: right controller ray over panel buttons
       if (panelOpen && panelBtns.length > 0) {
         tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
         raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
         raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
-        const hits   = raycaster.intersectObjects(panelBtns.map(b => b.mesh));
+        const hits      = raycaster.intersectObjects(panelBtns.map(b => b.mesh));
         const hitAction = hits[0]?.object.userData.action ?? null;
-        // Visual pulse: tint the panel border slightly when hovering
-        if (hitAction !== updateBtnHover._lastHit) {
-          updateBtnHover._lastHit = hitAction;
-          // Simple feedback: just redraw to reflect active state if needed
+        if (hitAction !== hoveredAction) {
+          hoveredAction = hitAction;
+          redrawPanel();
         }
+      } else if (hoveredAction !== null) {
+        hoveredAction = null;
+        if (panelOpen) redrawPanel();
       }
     };
-    (updateBtnHover as any)._lastHit = null;
 
     // Animation loop (setAnimationLoop required for WebXR)
     let frame = 0;
