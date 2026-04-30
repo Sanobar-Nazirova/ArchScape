@@ -1259,12 +1259,8 @@ export default function PanoramaViewer({
         if (frame % 10 === 0) setMinimapYaw(yawRef.current);
       }
 
-      // In VR, keep the panorama sphere centred on the user's head so the
-      // local-floor reference space offset doesn't shift the viewer away from
-      // the sphere's centre (which would make the panorama look magnified).
-      if (renderer.xr.isPresenting && sphereRef.current) {
-        sphereRef.current.position.copy(renderer.xr.getCamera().position);
-      }
+      // Sphere centering in VR is handled per-eye in mesh.onBeforeRender
+      // so each eye has zero geometric parallax.
 
       // Update wrist menu button hover highlight every 3 frames
       if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover();
@@ -1537,27 +1533,38 @@ export default function PanoramaViewer({
       //   so top of frame also lands at v = 1 — same offsets apply as for images.
       //   left eye  → offset.y = 0.5 → samples v[0.5 .. 1]  = TOP    half ✓
       //   right eye → offset.y = 0   → samples v[0   .. 0.5] = BOTTOM half ✓
+      // onBeforeRender fires once per eye per VR frame.
+      // We use it for two things:
+      //   1. Centre the sphere exactly on this eye's position so there is zero
+      //      geometry-based parallax (avoids double-vision when radius is small).
+      //   2. For stereo formats, flip the texture UV to the correct half.
       const isStereoFmt = scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb';
-      if (isStereoFmt) {
-        mesh.onBeforeRender = (_r, _s, camera) => {
-          const rdr = rendererRef.current;
-          if (!rdr?.xr.isPresenting) return;
-          const xrCam = rdr.xr.getCamera();
-          // Guard: cameras array may be empty on the very first frame before
-          // WebXR populates it. In that case treat as left eye (safe default).
-          const isRight = xrCam.cameras.length > 1 && camera === xrCam.cameras[1];
-          const tex = (mesh.material as THREE.MeshBasicMaterial).map;
-          if (!tex) return;
-          if (scene.format === 'equirectangular-sbs') {
-            tex.offset.x = isRight ? 0.5 : 0;
-          } else {
-            // equirectangular-tb
-            tex.offset.y = isRight ? 0 : 0.5;
-          }
-        };
-      } else {
-        mesh.onBeforeRender = () => {};
-      }
+      mesh.onBeforeRender = (_r, _s, camera) => {
+        const rdr = rendererRef.current;
+        if (!rdr?.xr.isPresenting) return;
+
+        // Centre sphere on this eye — eliminates IPD-induced parallax that
+        // would cause misalignment when sphere radius < ~100 m.
+        mesh.position.copy((camera as THREE.PerspectiveCamera).position);
+        mesh.updateMatrixWorld(true);
+
+        if (!isStereoFmt) return;
+
+        // Switch UV half for this eye.
+        // cameras[0] = left eye, cameras[1] = right eye (WebXR / Three.js).
+        const xrCam = rdr.xr.getCamera();
+        const isRight = xrCam.cameras.length > 1 && camera === xrCam.cameras[1];
+        const tex = (mesh.material as THREE.MeshBasicMaterial).map;
+        if (!tex) return;
+        if (scene.format === 'equirectangular-sbs') {
+          // Left half [u 0..0.5] → left eye   Right half [u 0.5..1] → right eye
+          tex.offset.x = isRight ? 0.5 : 0;
+        } else {
+          // TB: top half [v 0.5..1 after flipY] → left eye
+          //     bottom half [v 0..0.5] → right eye
+          tex.offset.y = isRight ? 0 : 0.5;
+        }
+      };
     };
 
     if (scene.mediaType === 'panorama-video') {
@@ -1584,7 +1591,12 @@ export default function PanoramaViewer({
           const newGeo = new THREE.SphereGeometry(10, 64, 32);
           if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
           mesh.material = shaderMat;
-          mesh.onBeforeRender = () => {};
+          mesh.onBeforeRender = (_r, _s, camera) => {
+            const rdr = rendererRef.current;
+            if (!rdr?.xr.isPresenting) return;
+            mesh.position.copy((camera as THREE.PerspectiveCamera).position);
+            mesh.updateMatrixWorld(true);
+          };
           shaderMatRef.current = shaderMat;
           textureRef.current   = vt;
         } else {
