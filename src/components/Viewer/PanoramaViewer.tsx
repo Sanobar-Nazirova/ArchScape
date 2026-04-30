@@ -1450,27 +1450,27 @@ export default function PanoramaViewer({
 
       switch (scene.format) {
         case 'cylindrical': {
-          const height = Math.min(800, 500 / Math.max(ar, 0.5));
-          newGeo = new THREE.CylinderGeometry(500, 500, height, 64, 1, true);
+          const height = Math.min(16, 10 / Math.max(ar, 0.5));
+          newGeo = new THREE.CylinderGeometry(10, 10, height, 64, 1, true);
           break;
         }
         case 'partial':
         case 'rectilinear': {
           const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8;
           const vFov = hFov / Math.max(ar, 0.1);
-          newGeo = new THREE.SphereGeometry(500, 48, 24,
+          newGeo = new THREE.SphereGeometry(10, 48, 24,
             -hFov / 2, hFov, Math.PI / 2 - vFov / 2, vFov);
           break;
         }
         case 'vertical': {
           const vFov2 = Math.PI * 1.2;
           const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (scene.aspectRatio ?? 0.4));
-          newGeo = new THREE.SphereGeometry(500, 32, 48,
+          newGeo = new THREE.SphereGeometry(10, 32, 48,
             -hFov2 / 2, hFov2, Math.PI / 2 - vFov2 / 2, vFov2);
           break;
         }
         default:
-          newGeo = new THREE.SphereGeometry(500, 64, 32);
+          newGeo = new THREE.SphereGeometry(10, 64, 32);
       }
 
       if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
@@ -1542,7 +1542,7 @@ export default function PanoramaViewer({
           shaderMat.uniforms.map.value = vt;
           // Ensure standard full-sphere geometry
           const oldGeo = mesh.geometry;
-          const newGeo = new THREE.SphereGeometry(500, 64, 32);
+          const newGeo = new THREE.SphereGeometry(10, 64, 32);
           if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
           mesh.material = shaderMat;
           shaderMatRef.current = shaderMat;
