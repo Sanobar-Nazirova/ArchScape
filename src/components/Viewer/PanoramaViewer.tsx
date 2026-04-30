@@ -201,6 +201,29 @@ const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
   exit:   <LogOut        size={14} />,
 };
 
+/** Pill-shaped label sprite texture showing the hotspot target name. */
+function makeHotspotLabelTexture(text: string): THREE.CanvasTexture {
+  const W = 256, H = 50;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d')!;
+  const r = H / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.78)';
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(W - r, 0);
+  ctx.arc(W - r, r, r, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(r, H);
+  ctx.arc(r, r, r, Math.PI / 2, Math.PI * 1.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 19px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, W / 2, H / 2);
+  return new THREE.CanvasTexture(c);
+}
+
 /** Renders the same hotspot icon used in the 2D overlay onto a canvas, returns a Three.js CanvasTexture. */
 function makeHotspotCanvasTexture(iconStyle: HotspotIconStyle): THREE.CanvasTexture {
   const S = 128;
@@ -507,7 +530,8 @@ export default function PanoramaViewer({
   const lastMouseRef  = useRef({ x: 0, y: 0 });
 
   // ── Hotspot overlay refs ───────────────────────────────────────────────
-  const hotspotContainersRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const hotspotContainersRef    = useRef<Map<string, HTMLDivElement>>(new Map());
+  const hotspotLabelSpritesRef  = useRef<Map<string, THREE.Sprite>>(new Map());
   const mediaContainersRef   = useRef<Map<string, HTMLDivElement>>(new Map());
   const draggingHotspotRef   = useRef<{ id: string; yaw: number; pitch: number } | null>(null);
   const dragStateRef         = useRef<{ hotspotId: string; startX: number; startY: number; moved: boolean } | null>(null);
@@ -649,9 +673,11 @@ export default function PanoramaViewer({
     let panelScroll  = 0;               // first visible scene index
     let audioMuted   = false;
     let prevSqueeze  = false;           // for edge detection
-    let hoveredAction: string | null = null;  // button under right-ray cursor
-    let pressedAction: string | null = null;  // button being pressed (flash)
-    let fpDetailId:   string | null = null;   // floor plan open in detail view
+    let hoveredAction:    string | null = null;  // panel button under right-ray cursor
+    let pressedAction:    string | null = null;  // panel button being pressed (flash)
+    let fpDetailId:       string | null = null;  // floor plan open in detail view
+    let hoveredHotspotId: string | null = null;  // VR hotspot under right-ray cursor
+    let clickAnim: { hotspotId: string; t0: number } | null = null; // hotspot click pulse
     const fpImgCache = new Map<string, HTMLImageElement>(); // floor plan image cache
 
     // Panel canvas + mesh
@@ -1126,7 +1152,8 @@ export default function PanoramaViewer({
     const rightCtrl = renderer.xr.getController(1);
 
     // Left: orange ray + wrist panel
-    leftCtrl.add(makeRay(0xe07b3f));
+    const leftRay = makeRay(0xe07b3f);
+    leftCtrl.add(leftRay);
     leftCtrl.add(panelGroup);
     threeScene.add(leftCtrl);
 
@@ -1180,7 +1207,10 @@ export default function PanoramaViewer({
         const dist = toP.clone().sub(dir.clone().multiplyScalar(proj)).length();
         if (dist < 35 && (!best || proj > best.proj)) best = { hs, proj };
       }
-      if (best) onHotspotClickRef.current(best.hs);
+      if (best) {
+        clickAnim = { hotspotId: best.hs.id, t0: performance.now() };
+        onHotspotClickRef.current(best.hs);
+      }
     });
 
     // Left squeeze (grip) → toggle panel
@@ -1197,6 +1227,7 @@ export default function PanoramaViewer({
             if (squeeze && !prevSqueeze) {
               panelOpen = !panelOpen;
               panelMesh.visible = panelOpen;
+              leftRay.visible   = !panelOpen;
               if (panelOpen) {
                 panelScroll = Math.max(0, (scenesRef.current.findIndex(s => s.id === sceneRef.current?.id) ?? 0) - 1);
                 redrawPanel();
@@ -1235,8 +1266,49 @@ export default function PanoramaViewer({
           hoveredAction = null;
           if (panelOpen) redrawPanel();
         }
-        rightRay.scale.y   = 1;
+        rightRay.scale.y    = 1;
         rightRay.position.z = -1;
+
+        // Hotspot hover when panel is closed
+        tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
+        raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
+        const sc2   = sceneRef.current;
+        const origin2 = raycaster.ray.origin;
+        const dir2    = raycaster.ray.direction;
+        let newHov: string | null = null;
+        if (sc2) {
+          let bestDist = Infinity;
+          for (const hs of sc2.hotspots) {
+            const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
+            const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(470);
+            const toP = pos.clone().sub(origin2);
+            const proj = toP.dot(dir2);
+            if (proj < 0) continue;
+            const dist = toP.clone().sub(dir2.clone().multiplyScalar(proj)).length();
+            if (dist < 30 && dist < bestDist) { bestDist = dist; newHov = hs.id; }
+          }
+        }
+        if (newHov !== hoveredHotspotId) {
+          // Hide old label, restore old sprite scale (unless click anim is running)
+          if (hoveredHotspotId) {
+            const oldLabel = hotspotLabelSpritesRef.current.get(hoveredHotspotId);
+            if (oldLabel) oldLabel.visible = false;
+            if (!clickAnim || clickAnim.hotspotId !== hoveredHotspotId) {
+              threeScene.children
+                .filter(c => c.userData.vrHotspot && c.userData.hotspotId === hoveredHotspotId)
+                .forEach(s => (s as THREE.Sprite).scale.set(38, 38, 1));
+            }
+          }
+          hoveredHotspotId = newHov;
+          if (hoveredHotspotId) {
+            const newLabel = hotspotLabelSpritesRef.current.get(hoveredHotspotId);
+            if (newLabel) newLabel.visible = true;
+            threeScene.children
+              .filter(c => c.userData.vrHotspot && c.userData.hotspotId === hoveredHotspotId)
+              .forEach(s => (s as THREE.Sprite).scale.set(50, 50, 1));
+          }
+        }
       }
     };
 
@@ -1302,6 +1374,24 @@ export default function PanoramaViewer({
       // Update wrist menu button hover highlight every 3 frames
       if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover();
 
+      // Hotspot click pulse animation
+      if (clickAnim) {
+        const elapsed  = performance.now() - clickAnim.t0;
+        const duration = 500;
+        const sprites  = threeScene.children.filter(
+          c => c.userData.vrHotspot && c.userData.hotspotId === clickAnim!.hotspotId,
+        );
+        if (elapsed < duration) {
+          const t     = elapsed / duration;
+          const scale = 38 * (1 + Math.sin(t * Math.PI) * 0.7);
+          sprites.forEach(s => (s as THREE.Sprite).scale.set(scale, scale, 1));
+        } else {
+          const endScale = hoveredHotspotId === clickAnim.hotspotId ? 50 : 38;
+          sprites.forEach(s => (s as THREE.Sprite).scale.set(endScale, endScale, 1));
+          clickAnim = null;
+        }
+      }
+
       renderer.render(threeScene, cam);
     };
     renderer.setAnimationLoop(animate);
@@ -1331,28 +1421,45 @@ export default function PanoramaViewer({
     const threeScene = threeSceneRef.current;
     if (!threeScene || !scene) return;
 
-    // Remove old markers
-    const old = threeScene.children.filter(c => c.userData.vrHotspot);
+    // Remove old markers and labels
+    const old = threeScene.children.filter(c => c.userData.vrHotspot || c.userData.vrHotspotLabel);
     old.forEach(c => { (c as THREE.Sprite).material?.map?.dispose(); threeScene.remove(c); });
+    hotspotLabelSpritesRef.current.clear();
 
     for (const hs of scene.hotspots) {
       const wp  = yawPitchToWorld(hs.yaw, hs.pitch);
       const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(470);
 
-      // Sprite with the same icon as the 2D hotspot button
-      const tex  = makeHotspotCanvasTexture(hs.iconStyle);
-      const mat  = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+      // Icon sprite
+      const tex    = makeHotspotCanvasTexture(hs.iconStyle);
+      const mat    = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
       const sprite = new THREE.Sprite(mat);
       sprite.position.copy(pos);
       sprite.scale.set(38, 38, 1);
-      sprite.userData.vrHotspot = true;
-      sprite.userData.hotspotId = hs.id;
+      sprite.userData.vrHotspot  = true;
+      sprite.userData.hotspotId  = hs.id;
       threeScene.add(sprite);
+
+      // Label sprite (shown on hover)
+      const labelText = hs.label || scenesRef.current.find(s => s.id === hs.targetSceneId)?.name || '';
+      if (labelText) {
+        const labelTex = makeHotspotLabelTexture(labelText);
+        const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
+        const label    = new THREE.Sprite(labelMat);
+        label.position.copy(pos).addScaledVector(new THREE.Vector3(0, 1, 0), 28);
+        label.scale.set(62, 12, 1);
+        label.visible = false;
+        label.userData.vrHotspotLabel = true;
+        label.userData.hotspotId      = hs.id;
+        threeScene.add(label);
+        hotspotLabelSpritesRef.current.set(hs.id, label);
+      }
     }
 
     return () => {
-      const markers = threeScene.children.filter(c => c.userData.vrHotspot);
+      const markers = threeScene.children.filter(c => c.userData.vrHotspot || c.userData.vrHotspotLabel);
       markers.forEach(c => { (c as THREE.Sprite).material?.map?.dispose(); threeScene.remove(c); });
+      hotspotLabelSpritesRef.current.clear();
     };
   }, [scene?.id, scene?.hotspots]);
 
