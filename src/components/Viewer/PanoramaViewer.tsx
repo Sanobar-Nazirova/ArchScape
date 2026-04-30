@@ -203,12 +203,13 @@ const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
 
 /** Pill-shaped label sprite texture showing the hotspot target name. */
 function makeHotspotLabelTexture(text: string): THREE.CanvasTexture {
-  const W = 256, H = 50;
+  const W = 384, H = 72;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const ctx = c.getContext('2d')!;
   const r = H / 2;
-  ctx.fillStyle = 'rgba(0,0,0,0.78)';
+  // Dark pill background
+  ctx.fillStyle = 'rgba(0,0,0,0.82)';
   ctx.beginPath();
   ctx.moveTo(r, 0); ctx.lineTo(W - r, 0);
   ctx.arc(W - r, r, r, -Math.PI / 2, Math.PI / 2);
@@ -216,11 +217,22 @@ function makeHotspotLabelTexture(text: string): THREE.CanvasTexture {
   ctx.arc(r, r, r, Math.PI / 2, Math.PI * 1.5);
   ctx.closePath();
   ctx.fill();
+  // Thin accent border
+  ctx.strokeStyle = '#e07b3f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(r, 2); ctx.lineTo(W - r, 2);
+  ctx.arc(W - r, r, r - 2, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(r, H - 2);
+  ctx.arc(r, r, r - 2, Math.PI / 2, Math.PI * 1.5);
+  ctx.closePath();
+  ctx.stroke();
+  // White text
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 19px Inter, sans-serif';
+  ctx.font = 'bold 28px Inter, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, W / 2, H / 2);
+  ctx.fillText(text, W / 2, H / 2, W - r * 2 - 8);
   return new THREE.CanvasTexture(c);
 }
 
@@ -1440,20 +1452,22 @@ export default function PanoramaViewer({
       sprite.userData.hotspotId  = hs.id;
       threeScene.add(sprite);
 
-      // Label sprite (shown on hover)
-      const labelText = hs.label || scenesRef.current.find(s => s.id === hs.targetSceneId)?.name || '';
-      if (labelText) {
-        const labelTex = makeHotspotLabelTexture(labelText);
-        const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
-        const label    = new THREE.Sprite(labelMat);
-        label.position.copy(pos).addScaledVector(new THREE.Vector3(0, 1, 0), 28);
-        label.scale.set(62, 12, 1);
-        label.visible = false;
-        label.userData.vrHotspotLabel = true;
-        label.userData.hotspotId      = hs.id;
-        threeScene.add(label);
-        hotspotLabelSpritesRef.current.set(hs.id, label);
-      }
+      // Label sprite (shown on hover) — always create so it's visible even when
+      // targetSceneId is not set or the scene list hasn't loaded yet
+      const targetScene = scenesRef.current.find(s => s.id === hs.targetSceneId);
+      const labelText   = hs.label || targetScene?.name || '—';
+      const labelTex = makeHotspotLabelTexture(labelText);
+      const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
+      const label    = new THREE.Sprite(labelMat);
+      // Offset 45 world-units above the hotspot along world-Y so it floats
+      label.position.copy(pos).addScaledVector(new THREE.Vector3(0, 1, 0), 45);
+      // Scale to match hotspot icon height — canvas aspect 384×72 ≈ 5.33:1
+      label.scale.set(200, 38, 1);
+      label.visible = false;
+      label.userData.vrHotspotLabel = true;
+      label.userData.hotspotId      = hs.id;
+      threeScene.add(label);
+      hotspotLabelSpritesRef.current.set(hs.id, label);
     }
 
     return () => {
