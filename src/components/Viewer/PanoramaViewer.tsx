@@ -1131,7 +1131,8 @@ export default function PanoramaViewer({
     threeScene.add(leftCtrl);
 
     // Right: teal ray — primary interaction
-    rightCtrl.add(makeRay(0x3bbfb5));
+    const rightRay = makeRay(0x3bbfb5);
+    rightCtrl.add(rightRay);
     threeScene.add(rightCtrl);
 
     // Grip spaces — real Quest 3 Touch Plus GLB models
@@ -1220,9 +1221,22 @@ export default function PanoramaViewer({
           hoveredAction = hitAction;
           redrawPanel();
         }
-      } else if (hoveredAction !== null) {
-        hoveredAction = null;
-        if (panelOpen) redrawPanel();
+        // Cut the ray at the panel surface
+        if (hits.length > 0) {
+          const d = Math.max(0.01, hits[0].distance);
+          rightRay.scale.y   = d / 2;
+          rightRay.position.z = -d / 2;
+        } else {
+          rightRay.scale.y   = 1;
+          rightRay.position.z = -1;
+        }
+      } else {
+        if (hoveredAction !== null) {
+          hoveredAction = null;
+          if (panelOpen) redrawPanel();
+        }
+        rightRay.scale.y   = 1;
+        rightRay.position.z = -1;
       }
     };
 
