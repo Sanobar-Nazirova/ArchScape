@@ -688,7 +688,9 @@ export default function PanoramaViewer({
     let panelTab: 'scenes' | 'floorplan' = 'scenes';
     let panelScroll  = 0;               // first visible scene index
     let audioMuted   = false;
-    let prevSqueeze  = false;           // for edge detection
+    let prevSqueeze  = false;           // for edge detection (controller grip)
+    let prevLeftPinch  = false;         // left hand pinch edge detection
+    let prevRightPinch = false;         // right hand pinch edge detection
     let hoveredAction:    string | null = null;  // panel button under right-ray cursor
     let pressedAction:    string | null = null;  // panel button being pressed (flash)
     let fpDetailId:       string | null = null;  // floor plan open in detail view
@@ -1194,22 +1196,43 @@ export default function PanoramaViewer({
     threeScene.add(leftHand);
     threeScene.add(rightHand);
 
-    // Right trigger → interact with panel buttons OR scene hotspots
-    rightCtrl.addEventListener('select', () => {
+    // Pinch indicator dots — glow at the midpoint of thumb+index when pinching
+    const makePinchDot = (color: number) => {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.014, 10, 10),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, depthTest: false }),
+      );
+      m.renderOrder = 3;
+      m.visible = false;
+      threeScene.add(m);
+      return m;
+    };
+    const leftPinchDot  = makePinchDot(0xe07b3f); // orange — matches left ray
+    const rightPinchDot = makePinchDot(0x3bbfb5); // teal   — matches right ray
+
+    // Panel toggle helper — shared by controller squeeze and hand pinch
+    const togglePanel = () => {
+      panelOpen = !panelOpen;
+      panelMesh.visible = panelOpen;
+      leftRay.visible   = !panelOpen;
+      if (panelOpen) {
+        panelScroll = Math.max(0, (scenesRef.current.findIndex(s => s.id === sceneRef.current?.id) ?? 0) - 1);
+        redrawPanel();
+      } else {
+        fpDetailId = null;
+        panelMesh.scale.set(1, 1, 1);
+      }
+    };
+
+    // Select helper — shared by controller trigger and hand pinch
+    const triggerSelect = () => {
       tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
       raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
       raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
-
-      // Panel buttons (when open)
       if (panelOpen && panelBtns.length > 0) {
         const hits = raycaster.intersectObjects(panelBtns.map(b => b.mesh));
-        if (hits.length > 0) {
-          activatePanelAction(hits[0].object.userData.action as string);
-          return;
-        }
+        if (hits.length > 0) { activatePanelAction(hits[0].object.userData.action as string); return; }
       }
-
-      // Scene hotspot navigation
       const sc = sceneRef.current;
       if (!sc) return;
       const origin = raycaster.ray.origin.clone();
@@ -1227,34 +1250,94 @@ export default function PanoramaViewer({
         clickAnim = { hotspotId: best.hs.id, t0: performance.now() };
         onHotspotClickRef.current(best.hs);
       }
-    });
+    };
 
-    // Left squeeze (grip) → toggle panel
-    // Detected in animate loop via gamepad API
-    const updateBtnHover = () => {
+    // Right trigger → delegate to shared select helper
+    rightCtrl.addEventListener('select', triggerSelect);
+
+    // Returns pinch distance for a hand (metres), or null if hand not tracked
+    const getPinchDist = (frame: XRFrame, handedness: 'left' | 'right'): number | null => {
+      const session  = renderer.xr.getSession();
+      const refSpace = renderer.xr.getReferenceSpace();
+      if (!session || !refSpace) return null;
+      for (const src of session.inputSources) {
+        if (src.handedness !== handedness) continue;
+        const hand = (src as any).hand as Map<string, XRJointSpace> | undefined;
+        if (!hand) return null;
+        const thumbTip = hand.get('thumb-tip');
+        const indexTip = hand.get('index-finger-tip');
+        if (!thumbTip || !indexTip) return null;
+        const tPose = (frame as any).getJointPose(thumbTip, refSpace) as XRJointPose | null;
+        const iPose = (frame as any).getJointPose(indexTip, refSpace) as XRJointPose | null;
+        if (!tPose || !iPose) return null;
+        const tp = tPose.transform.position, ip = iPose.transform.position;
+        const dx = tp.x - ip.x, dy = tp.y - ip.y, dz = tp.z - ip.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+      return null;
+    };
+
+    // Updates a pinch-dot mesh position to the thumb+index midpoint
+    const updatePinchDot = (dot: THREE.Mesh, frame: XRFrame, handedness: 'left' | 'right') => {
+      const session  = renderer.xr.getSession();
+      const refSpace = renderer.xr.getReferenceSpace();
+      if (!session || !refSpace) { dot.visible = false; return; }
+      for (const src of session.inputSources) {
+        if (src.handedness !== handedness) continue;
+        const hand = (src as any).hand as Map<string, XRJointSpace> | undefined;
+        if (!hand) { dot.visible = false; return; }
+        const thumbTip = hand.get('thumb-tip');
+        const indexTip = hand.get('index-finger-tip');
+        if (!thumbTip || !indexTip) { dot.visible = false; return; }
+        const tPose = (frame as any).getJointPose(thumbTip, refSpace) as XRJointPose | null;
+        const iPose = (frame as any).getJointPose(indexTip, refSpace) as XRJointPose | null;
+        if (!tPose || !iPose) { dot.visible = false; return; }
+        const tp = tPose.transform.position, ip = iPose.transform.position;
+        const dx = tp.x - ip.x, dy = tp.y - ip.y, dz = tp.z - ip.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        dot.visible = dist < 0.06;
+        dot.position.set((tp.x + ip.x) / 2, (tp.y + ip.y) / 2, (tp.z + ip.z) / 2);
+        return;
+      }
+      dot.visible = false;
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Left / right controller: squeeze → panel toggle, trigger → select
+    // ─────────────────────────────────────────────────────────────────────
+    const updateBtnHover = (xrFrame: XRFrame | null) => {
       if (!renderer.xr.isPresenting) return;
 
-      // Left squeeze: toggle panel on press edge
+      // ── Controller: left squeeze → toggle panel ───────────────────────
       const session = renderer.xr.getSession();
       if (session) {
         for (const src of session.inputSources) {
           if (src.handedness === 'left' && src.gamepad) {
             const squeeze = src.gamepad.buttons[1]?.pressed ?? false;
-            if (squeeze && !prevSqueeze) {
-              panelOpen = !panelOpen;
-              panelMesh.visible = panelOpen;
-              leftRay.visible   = !panelOpen;
-              if (panelOpen) {
-                panelScroll = Math.max(0, (scenesRef.current.findIndex(s => s.id === sceneRef.current?.id) ?? 0) - 1);
-                redrawPanel();
-              } else {
-                fpDetailId = null;
-                panelMesh.scale.set(1, 1, 1);
-              }
-            }
+            if (squeeze && !prevSqueeze) togglePanel();
             prevSqueeze = squeeze;
           }
         }
+      }
+
+      // ── Hand tracking: pinch gestures ─────────────────────────────────
+      if (xrFrame) {
+        // Left pinch → toggle panel
+        const leftDist  = getPinchDist(xrFrame, 'left');
+        const leftPinch = leftDist !== null && leftDist < 0.04;
+        if (leftPinch && !prevLeftPinch) togglePanel();
+        prevLeftPinch = leftPinch;
+        updatePinchDot(leftPinchDot, xrFrame, 'left');
+
+        // Right pinch → select (panel button or hotspot)
+        const rightDist  = getPinchDist(xrFrame, 'right');
+        const rightPinch = rightDist !== null && rightDist < 0.04;
+        if (rightPinch && !prevRightPinch) triggerSelect();
+        prevRightPinch = rightPinch;
+        updatePinchDot(rightPinchDot, xrFrame, 'right');
+      } else {
+        leftPinchDot.visible  = false;
+        rightPinchDot.visible = false;
       }
 
       // Hover highlight: right controller ray over panel buttons
@@ -1330,7 +1413,7 @@ export default function PanoramaViewer({
 
     // Animation loop (setAnimationLoop required for WebXR)
     let frame = 0;
-    const animate = () => {
+    const animate = (_t: number, xrFrame?: XRFrame) => {
       frame++;
 
       const cam = cameraRef.current!;
@@ -1387,8 +1470,8 @@ export default function PanoramaViewer({
         sphereRef.current.position.copy(renderer.xr.getCamera().position);
       }
 
-      // Update wrist menu button hover highlight every 3 frames
-      if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover();
+      // Update wrist menu button hover highlight + hand gesture detection every 3 frames
+      if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover(xrFrame ?? null);
 
       // Hotspot click pulse animation
       if (clickAnim) {
