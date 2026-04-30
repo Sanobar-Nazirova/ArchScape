@@ -635,6 +635,7 @@ export default function PanoramaViewer({
       const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.001, 2, 6), mat);
       mesh.position.set(0, 0, -1);   // centred 1 m in front of controller
       mesh.rotation.x = Math.PI / 2; // align cylinder with -Z axis
+      mesh.renderOrder = 2;          // draw on top of panel (renderOrder 1)
       return mesh;
     };
 
@@ -662,6 +663,7 @@ export default function PanoramaViewer({
       new THREE.MeshBasicMaterial({ map: panelTex, transparent: true, side: THREE.DoubleSide, depthTest: false }),
     );
     panelMesh.visible = false;
+    panelMesh.renderOrder = 1;
     // Floats in front of and above the left controller
     panelMesh.position.set(0.01, 0.18, -0.08);
     panelMesh.rotation.x = -0.4;
