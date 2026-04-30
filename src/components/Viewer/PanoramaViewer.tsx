@@ -1519,6 +1519,30 @@ export default function PanoramaViewer({
       mat.color.set(0xffffff);
       mat.side = THREE.BackSide;
       mat.needsUpdate = true;
+
+      // ── Per-eye UV switching for stereo formats in VR ──────────────────
+      // onBeforeRender fires once per eye per frame in WebXR, so we can flip
+      // the texture offset to the correct half just before each draw call.
+      // In non-VR mode we skip the callback and keep the static left-eye offset.
+      const isStereoFmt = scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb';
+      if (isStereoFmt) {
+        mesh.onBeforeRender = (_r, _s, camera) => {
+          const rdr = rendererRef.current;
+          if (!rdr?.xr.isPresenting) return;
+          const xrCam = rdr.xr.getCamera();
+          const isRight = camera === xrCam.cameras[1];
+          const tex = (mesh.material as THREE.MeshBasicMaterial).map;
+          if (!tex) return;
+          if (scene.format === 'equirectangular-sbs') {
+            tex.offset.x = isRight ? 0.5 : 0;
+          } else {
+            // TB after flipY: top half → UV v[0.5..1] = left eye
+            tex.offset.y = isRight ? 0 : 0.5;
+          }
+        };
+      } else {
+        mesh.onBeforeRender = () => {};
+      }
     };
 
     if (scene.mediaType === 'panorama-video') {
@@ -1545,6 +1569,7 @@ export default function PanoramaViewer({
           const newGeo = new THREE.SphereGeometry(10, 64, 32);
           if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
           mesh.material = shaderMat;
+          mesh.onBeforeRender = () => {};
           shaderMatRef.current = shaderMat;
           textureRef.current   = vt;
         } else {
