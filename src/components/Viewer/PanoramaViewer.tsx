@@ -298,7 +298,7 @@ function HotspotMarker({
   targetSceneName?: string;
   isHovered?: boolean;
 }) {
-  const tooltip = hotspot.label || targetSceneName;
+  const tooltip = targetSceneName || hotspot.label;
   const showLabel = isSelected || isHovered;
   return (
     <div className="flex flex-col items-center select-none" style={{ cursor: isPreview ? 'pointer' : 'grab', gap: 0 }}>
@@ -309,7 +309,6 @@ function HotspotMarker({
             ? 'bg-black/80 text-white border-white/30 opacity-100'
             : 'opacity-0 pointer-events-none',
         ].join(' ')}>
-          {targetSceneName && !hotspot.label && <span className="mr-1 opacity-60">→</span>}
           {tooltip}
         </span>
       )}
@@ -1542,7 +1541,7 @@ export default function PanoramaViewer({
       // Label sprite (shown on hover) — always create so it's visible even when
       // targetSceneId is not set or the scene list hasn't loaded yet
       const targetScene = scenesRef.current.find(s => s.id === hs.targetSceneId);
-      const labelText   = hs.label || targetScene?.name || '—';
+      const labelText   = targetScene?.name || hs.label || '—';
       const labelTex = makeHotspotLabelTexture(labelText);
       const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
       const label    = new THREE.Sprite(labelMat);
