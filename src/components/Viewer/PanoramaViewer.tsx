@@ -592,15 +592,13 @@ export default function PanoramaViewer({
     const threeScene = new THREE.Scene();
     threeSceneRef.current = threeScene;
 
-    const camera = new THREE.PerspectiveCamera(90, container.clientWidth / container.clientHeight, 0.01, 50);
+    const camera = new THREE.PerspectiveCamera(90, container.clientWidth / container.clientHeight, 0.01, 500);
     camera.rotation.order = 'YXZ';
     cameraRef.current = camera;
 
-    // Panorama sphere (inside surface).
-    // Radius 10 = 10 m in WebXR scale. Keeping it at human-room scale prevents
-    // the VR depth-reprojection system from placing the surface at "infinity",
-    // which otherwise makes every object in the panorama look enormous.
-    const geo  = new THREE.SphereGeometry(10, 64, 32);
+    // Radius 100 m: large enough that IPD (~63 mm) places each eye only 0.018°
+    // off-centre — imperceptible. Sphere stays well inside the far plane.
+    const geo  = new THREE.SphereGeometry(100, 64, 32);
     const mat  = new THREE.MeshBasicMaterial({ color: 0x111119, side: THREE.BackSide });
     const mesh = new THREE.Mesh(geo, mat);
     threeScene.add(mesh);
@@ -1259,8 +1257,11 @@ export default function PanoramaViewer({
         if (frame % 10 === 0) setMinimapYaw(yawRef.current);
       }
 
-      // Sphere centering in VR is handled per-eye in mesh.onBeforeRender
-      // so each eye has zero geometric parallax.
+      // Keep the sphere centred on the average eye position every frame so the
+      // local-floor reference-space offset doesn't shift the viewer off-centre.
+      if (renderer.xr.isPresenting && sphereRef.current) {
+        sphereRef.current.position.copy(renderer.xr.getCamera().position);
+      }
 
       // Update wrist menu button hover highlight every 3 frames
       if (frame % 3 === 0 && renderer.xr.isPresenting) updateBtnHover();
@@ -1446,27 +1447,27 @@ export default function PanoramaViewer({
 
       switch (scene.format) {
         case 'cylindrical': {
-          const height = Math.min(16, 10 / Math.max(ar, 0.5));
-          newGeo = new THREE.CylinderGeometry(10, 10, height, 64, 1, true);
+          const height = Math.min(160, 100 / Math.max(ar, 0.5));
+          newGeo = new THREE.CylinderGeometry(100, 100, height, 64, 1, true);
           break;
         }
         case 'partial':
         case 'rectilinear': {
           const hFov = ar > 1.5 ? Math.PI * 1.2 : Math.PI * 0.8;
           const vFov = hFov / Math.max(ar, 0.1);
-          newGeo = new THREE.SphereGeometry(10, 48, 24,
+          newGeo = new THREE.SphereGeometry(100, 48, 24,
             -hFov / 2, hFov, Math.PI / 2 - vFov / 2, vFov);
           break;
         }
         case 'vertical': {
           const vFov2 = Math.PI * 1.2;
           const hFov2 = Math.min(Math.PI * 0.5, vFov2 * (scene.aspectRatio ?? 0.4));
-          newGeo = new THREE.SphereGeometry(10, 32, 48,
+          newGeo = new THREE.SphereGeometry(100, 32, 48,
             -hFov2 / 2, hFov2, Math.PI / 2 - vFov2 / 2, vFov2);
           break;
         }
         default:
-          newGeo = new THREE.SphereGeometry(10, 64, 32);
+          newGeo = new THREE.SphereGeometry(100, 64, 32);
       }
 
       if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
@@ -1538,33 +1539,30 @@ export default function PanoramaViewer({
       //   1. Centre the sphere exactly on this eye's position so there is zero
       //      geometry-based parallax (avoids double-vision when radius is small).
       //   2. For stereo formats, flip the texture UV to the correct half.
+      // onBeforeRender fires once per eye per VR frame — use it only for
+      // stereo UV switching. Sphere position is handled by the animation loop.
+      //
+      // Eye detection via layer mask (set by WebXRManager per the WebXR spec):
+      //   cameras[0] left eye  → layers.enable(0) → mask = 0b01 = 1
+      //   cameras[1] right eye → layers.enable(1) → mask = 0b11 = 3
+      //   isRight  ⟺  bit 1 is set  ⟺  (mask & 2) !== 0
       const isStereoFmt = scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb';
-      mesh.onBeforeRender = (_r, _s, camera) => {
-        const rdr = rendererRef.current;
-        if (!rdr?.xr.isPresenting) return;
-
-        // Centre sphere on this eye — eliminates IPD-induced parallax that
-        // would cause misalignment when sphere radius < ~100 m.
-        mesh.position.copy((camera as THREE.PerspectiveCamera).position);
-        mesh.updateMatrixWorld(true);
-
-        if (!isStereoFmt) return;
-
-        // Switch UV half for this eye.
-        // cameras[0] = left eye, cameras[1] = right eye (WebXR / Three.js).
-        const xrCam = rdr.xr.getCamera();
-        const isRight = xrCam.cameras.length > 1 && camera === xrCam.cameras[1];
-        const tex = (mesh.material as THREE.MeshBasicMaterial).map;
-        if (!tex) return;
-        if (scene.format === 'equirectangular-sbs') {
-          // Left half [u 0..0.5] → left eye   Right half [u 0.5..1] → right eye
-          tex.offset.x = isRight ? 0.5 : 0;
-        } else {
-          // TB: top half [v 0.5..1 after flipY] → left eye
-          //     bottom half [v 0..0.5] → right eye
-          tex.offset.y = isRight ? 0 : 0.5;
-        }
-      };
+      if (isStereoFmt) {
+        mesh.onBeforeRender = (_r, _s, camera) => {
+          const rdr = rendererRef.current;
+          if (!rdr?.xr.isPresenting) return;
+          const isRight = (camera.layers.mask & 2) !== 0;
+          const tex = (mesh.material as THREE.MeshBasicMaterial).map;
+          if (!tex) return;
+          if (scene.format === 'equirectangular-sbs') {
+            tex.offset.x = isRight ? 0.5 : 0;
+          } else {
+            tex.offset.y = isRight ? 0 : 0.5;
+          }
+        };
+      } else {
+        mesh.onBeforeRender = () => {};
+      }
     };
 
     if (scene.mediaType === 'panorama-video') {
@@ -1588,15 +1586,10 @@ export default function PanoramaViewer({
           shaderMat.uniforms.map.value = vt;
           // Ensure standard full-sphere geometry
           const oldGeo = mesh.geometry;
-          const newGeo = new THREE.SphereGeometry(10, 64, 32);
+          const newGeo = new THREE.SphereGeometry(100, 64, 32);
           if (oldGeo !== newGeo) { oldGeo.dispose(); mesh.geometry = newGeo; }
           mesh.material = shaderMat;
-          mesh.onBeforeRender = (_r, _s, camera) => {
-            const rdr = rendererRef.current;
-            if (!rdr?.xr.isPresenting) return;
-            mesh.position.copy((camera as THREE.PerspectiveCamera).position);
-            mesh.updateMatrixWorld(true);
-          };
+          mesh.onBeforeRender = () => {};
           shaderMatRef.current = shaderMat;
           textureRef.current   = vt;
         } else {
