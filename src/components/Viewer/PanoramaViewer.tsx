@@ -290,38 +290,41 @@ function makeHotspotCanvasTexture(iconStyle: HotspotIconStyle): THREE.CanvasText
 }
 
 function HotspotMarker({
-  hotspot, isSelected, isPreview, targetSceneName,
+  hotspot, isSelected, isPreview, targetSceneName, isHovered,
 }: {
   hotspot: Hotspot;
   isSelected: boolean;
   isPreview: boolean;
   targetSceneName?: string;
+  isHovered?: boolean;
 }) {
   const tooltip = hotspot.label || targetSceneName;
+  const showLabel = isSelected || isHovered;
   return (
-    <div className="flex flex-col items-center gap-1 group select-none" style={{ cursor: isPreview ? 'pointer' : 'grab' }}>
+    <div className="flex flex-col items-center select-none" style={{ cursor: isPreview ? 'pointer' : 'grab', gap: 0 }}>
+      {tooltip && (
+        <span className={[
+          'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium mb-1 transition-opacity',
+          showLabel
+            ? 'bg-black/80 text-white border-white/30 opacity-100'
+            : 'opacity-0 pointer-events-none',
+        ].join(' ')}>
+          {targetSceneName && !hotspot.label && <span className="mr-1 opacity-60">→</span>}
+          {tooltip}
+        </span>
+      )}
       <div className={[
         'w-10 h-10 rounded-full flex items-center justify-center transition-all',
         'border-2 shadow-lg backdrop-blur-sm',
         isSelected
           ? 'bg-nm-accent border-white text-white scale-110 shadow-nm-accent/40'
           : isPreview
-          ? 'bg-black/60 border-white/70 text-white hover:scale-110 hover:bg-nm-accent hover:border-white hotspot-pulse'
-          : 'bg-black/50 border-nm-accent/70 text-nm-accent hover:scale-110 hover:bg-nm-accent hover:text-white hotspot-pulse',
+          ? 'bg-black/60 border-white/70 text-white hotspot-pulse'
+          : 'bg-black/50 border-nm-accent/70 text-nm-accent hotspot-pulse',
+        isHovered && !isSelected ? 'scale-110 bg-nm-accent border-white text-white' : '',
       ].join(' ')}>
         {HOTSPOT_ICONS[hotspot.iconStyle]}
       </div>
-      {tooltip && (
-        <span className={[
-          'text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm border whitespace-nowrap font-medium',
-          isSelected
-            ? 'bg-nm-accent text-white border-white/30 opacity-100'
-            : 'bg-black/75 text-white border-white/20 opacity-0 group-hover:opacity-100 transition-opacity',
-        ].join(' ')}>
-          {targetSceneName && !hotspot.label && <span className="mr-1 opacity-60">→</span>}
-          {tooltip}
-        </span>
-      )}
     </div>
   );
 }
@@ -544,9 +547,10 @@ export default function PanoramaViewer({
   // ── Hotspot overlay refs ───────────────────────────────────────────────
   const hotspotContainersRef    = useRef<Map<string, HTMLDivElement>>(new Map());
   const hotspotLabelSpritesRef  = useRef<Map<string, THREE.Sprite>>(new Map());
-  const mediaContainersRef   = useRef<Map<string, HTMLDivElement>>(new Map());
-  const draggingHotspotRef   = useRef<{ id: string; yaw: number; pitch: number } | null>(null);
-  const dragStateRef         = useRef<{ hotspotId: string; startX: number; startY: number; moved: boolean } | null>(null);
+  const mediaContainersRef      = useRef<Map<string, HTMLDivElement>>(new Map());
+  const draggingHotspotRef      = useRef<{ id: string; yaw: number; pitch: number } | null>(null);
+  const dragStateRef            = useRef<{ hotspotId: string; startX: number; startY: number; moved: boolean } | null>(null);
+  const [hoveredHotspotId2D, setHoveredHotspotId2D] = useState<string | null>(null);
 
   // ── Prop refs ─────────────────────────────────────────────────────────
   const sceneRef              = useRef(scene);
@@ -556,7 +560,7 @@ export default function PanoramaViewer({
   const onHotspotSelectRef    = useRef(onHotspotSelect);
   const onHotspotRepositionRef = useRef(onHotspotReposition);
 
-  useEffect(() => { sceneRef.current = scene; }, [scene]);
+  useEffect(() => { sceneRef.current = scene; setHoveredHotspotId2D(null); }, [scene]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
   useEffect(() => { isPreviewModeRef.current = isPreviewMode; }, [isPreviewMode]);
   useEffect(() => { onHotspotClickRef.current = onHotspotClick; }, [onHotspotClick]);
@@ -2021,6 +2025,8 @@ export default function PanoramaViewer({
                 }}
                 className="absolute"
                 style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                onPointerEnter={() => setHoveredHotspotId2D(hs.id)}
+                onPointerLeave={() => setHoveredHotspotId2D(id => id === hs.id ? null : id)}
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
                 onPointerUp={e => {
@@ -2063,6 +2069,7 @@ export default function PanoramaViewer({
                       isSelected={selectedElementId === hs.id}
                       isPreview={isPreviewMode}
                       targetSceneName={scenes.find(s => s.id === hs.targetSceneId)?.name}
+                      isHovered={hoveredHotspotId2D === hs.id}
                     />
                   )}
                 </div>
