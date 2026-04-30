@@ -172,6 +172,27 @@ function makeFisheyeShaderMaterial(cfg: FisheyeConfig, vW: number, vH: number): 
 }
 
 
+/** Skybox sphere material: strips the translation column from modelViewMatrix so
+ * the sphere renders as if centred on the rendering camera each frame.
+ * In VR this eliminates IPD-based geometric parallax — stereo depth comes
+ * entirely from left/right image content, not from geometry. */
+function makeSphereMat(): THREE.MeshBasicMaterial {
+  const m = new THREE.MeshBasicMaterial({ color: 0x111119, side: THREE.BackSide });
+  m.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <project_vertex>',
+      /* glsl */`
+      vec4 mvPosition = vec4( transformed, 1.0 );
+      mat4 mvRot = modelViewMatrix;
+      mvRot[3] = vec4(0.0, 0.0, 0.0, 1.0);
+      mvPosition = mvRot * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;
+      `,
+    );
+  };
+  return m;
+}
+
 const HOTSPOT_ICONS: Record<HotspotIconStyle, React.ReactNode> = {
   arrow:  <ArrowRight    size={14} />,
   door:   <DoorOpen      size={14} />,
@@ -596,11 +617,10 @@ export default function PanoramaViewer({
     camera.rotation.order = 'YXZ';
     cameraRef.current = camera;
 
-    // Radius 100 m: large enough that IPD (~63 mm) places each eye only 0.018°
-    // off-centre — imperceptible. Sphere stays well inside the far plane.
     const geo  = new THREE.SphereGeometry(100, 64, 32);
-    const mat  = new THREE.MeshBasicMaterial({ color: 0x111119, side: THREE.BackSide });
+    const mat  = makeSphereMat();
     const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false; // camera is always inside the sphere
     threeScene.add(mesh);
     sphereRef.current = mesh;
 
@@ -1400,9 +1420,7 @@ export default function PanoramaViewer({
     if (shaderMatRef.current) {
       shaderMatRef.current.dispose();
       shaderMatRef.current = null;
-      sphereRef.current.material = new THREE.MeshBasicMaterial({
-        color: 0x111119, side: THREE.BackSide,
-      });
+      sphereRef.current.material = makeSphereMat();
     }
 
     const mat = sphereRef.current.material as THREE.MeshBasicMaterial;
