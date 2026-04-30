@@ -1521,22 +1521,37 @@ export default function PanoramaViewer({
       mat.needsUpdate = true;
 
       // ── Per-eye UV switching for stereo formats in VR ──────────────────
-      // onBeforeRender fires once per eye per frame in WebXR, so we can flip
-      // the texture offset to the correct half just before each draw call.
-      // In non-VR mode we skip the callback and keep the static left-eye offset.
+      // onBeforeRender fires once per eye per frame in WebXR, letting us set
+      // the correct texture half before each draw call.
+      //
+      // Eye mapping (WebXR spec + Three.js convention):
+      //   cameras[0] = left eye,  cameras[1] = right eye
+      //
+      // SBS offset mapping (repeat.x = 0.5):
+      //   left eye  → offset.x = 0   → samples u[0 .. 0.5]  = LEFT  half ✓
+      //   right eye → offset.x = 0.5 → samples u[0.5 .. 1]  = RIGHT half ✓
+      //
+      // TB offset mapping (repeat.y = 0.5):
+      //   Images (flipY=true):  top of image → UV v = 1, so top half → v[0.5..1]
+      //   VideoTexture (flipY=false): browsers deliver video in WebGL y-up order,
+      //   so top of frame also lands at v = 1 — same offsets apply as for images.
+      //   left eye  → offset.y = 0.5 → samples v[0.5 .. 1]  = TOP    half ✓
+      //   right eye → offset.y = 0   → samples v[0   .. 0.5] = BOTTOM half ✓
       const isStereoFmt = scene.format === 'equirectangular-sbs' || scene.format === 'equirectangular-tb';
       if (isStereoFmt) {
         mesh.onBeforeRender = (_r, _s, camera) => {
           const rdr = rendererRef.current;
           if (!rdr?.xr.isPresenting) return;
           const xrCam = rdr.xr.getCamera();
-          const isRight = camera === xrCam.cameras[1];
+          // Guard: cameras array may be empty on the very first frame before
+          // WebXR populates it. In that case treat as left eye (safe default).
+          const isRight = xrCam.cameras.length > 1 && camera === xrCam.cameras[1];
           const tex = (mesh.material as THREE.MeshBasicMaterial).map;
           if (!tex) return;
           if (scene.format === 'equirectangular-sbs') {
             tex.offset.x = isRight ? 0.5 : 0;
           } else {
-            // TB after flipY: top half → UV v[0.5..1] = left eye
+            // equirectangular-tb
             tex.offset.y = isRight ? 0 : 0.5;
           }
         };
