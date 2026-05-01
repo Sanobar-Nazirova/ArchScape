@@ -457,8 +457,6 @@ export default function PanoramaViewer({
   const [vrSupported, setVrSupported] = useState(false);
   const [isInVR, setIsInVR]           = useState(false);
 
-  // Stable ref so native DOM listeners can call the setter without stale closures
-  const openVariantSetterRef = useRef(setOpenVariantHotspotId);
 
   // ── WebXR support detection ────────────────────────────────────────────
   useEffect(() => {
@@ -726,40 +724,6 @@ export default function PanoramaViewer({
     pitchRef.current = scene.initialPitch;
   }, [scene?.initialYaw, scene?.initialPitch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Native pointerup listeners for variants hotspots ─────────────────
-  // React's synthetic event delegation can be unreliable here because the
-  // hotspot overlay has pointer-events:none (imperatively overridden per frame).
-  // Native listeners on the actual DOM node fire before React's root handler,
-  // guaranteeing the toggle fires regardless of synthetic-event timing.
-  useEffect(() => {
-    const hotspots = scene?.hotspots ?? [];
-    const cleanups: (() => void)[] = [];
-    for (const hs of hotspots) {
-      const isVariants = hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0;
-      if (!isVariants) continue;
-      const el = hotspotContainersRef.current.get(hs.id);
-      if (!el) continue;
-      const hsId = hs.id;
-      const handler = (e: PointerEvent) => {
-        e.stopPropagation(); // keep React's synthetic onPointerUp from double-firing
-        const ds = dragStateRef.current;
-        dragStateRef.current = null;
-        if (ds?.moved) {
-          const dh = draggingHotspotRef.current;
-          draggingHotspotRef.current = null;
-          if (dh && dh.id === hsId) onHotspotRepositionRef.current(hsId, dh.yaw, dh.pitch);
-          return;
-        }
-        draggingHotspotRef.current = null;
-        openVariantSetterRef.current(id => id === hsId ? null : hsId);
-        if (!isPreviewModeRef.current) onHotspotSelectRef.current(hsId);
-      };
-      el.addEventListener('pointerup', handler);
-      cleanups.push(() => el.removeEventListener('pointerup', handler));
-    }
-    return () => cleanups.forEach(fn => fn());
-  }, [scene?.hotspots]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Event handlers ────────────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (activeToolRef.current !== 'none') return;
@@ -842,8 +806,32 @@ export default function PanoramaViewer({
         if (activeToolRef.current === 'hotspot') onHotspotPlace(yaw, pitch);
         else onMediaPlace(yaw, pitch);
       }
+      return;
     }
-  }, [onHotspotPlace, onMediaPlace]);
+
+    // Detect clicks on variants hotspots by checking the rendered DOM bounding boxes.
+    // This is unconditional — it works regardless of pointer-events on the overlay.
+    const sc = sceneRef.current;
+    if (sc) {
+      for (const hs of (sc.hotspots ?? [])) {
+        const isVariants = hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0;
+        if (!isVariants) continue;
+        const el = hotspotContainersRef.current.get(hs.id);
+        if (!el || el.style.opacity === '0') continue; // skip invisible (behind camera)
+        // The inner child is translate(-50%,-50%) so its getBoundingClientRect reflects the visual center
+        const inner = el.firstElementChild as Element | null;
+        const hitEl = inner ?? el;
+        const r = hitEl.getBoundingClientRect();
+        const pad = 12; // extra hit padding
+        if (e.clientX >= r.left - pad && e.clientX <= r.right + pad &&
+            e.clientY >= r.top - pad && e.clientY <= r.bottom + pad) {
+          setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+          if (!isPreviewModeRef.current) onHotspotSelectRef.current(hs.id);
+          return;
+        }
+      }
+    }
+  }, [onHotspotPlace, onMediaPlace]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Hotspot drag handlers ─────────────────────────────────────────────
   const handleHotspotPointerDown = useCallback((e: React.PointerEvent, hotspotId: string) => {
@@ -975,22 +963,20 @@ export default function PanoramaViewer({
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
                 onPointerUp={e => {
-                  // Variants hotspots are handled by native pointerup listener (see useEffect above)
-                  const isVariants = hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0;
-                  if (isVariants) return;
                   const ds = dragStateRef.current;
                   dragStateRef.current = null;
                   if (ds?.moved) {
                     e.stopPropagation();
                     const dh = draggingHotspotRef.current;
                     draggingHotspotRef.current = null;
-                    if (dh && dh.id === hs.id) {
-                      onHotspotRepositionRef.current(hs.id, dh.yaw, dh.pitch);
-                    }
+                    if (dh && dh.id === hs.id) onHotspotRepositionRef.current(hs.id, dh.yaw, dh.pitch);
                     return;
                   }
                   draggingHotspotRef.current = null;
-                  handleHotspotPointerUp(e, hs);
+                  const isVariants = hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0;
+                  // Variants panel toggle is handled in handleClick (outer container)
+                  // so we only do navigation here for regular hotspots
+                  if (!isVariants) handleHotspotPointerUp(e, hs);
                 }}
               >
                 <div style={{ transform: 'translate(-50%,-50%)' }}>
