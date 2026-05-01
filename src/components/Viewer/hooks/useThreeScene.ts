@@ -5,6 +5,7 @@ import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerM
 import { XRHandModelFactory }       from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 import { yawPitchToWorld }          from '../../../utils/sphereCoords';
 import { makeSphereMat }            from '../materials/sphereMat';
+import { triggerUpload }            from '../../../utils/uploadTrigger';
 import type { Scene, Hotspot, FloorPlan } from '../../../types';
 
 export function useThreeScene(params: {
@@ -288,6 +289,19 @@ export function useThreeScene(params: {
         panelBtns.push({ mesh: makePanelHitPlane(0.53, arrowNY, 0.44, 0.06, 'scrollDown'), action: 'scrollDown' });
 
         const footerY  = arrowY + PY * 0.08;
+
+        // Upload button (full width row)
+        const upHov2 = hoveredAction === 'upload', upPrs2 = pressedAction === 'upload';
+        fillRR(PX * 0.03, footerY, PX * 0.94, PY * 0.065, 10,
+          upPrs2 ? '#e07b3fcc' : upHov2 ? '#e07b3f55' : '#e07b3f22');
+        strokeRR(PX * 0.03, footerY, PX * 0.94, PY * 0.065, 10, '#e07b3f', upPrs2 ? 2.5 : upHov2 ? 2 : 1.5);
+        pc.fillStyle = upPrs2 ? '#fff' : '#e07b3f';
+        pc.font = `bold ${PX * 0.038}px Inter,sans-serif`;
+        pc.textAlign = 'center'; pc.textBaseline = 'middle';
+        pc.fillText('⬆ Upload Images', PX * 0.5, footerY + PY * 0.032);
+        panelBtns.push({ mesh: makePanelHitPlane(0.03, footerY / PY, 0.94, 0.065, 'upload'), action: 'upload' });
+
+        const footerY2 = footerY + PY * 0.078;
         const footBtns = [
           { label: '⟳ Reset', col: '#3bbfb5', action: 'reset' },
           { label: audioMuted ? '🔇 Unmute' : '🔊 Mute', col: '#3bbfb5', action: 'mute' },
@@ -298,16 +312,16 @@ export function useThreeScene(params: {
           const fx   = PX * 0.03 + i * (fbW + PX * 0.02);
           const fHov = hoveredAction === fb.action;
           const fPrs = pressedAction === fb.action;
-          fillRR(fx, footerY, fbW, PY * 0.065, 10,
+          fillRR(fx, footerY2, fbW, PY * 0.065, 10,
             fPrs ? fb.col + 'cc' : fHov ? fb.col + '55' : fb.col + '22');
-          strokeRR(fx, footerY, fbW, PY * 0.065, 10, fb.col, fPrs ? 2.5 : fHov ? 2 : 1.5);
+          strokeRR(fx, footerY2, fbW, PY * 0.065, 10, fb.col, fPrs ? 2.5 : fHov ? 2 : 1.5);
           pc.fillStyle = fPrs ? '#fff' : fb.col;
           pc.font = `bold ${PX * 0.036}px Inter,sans-serif`;
           pc.textAlign = 'center'; pc.textBaseline = 'middle';
-          pc.fillText(fb.label, fx + fbW / 2, footerY + PY * 0.032);
+          pc.fillText(fb.label, fx + fbW / 2, footerY2 + PY * 0.032);
           const nw = (0.94 - 2 * 0.02) / 3;
           const nx = 0.03 + i * (nw + 0.02);
-          panelBtns.push({ mesh: makePanelHitPlane(nx, footerY / PY, nw, 0.065, fb.action), action: fb.action });
+          panelBtns.push({ mesh: makePanelHitPlane(nx, footerY2 / PY, nw, 0.065, fb.action), action: fb.action });
         });
       }
 
@@ -542,6 +556,9 @@ export function useThreeScene(params: {
             audioElemsRef.current.forEach(a => { a.muted = audioMuted; });
             audioGainsRef.current.forEach(g => { g.gain.value = audioMuted ? 0 : (g as any)._baseVol ?? 1; });
             redrawPanel(); break;
+          case 'upload':
+            triggerUpload();
+            break;
           case 'exit':
             renderer.xr.getSession()?.end();
             break;
