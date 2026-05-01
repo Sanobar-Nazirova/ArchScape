@@ -7,7 +7,7 @@ import {
 import HelpModal from '../HelpModal';
 import { useTourStore } from '../../store/useTourStore';
 import ThemeToggle from '../ThemeToggle';
-import { registerUploadTrigger } from '../../utils/uploadTrigger';
+import { registerUploadHandler, triggerUpload } from '../../utils/uploadTrigger';
 import { detectPanorama } from '../../utils/panoramaDetector';
 import { fisheyeToEquirectangular, fileToCanvas, autoDetectFisheyeCircles } from '../../utils/fisheyeConverter';
 import { generateThumbnail } from '../../utils/panoramaGenerator';
@@ -275,13 +275,7 @@ export default function Toolbar() {
     goBack, goHome, saveTour,
   } = useTourStore();
 
-  const panoramaInputRef = useRef<HTMLInputElement>(null);
   const floorPlanInputRef = useRef<HTMLInputElement>(null);
-
-  // Register global upload trigger so EmptyViewer / Sidebar can fire it
-  useEffect(() => {
-    registerUploadTrigger(() => panoramaInputRef.current?.click());
-  }, []);
 
   // Fisheye dialog state
   const fisheyeResolveRef = useRef<((cfg: FisheyeConfig | null) => void) | null>(null);
@@ -351,6 +345,11 @@ export default function Toolbar() {
     }
     setProcessingMsg('');
   }, [waitForFisheyeDialog, addScene]);
+
+  // Register file handler — fresh dynamic <input> created on each call (works in Quest VR)
+  useEffect(() => {
+    registerUploadHandler(handlePanoramaFiles);
+  }, [handlePanoramaFiles]);
 
   const handleFloorPlanFile = useCallback(async (files: FileList) => {
     const file = files[0];
@@ -428,7 +427,7 @@ export default function Toolbar() {
           icon={<Upload size={14} />}
           label="Upload"
           tooltip="Upload equirectangular images or 360° videos (fisheye auto-detected)"
-          onClick={() => panoramaInputRef.current?.click()}
+          onClick={triggerUpload}
         />
 
         <Divider />
@@ -520,12 +519,6 @@ export default function Toolbar() {
       </div>
 
       {/* Hidden file inputs */}
-      <input
-        ref={panoramaInputRef} type="file"
-        accept="image/*,video/mp4,video/webm,video/quicktime,video/x-m4v,video/ogg"
-        multiple className="hidden"
-        onChange={e => { if (e.target.files) handlePanoramaFiles(e.target.files); e.target.value = ''; }}
-      />
       <input
         ref={floorPlanInputRef} type="file"
         accept="image/*" className="hidden"
