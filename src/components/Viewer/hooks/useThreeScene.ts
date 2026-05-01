@@ -119,8 +119,9 @@ export function useThreeScene(params: {
     const ROWS_VISIBLE = 5;
 
     let panelOpen      = false;
-    let panelTab: 'scenes' | 'floorplan' = 'scenes';
+    let panelTab: 'scenes' | 'floorplan' | 'variants' = 'scenes';
     let panelScroll    = 0;
+    let variantHsIdForPanel: string | null = null;
     let audioMuted     = false;
     let prevSqueeze    = false;
     let prevLeftPinch  = false;
@@ -195,34 +196,6 @@ export function useThreeScene(params: {
 
       const tabBarH = PY * 0.10;
       const tabBarY = PY * 0.0;
-      const tabW    = PX * 0.47;
-      const tabGap  = PX * 0.02;
-      const tabs = [
-        { label: '📍 Scenes',    key: 'scenes'    as const },
-        { label: '🗺 Floor Plan', key: 'floorplan' as const },
-      ];
-      tabs.forEach((t, i) => {
-        const tx      = PX * 0.02 + i * (tabW + tabGap);
-        const active  = panelTab === t.key;
-        const hovered = hoveredAction === `tab:${t.key}`;
-        const pressed = pressedAction === `tab:${t.key}`;
-        fillRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
-          pressed ? 'rgba(224,123,63,0.55)' :
-          hovered ? 'rgba(224,123,63,0.38)' :
-          active  ? 'rgba(224,123,63,0.28)' : 'rgba(255,255,255,0.05)');
-        strokeRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
-          (active || hovered || pressed) ? '#e07b3f' : 'rgba(255,255,255,0.12)',
-          pressed ? 3 : active ? 2 : hovered ? 2 : 1);
-        pc.fillStyle = (active || hovered || pressed) ? '#e07b3f' : 'rgba(224,221,216,0.55)';
-        pc.font = `${(active || hovered) ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
-        pc.textAlign = 'center'; pc.textBaseline = 'middle';
-        pc.fillText(t.label, tx + tabW / 2, tabBarY + tabBarH * 0.45);
-      });
-
-      pc.strokeStyle = 'rgba(224,123,63,0.25)'; pc.lineWidth = 1;
-      pc.beginPath(); pc.moveTo(PX * 0.03, tabBarH); pc.lineTo(PX * 0.97, tabBarH); pc.stroke();
-
-      const contentTop = tabBarH + PY * 0.01;
 
       panelBtns.forEach(b => {
         panelMesh.remove(b.mesh);
@@ -230,10 +203,59 @@ export function useThreeScene(params: {
         (b.mesh.material as THREE.MeshBasicMaterial).dispose();
       });
       panelBtns = [];
-      tabs.forEach((t, i) => {
-        const nx = 0.02 + i * ((0.47 + 0.02));
-        panelBtns.push({ mesh: makePanelHitPlane(nx, 0.01, 0.47, tabBarH / PY * 0.82, `tab:${t.key}`), action: `tab:${t.key}` });
-      });
+
+      if (panelTab === 'variants') {
+        // Header: back button + title
+        const backHov = hoveredAction === 'variants-back', backPrs = pressedAction === 'variants-back';
+        fillRR(PX * 0.02, PY * 0.01, PX * 0.22, tabBarH * 0.82, 10,
+          backPrs ? 'rgba(224,123,63,0.55)' : backHov ? 'rgba(224,123,63,0.38)' : 'rgba(255,255,255,0.05)');
+        strokeRR(PX * 0.02, PY * 0.01, PX * 0.22, tabBarH * 0.82, 10,
+          (backHov || backPrs) ? '#e07b3f' : 'rgba(255,255,255,0.12)', backPrs ? 3 : 1.5);
+        pc.fillStyle = (backHov || backPrs) ? '#e07b3f' : 'rgba(224,221,216,0.7)';
+        pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
+        pc.textAlign = 'center'; pc.textBaseline = 'middle';
+        pc.fillText('← Back', PX * 0.13, tabBarY + tabBarH * 0.45);
+        panelBtns.push({ mesh: makePanelHitPlane(0.02, 0.01, 0.22, tabBarH / PY * 0.82, 'variants-back'), action: 'variants-back' });
+
+        const hs = scenesRef.current && variantHsIdForPanel
+          ? sceneRef.current?.hotspots.find(h => h.id === variantHsIdForPanel) ?? null
+          : null;
+        const title = hs?.label || 'Design Options';
+        pc.fillStyle = '#3bbfb5';
+        pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
+        pc.textAlign = 'center'; pc.textBaseline = 'middle';
+        pc.fillText(`🎨 ${title}`, PX * 0.63, tabBarY + tabBarH * 0.45);
+      } else {
+        const tabW  = PX * 0.47;
+        const tabGap = PX * 0.02;
+        const tabs = [
+          { label: '📍 Scenes',    key: 'scenes'    as const },
+          { label: '🗺 Floor Plan', key: 'floorplan' as const },
+        ];
+        tabs.forEach((t, i) => {
+          const tx      = PX * 0.02 + i * (tabW + tabGap);
+          const active  = panelTab === t.key;
+          const hovered = hoveredAction === `tab:${t.key}`;
+          const pressed = pressedAction === `tab:${t.key}`;
+          fillRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
+            pressed ? 'rgba(224,123,63,0.55)' :
+            hovered ? 'rgba(224,123,63,0.38)' :
+            active  ? 'rgba(224,123,63,0.28)' : 'rgba(255,255,255,0.05)');
+          strokeRR(tx, tabBarY + PY * 0.01, tabW, tabBarH * 0.82, 10,
+            (active || hovered || pressed) ? '#e07b3f' : 'rgba(255,255,255,0.12)',
+            pressed ? 3 : active ? 2 : hovered ? 2 : 1);
+          pc.fillStyle = (active || hovered || pressed) ? '#e07b3f' : 'rgba(224,221,216,0.55)';
+          pc.font = `${(active || hovered) ? 'bold ' : ''}${PX * 0.042}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText(t.label, tx + tabW / 2, tabBarY + tabBarH * 0.45);
+          panelBtns.push({ mesh: makePanelHitPlane(0.02 + i * (0.47 + 0.02), 0.01, 0.47, tabBarH / PY * 0.82, `tab:${t.key}`), action: `tab:${t.key}` });
+        });
+      }
+
+      pc.strokeStyle = 'rgba(224,123,63,0.25)'; pc.lineWidth = 1;
+      pc.beginPath(); pc.moveTo(PX * 0.03, tabBarH); pc.lineTo(PX * 0.97, tabBarH); pc.stroke();
+
+      const contentTop = tabBarH + PY * 0.01;
 
       if (panelTab === 'scenes') {
         pc.fillStyle = 'rgba(224,221,216,0.45)';
@@ -498,6 +520,66 @@ export function useThreeScene(params: {
         if (!detailFp) panelMesh.scale.set(1, 1, 1);
       }
 
+      if (panelTab === 'variants') {
+        panelMesh.scale.set(1, 1, 1);
+        const hs = variantHsIdForPanel
+          ? sceneRef.current?.hotspots.find(h => h.id === variantHsIdForPanel) ?? null
+          : null;
+        const variantIds = hs?.variantSceneIds ?? [];
+
+        if (variantIds.length === 0) {
+          pc.fillStyle = 'rgba(224,221,216,0.4)';
+          pc.font = `${PX * 0.044}px Inter,sans-serif`;
+          pc.textAlign = 'center'; pc.textBaseline = 'middle';
+          pc.fillText('No design options configured', PX / 2, contentTop + (PY - contentTop) / 2);
+        } else {
+          const rowH  = PY * 0.107;
+          const rowGap = PY * 0.014;
+          variantIds.forEach((sid, i) => {
+            const sc      = scenesRef.current.find(s => s.id === sid);
+            const isCur   = sid === sceneRef.current?.id;
+            const isHov   = hoveredAction === `variant-opt:${sid}`;
+            const isPrs   = pressedAction === `variant-opt:${sid}`;
+            const y       = contentTop + PY * 0.02 + i * (rowH + rowGap);
+
+            fillRR(PX * 0.04, y, PX * 0.92, rowH, 10,
+              isPrs ? 'rgba(59,191,181,0.45)' : isHov ? 'rgba(59,191,181,0.2)' :
+              isCur ? 'rgba(59,191,181,0.15)' : 'rgba(255,255,255,0.05)');
+            strokeRR(PX * 0.04, y, PX * 0.92, rowH, 10,
+              isPrs ? '#3bbfb5' : isHov ? '#3bbfb5' : isCur ? '#3bbfb5' : 'rgba(255,255,255,0.1)',
+              isPrs ? 2.5 : isHov ? 2 : isCur ? 2 : 1);
+
+            // Icon dot
+            fillRR(PX * 0.07, y + rowH * 0.25, PX * 0.07, rowH * 0.5, 6,
+              isCur || isHov || isPrs ? 'rgba(59,191,181,0.35)' : 'rgba(255,255,255,0.07)');
+            pc.fillStyle = isCur || isHov || isPrs ? '#3bbfb5' : 'rgba(224,221,216,0.4)';
+            pc.font = `bold ${PX * 0.042}px Inter,sans-serif`;
+            pc.textAlign = 'center'; pc.textBaseline = 'middle';
+            pc.fillText('🎨', PX * 0.105, y + rowH * 0.5);
+
+            // Scene name
+            pc.fillStyle = isPrs ? '#fff' : isCur || isHov ? '#fff' : 'rgba(224,221,216,0.85)';
+            pc.font = `${isCur || isHov || isPrs ? 'bold ' : ''}${PX * 0.044}px Inter,sans-serif`;
+            pc.textAlign = 'left'; pc.textBaseline = 'middle';
+            let nm = sc?.name ?? sid;
+            const maxW = PX * 0.65;
+            while (pc.measureText(nm).width > maxW && nm.length > 3) nm = nm.slice(0, -2) + '…';
+            pc.fillText(nm, PX * 0.19, y + rowH * 0.5);
+
+            if (isCur) {
+              fillRR(PX * 0.74, y + rowH * 0.22, PX * 0.2, rowH * 0.56, 6, 'rgba(59,191,181,0.25)');
+              pc.fillStyle = '#3bbfb5'; pc.font = `bold ${PX * 0.03}px Inter,sans-serif`;
+              pc.textAlign = 'center'; pc.textBaseline = 'middle';
+              pc.fillText('✓ Active', PX * 0.84, y + rowH * 0.5);
+            }
+
+            if (!isCur) {
+              panelBtns.push({ mesh: makePanelHitPlane(0.04, y / PY, 0.92, rowH / PY, `variant-opt:${sid}`), action: `variant-opt:${sid}` });
+            }
+          });
+        }
+      }
+
       panelTex.needsUpdate = true;
     };
 
@@ -511,6 +593,21 @@ export function useThreeScene(params: {
           setActiveSceneRef.current(action.slice(6));
           panelOpen = false;
           panelMesh.visible = false;
+          return;
+        }
+        if (action === 'variants-back') {
+          panelTab = 'scenes';
+          variantHsIdForPanel = null;
+          panelMesh.scale.set(1, 1, 1);
+          redrawPanel(); return;
+        }
+        if (action.startsWith('variant-opt:')) {
+          const sid = action.slice(12);
+          setActiveSceneRef.current(sid);
+          panelOpen = false;
+          panelMesh.visible = false;
+          variantHsIdForPanel = null;
+          panelTab = 'scenes';
           return;
         }
         if (action.startsWith('tab:')) {
@@ -789,12 +886,12 @@ export function useThreeScene(params: {
       if (best) {
         clickAnim = { hotspotId: best.hs.id, t0: performance.now() };
         if (best.hs.type === 'variants') {
-          // Toggle variant popup instead of navigating directly
-          if (variantPanelHsId === best.hs.id) {
-            hideVariantPanel();
-          } else {
-            showVariantPanel(best.hs);
-          }
+          // Show design options in the wrist panel
+          variantHsIdForPanel = best.hs.id;
+          panelTab = 'variants';
+          panelOpen = true;
+          panelMesh.visible = true;
+          redrawPanel();
         } else {
           onHotspotClickRef.current(best.hs);
         }
