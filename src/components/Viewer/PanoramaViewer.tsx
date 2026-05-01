@@ -951,11 +951,8 @@ export default function PanoramaViewer({
                   }
                   draggingHotspotRef.current = null;
                   if (hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0) {
-                    if (isPreviewModeRef.current) {
-                      setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
-                    } else {
-                      onHotspotSelectRef.current(hs.id);
-                    }
+                    setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+                    if (!isPreviewModeRef.current) onHotspotSelectRef.current(hs.id);
                   } else {
                     handleHotspotPointerUp(e, hs);
                   }
@@ -1012,7 +1009,7 @@ export default function PanoramaViewer({
             const hs = scene?.hotspots.find(h => h.id === openVariantHotspotId);
             if (!hs?.variantSceneIds?.length) return null;
             return (
-              <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-black/85 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-white/10"
+              <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] bg-black/85 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-white/10"
                 onClick={e => e.stopPropagation()}>
                 <p className="text-[10px] text-white/50 text-center mb-2.5 uppercase tracking-wide">{hs.label || 'Design Options'}</p>
                 <div className="flex gap-2">
