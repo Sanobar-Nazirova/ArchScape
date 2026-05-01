@@ -936,6 +936,7 @@ export default function PanoramaViewer({
                 style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
+                onClick={hs.type === 'variants' ? e => e.stopPropagation() : undefined}
                 onPointerUp={e => {
                   const ds = dragStateRef.current;
                   dragStateRef.current = null;
