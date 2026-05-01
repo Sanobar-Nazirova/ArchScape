@@ -549,6 +549,128 @@ export function useThreeScene(params: {
       }, 130);
     };
 
+    // ── Variants popup panel (world-space, near hotspot) ──────────────
+    const VP_W = 0.50;            // panel width in metres
+    const VP_H_ROW = 0.065;       // height per variant row in metres
+    const VP_PX = 512;            // canvas width in pixels
+    let variantPanelHsId:     string | null = null;
+    let variantPanelBtns:     PanelBtn[]   = [];
+    let variantHoveredAction: string | null = null;
+
+    const variantCvs = document.createElement('canvas');
+    variantCvs.width = VP_PX; variantCvs.height = 64; // resized in drawVariantPanel
+    const variantTex  = new THREE.CanvasTexture(variantCvs);
+    const variantMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(VP_W, 0.1),
+      new THREE.MeshBasicMaterial({ map: variantTex, transparent: true, side: THREE.DoubleSide, depthTest: false }),
+    );
+    variantMesh.visible = false;
+    variantMesh.renderOrder = 1;
+    threeScene.add(variantMesh);
+
+    const drawVariantPanel = (hs: Hotspot) => {
+      const allSc    = scenesRef.current;
+      const variants = (hs.variantSceneIds ?? [])
+        .map(id => allSc.find(s => s.id === id))
+        .filter((s): s is NonNullable<typeof s> => !!s);
+      if (variants.length === 0) return;
+
+      const headerH = 0.038;
+      const VP_H  = VP_H_ROW * variants.length + headerH + 0.018;
+      const VP_PY = Math.round(VP_PX * VP_H / VP_W);
+      variantCvs.height = VP_PY;
+      variantMesh.geometry.dispose();
+      variantMesh.geometry = new THREE.PlaneGeometry(VP_W, VP_H);
+
+      const vc = variantCvs.getContext('2d')!;
+      vc.clearRect(0, 0, VP_PX, VP_PY);
+      vc.fillStyle = 'rgba(14,14,22,0.96)';
+      vc.beginPath(); vc.roundRect(0, 0, VP_PX, VP_PY, 18); vc.fill();
+      vc.strokeStyle = 'rgba(224,123,63,0.55)'; vc.lineWidth = 3;
+      vc.beginPath(); vc.roundRect(1, 1, VP_PX - 2, VP_PY - 2, 17); vc.stroke();
+
+      vc.fillStyle = '#e07b3f';
+      vc.font = `bold ${VP_PX * 0.042}px Inter,sans-serif`;
+      vc.textAlign = 'center'; vc.textBaseline = 'middle';
+      vc.fillText('Design Options', VP_PX / 2, VP_PY * (headerH / 2 / VP_H));
+
+      variantPanelBtns.forEach(b => {
+        variantMesh.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        (b.mesh.material as THREE.MeshBasicMaterial).dispose();
+      });
+      variantPanelBtns = [];
+
+      const rowPx  = Math.round(VP_PX * VP_H_ROW / VP_W);
+      const gapPx  = Math.round(VP_PX * 0.008 / VP_W);
+      const topPx  = Math.round(VP_PX * (headerH + 0.009) / VP_W);
+
+      variants.forEach((sc, i) => {
+        const y     = topPx + i * (rowPx + gapPx);
+        const isAct = sc.id === sceneRef.current?.id;
+        const isHov = variantHoveredAction === `variant:${sc.id}`;
+
+        vc.fillStyle = isAct ? 'rgba(224,123,63,0.22)' : isHov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)';
+        vc.beginPath(); vc.roundRect(VP_PX * 0.03, y, VP_PX * 0.94, rowPx * 0.88, 8); vc.fill();
+        vc.strokeStyle = isAct ? '#e07b3f' : isHov ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.08)';
+        vc.lineWidth = isAct || isHov ? 2 : 1;
+        vc.beginPath(); vc.roundRect(VP_PX * 0.03, y, VP_PX * 0.94, rowPx * 0.88, 8); vc.stroke();
+
+        if (isAct) {
+          vc.fillStyle = '#e07b3f';
+          vc.beginPath(); vc.roundRect(VP_PX * 0.055, y + rowPx * 0.18, VP_PX * 0.09, rowPx * 0.64, 4); vc.fill();
+          vc.fillStyle = '#fff'; vc.font = `bold ${VP_PX * 0.028}px Inter,sans-serif`;
+          vc.textAlign = 'center'; vc.textBaseline = 'middle';
+          vc.fillText('NOW', VP_PX * 0.1, y + rowPx * 0.5);
+        }
+
+        vc.fillStyle = isAct || isHov ? '#fff' : 'rgba(224,221,216,0.85)';
+        vc.font = `${isAct || isHov ? 'bold ' : ''}${VP_PX * 0.042}px Inter,sans-serif`;
+        vc.textAlign = 'left'; vc.textBaseline = 'middle';
+        const nameX = isAct ? VP_PX * 0.18 : VP_PX * 0.08;
+        const maxW  = VP_PX * (isAct ? 0.72 : 0.82);
+        let name = sc.name;
+        while (vc.measureText(name).width > maxW && name.length > 3) name = name.slice(0, -2) + '…';
+        vc.fillText(name, nameX, y + rowPx * 0.5);
+
+        const ny = (y / VP_PY);
+        const nh = (rowPx * 0.88) / VP_PY;
+        const hitMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.94 * VP_W, nh * VP_H),
+          new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide, depthTest: false }),
+        );
+        hitMesh.position.set(0, -(ny + nh / 2 - 0.5) * VP_H, 0.002);
+        hitMesh.userData.action = `variant:${sc.id}`;
+        variantMesh.add(hitMesh);
+        variantPanelBtns.push({ mesh: hitMesh, action: `variant:${sc.id}` });
+      });
+
+      variantTex.needsUpdate = true;
+    };
+
+    const showVariantPanel = (hs: Hotspot) => {
+      variantPanelHsId = hs.id;
+      const wp = yawPitchToWorld(hs.yaw, hs.pitch);
+      const pos = new THREE.Vector3(wp.x, wp.y, wp.z).normalize().multiplyScalar(440);
+      pos.y += 25;
+      variantMesh.position.copy(pos);
+      variantMesh.lookAt(0, pos.y, 0);
+      variantMesh.visible = true;
+      drawVariantPanel(hs);
+    };
+
+    const hideVariantPanel = () => {
+      variantPanelHsId = null;
+      variantHoveredAction = null;
+      variantPanelBtns.forEach(b => {
+        variantMesh.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        (b.mesh.material as THREE.MeshBasicMaterial).dispose();
+      });
+      variantPanelBtns = [];
+      variantMesh.visible = false;
+    };
+
     // ── Set up left (0) and right (1) controllers ──────────────────────
     const xrProfilesBase = window.location.href.replace(/\/[^/]*$/, '') + '/xr-profiles';
     const controllerModelFactory = new XRControllerModelFactory();
@@ -611,10 +733,29 @@ export function useThreeScene(params: {
       tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
       raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
       raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
+
+      // ── Wrist panel takes priority ─────────────────────────────────────
       if (panelOpen && panelBtns.length > 0) {
         const hits = raycaster.intersectObjects(panelBtns.map(b => b.mesh));
         if (hits.length > 0) { activatePanelAction(hits[0].object.userData.action as string); return; }
       }
+
+      // ── Variant popup panel ────────────────────────────────────────────
+      if (variantMesh.visible && variantPanelBtns.length > 0) {
+        const hits = raycaster.intersectObjects(variantPanelBtns.map(b => b.mesh));
+        if (hits.length > 0) {
+          const action = hits[0].object.userData.action as string;
+          if (action.startsWith('variant:')) {
+            hideVariantPanel();
+            setActiveSceneRef.current(action.slice(8));
+          }
+          return;
+        }
+        // Trigger outside panel → close it
+        hideVariantPanel();
+        return;
+      }
+
       const sc = sceneRef.current;
       if (!sc) return;
       const origin = raycaster.ray.origin.clone();
@@ -630,7 +771,16 @@ export function useThreeScene(params: {
       }
       if (best) {
         clickAnim = { hotspotId: best.hs.id, t0: performance.now() };
-        onHotspotClickRef.current(best.hs);
+        if (best.hs.type === 'variants') {
+          // Toggle variant popup instead of navigating directly
+          if (variantPanelHsId === best.hs.id) {
+            hideVariantPanel();
+          } else {
+            showVariantPanel(best.hs);
+          }
+        } else {
+          onHotspotClickRef.current(best.hs);
+        }
       }
     };
 
@@ -730,6 +880,27 @@ export function useThreeScene(params: {
           rightRay.scale.y    = 1;
           rightRay.position.z = -1;
         }
+      } else if (variantMesh.visible && variantPanelBtns.length > 0) {
+        // ── Variant panel hover highlight ────────────────────────────────
+        tmpMat.identity().extractRotation(rightCtrl.matrixWorld);
+        raycaster.ray.origin.setFromMatrixPosition(rightCtrl.matrixWorld);
+        raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tmpMat).normalize();
+        const hits      = raycaster.intersectObjects(variantPanelBtns.map(b => b.mesh));
+        const hitAction = hits[0]?.object.userData.action ?? null;
+        if (hitAction !== variantHoveredAction) {
+          variantHoveredAction = hitAction;
+          const sc = sceneRef.current;
+          const hs = sc?.hotspots.find(h => h.id === variantPanelHsId);
+          if (hs) drawVariantPanel(hs);
+        }
+        if (hits.length > 0) {
+          const d = Math.max(0.01, hits[0].distance);
+          rightRay.scale.y    = d / 2;
+          rightRay.position.z = -d / 2;
+        } else {
+          rightRay.scale.y    = 1;
+          rightRay.position.z = -1;
+        }
       } else {
         if (hoveredAction !== null) {
           hoveredAction = null;
@@ -765,6 +936,10 @@ export function useThreeScene(params: {
               threeScene.children
                 .filter(c => c.userData.vrHotspot && c.userData.hotspotId === hoveredHotspotId)
                 .forEach(s => (s as THREE.Sprite).scale.set(38, 38, 1));
+            }
+            // Hide variant panel if we moved away from its hotspot
+            if (variantPanelHsId === hoveredHotspotId && newHov !== hoveredHotspotId) {
+              hideVariantPanel();
             }
           }
           hoveredHotspotId = newHov;
