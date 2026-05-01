@@ -261,7 +261,11 @@ export const useTourStore = create<TourState>()((set, get) => ({
     // Normalize scenes loaded from storage — ensure required arrays always exist
     const scenes = (tour.scenes ?? []).map(s => ({
       ...s,
-      hotspots:     s.hotspots     ?? [],
+      hotspots: (s.hotspots ?? []).map((h: Hotspot) => ({
+        ...h,
+        // Ensure hotspots with variantSceneIds are always typed as variants
+        type: (h.variantSceneIds?.length ?? 0) > 0 ? 'variants' as const : (h.type ?? 'navigation' as const),
+      })),
       mediaPoints:  s.mediaPoints  ?? [],
       audioSources: s.audioSources ?? [],
       tags:         s.tags         ?? [],

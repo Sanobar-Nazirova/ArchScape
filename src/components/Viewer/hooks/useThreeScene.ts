@@ -885,7 +885,7 @@ export function useThreeScene(params: {
       }
       if (best) {
         clickAnim = { hotspotId: best.hs.id, t0: performance.now() };
-        if (best.hs.type === 'variants') {
+        if (best.hs.type === 'variants' || (best.hs.variantSceneIds?.length ?? 0) > 0) {
           // Show design options in the wrist panel
           variantHsIdForPanel = best.hs.id;
           panelTab = 'variants';

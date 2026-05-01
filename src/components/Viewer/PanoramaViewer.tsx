@@ -936,7 +936,7 @@ export default function PanoramaViewer({
                 style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
-                onClick={hs.type === 'variants' ? e => e.stopPropagation() : undefined}
+                onClick={(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0) ? e => e.stopPropagation() : undefined}
                 onPointerUp={e => {
                   const ds = dragStateRef.current;
                   dragStateRef.current = null;
@@ -950,7 +950,7 @@ export default function PanoramaViewer({
                     return;
                   }
                   draggingHotspotRef.current = null;
-                  if (hs.type === 'variants') {
+                  if (hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0) {
                     if (isPreviewModeRef.current) {
                       setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
                     } else {
@@ -962,7 +962,7 @@ export default function PanoramaViewer({
                 }}
               >
                 <div style={{ transform: 'translate(-50%,-50%)' }}>
-                  {hs.type === 'variants' ? (
+                  {(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0) ? (
                     <VariantHotspotMarker
                       hotspot={hs}
                       isSelected={selectedElementId === hs.id}
