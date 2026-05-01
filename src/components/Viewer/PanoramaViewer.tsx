@@ -907,7 +907,7 @@ export default function PanoramaViewer({
       onMouseUp={scene ? handleMouseUp : undefined}
       onMouseLeave={scene ? handleMouseLeave : undefined}
       onWheel={scene ? handleWheel : undefined}
-      onClick={scene ? (e => { handleClick(e); setOpenVariantHotspotId(null); }) : undefined}
+      onClick={scene ? handleClick : undefined}
       onTouchStart={scene ? handleTouchStart : undefined}
       onTouchMove={scene ? handleTouchMove : undefined}
       onTouchEnd={scene ? handleMouseUp : undefined}
@@ -933,16 +933,10 @@ export default function PanoramaViewer({
                   else hotspotContainersRef.current.delete(hs.id);
                 }}
                 className="absolute"
-                style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0 }}
                 onMouseDown={e => e.stopPropagation()}
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
-                onClick={e => {
-                  e.stopPropagation();
-                  if (!(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0)) return;
-                  setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
-                  if (!isPreviewModeRef.current) onHotspotSelectRef.current(hs.id);
-                }}
                 onPointerUp={e => {
                   const ds = dragStateRef.current;
                   dragStateRef.current = null;
@@ -956,7 +950,12 @@ export default function PanoramaViewer({
                     return;
                   }
                   draggingHotspotRef.current = null;
-                  if (!(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0)) {
+                  const isVariants = hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0;
+                  if (isVariants) {
+                    e.stopPropagation();
+                    setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+                    if (!isPreviewModeRef.current) onHotspotSelectRef.current(hs.id);
+                  } else {
                     handleHotspotPointerUp(e, hs);
                   }
                 }}
