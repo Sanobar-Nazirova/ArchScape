@@ -1007,39 +1007,67 @@ export default function PanoramaViewer({
           {/* ── Variant options panel ── */}
           {openVariantHotspotId && (() => {
             const hs = scene?.hotspots.find(h => h.id === openVariantHotspotId);
-            if (!hs?.variantSceneIds?.length) return null;
+            if (!hs) return null;
+            const variantIds = hs.variantSceneIds ?? [];
             return (
-              <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] bg-black/85 backdrop-blur-md rounded-2xl p-3 shadow-2xl border border-white/10"
-                onClick={e => e.stopPropagation()}>
-                <p className="text-[10px] text-white/50 text-center mb-2.5 uppercase tracking-wide">{hs.label || 'Design Options'}</p>
-                <div className="flex gap-2">
-                  {hs.variantSceneIds.map(sid => {
-                    const s = scenes.find(sc => sc.id === sid);
-                    const isCurrent = sid === scene?.id;
-                    return (
-                      <button
-                        key={sid}
-                        onClick={() => {
-                          if (!isCurrent) {
+              <div
+                className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] bg-black/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 min-w-[200px]"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10">
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest font-semibold">{hs.label || 'Design Options'}</p>
+                  <button
+                    onClick={() => setOpenVariantHotspotId(null)}
+                    className="text-white/30 hover:text-white/70 transition-colors ml-4 text-lg leading-none"
+                  >×</button>
+                </div>
+                {/* Option thumbnails */}
+                {variantIds.length > 0 ? (
+                  <div className="flex gap-2 p-3">
+                    {variantIds.map(sid => {
+                      const s = scenes.find(sc => sc.id === sid);
+                      const isCurrent = sid === scene?.id;
+                      return (
+                        <button
+                          key={sid}
+                          disabled={isCurrent}
+                          onClick={() => {
                             setPendingStartView({ yaw: yawRef.current, pitch: pitchRef.current });
                             setActiveScene(sid);
+                            setOpenVariantHotspotId(null);
+                          }}
+                          className={[
+                            'flex flex-col items-center rounded-xl overflow-hidden transition-all border-2',
+                            isCurrent
+                              ? 'border-nm-teal scale-105 opacity-100 cursor-default'
+                              : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105 cursor-pointer',
+                          ].join(' ')}
+                          style={{ width: 88 }}
+                        >
+                          {s?.thumbnail
+                            ? <img src={s.thumbnail} alt={s.name} className="w-full object-cover" style={{ height: 56 }} />
+                            : <div className="w-full bg-white/5 flex items-center justify-center" style={{ height: 56 }}>
+                                <Layers size={18} className="text-nm-teal/40" />
+                              </div>
                           }
-                          setOpenVariantHotspotId(null);
-                        }}
-                        className={['flex flex-col items-center gap-1 rounded-xl overflow-hidden transition-all', isCurrent ? 'ring-2 ring-nm-teal scale-105' : 'opacity-70 hover:opacity-100 hover:scale-105'].join(' ')}
-                        style={{ width: 80 }}
-                      >
-                        {s?.thumbnail
-                          ? <img src={s.thumbnail} className="w-full object-cover" style={{ height: 54 }} />
-                          : <div className="w-full bg-nm-surface/80 flex items-center justify-center" style={{ height: 54 }}>
-                              <Layers size={16} className="text-nm-teal/50" />
-                            </div>
-                        }
-                        <p className="text-[9px] text-white/80 px-1 pb-1 text-center truncate w-full">{s?.name ?? sid}</p>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <div className="w-full bg-white/5 px-1.5 py-1.5">
+                            <p className="text-[9px] text-white/80 text-center truncate w-full leading-tight">{s?.name ?? '—'}</p>
+                            {isCurrent && <p className="text-[8px] text-nm-teal text-center mt-0.5">● Active</p>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-6 py-5 text-center">
+                    <Layers size={20} className="text-white/20 mx-auto mb-2" />
+                    <p className="text-xs text-white/40">No design options added yet.</p>
+                    {!isPreviewMode && (
+                      <p className="text-[10px] text-white/25 mt-1">Add variant scenes in the Properties Panel.</p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()}
