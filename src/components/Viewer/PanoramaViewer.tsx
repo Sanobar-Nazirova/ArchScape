@@ -3,6 +3,7 @@ import React, {
 } from 'react';
 import * as THREE from 'three';
 import { yawPitchToWorld, worldToYawPitch } from '../../utils/sphereCoords';
+import { useThreeScene } from './hooks/useThreeScene';
 import MediaPanel from './MediaPanel';
 import FloorPlanMinimap from './FloorPlanMinimap';
 import { useTourStore } from '../../store/useTourStore';
@@ -401,15 +402,10 @@ export default function PanoramaViewer({
   const floorPlan = floorPlans.find(f => f.id === activeFloorPlanId) ?? floorPlans[0] ?? null;
 
   // ── Three.js refs ──────────────────────────────────────────────────────
-  const containerRef  = useRef<HTMLDivElement>(null);
-  const rendererRef   = useRef<THREE.WebGLRenderer | null>(null);
-  const cameraRef     = useRef<THREE.PerspectiveCamera | null>(null);
-  const threeSceneRef = useRef<THREE.Scene | null>(null);
-  const sphereRef     = useRef<THREE.Mesh | null>(null);
-  const textureRef    = useRef<THREE.Texture | null>(null);
-  const videoElRef    = useRef<HTMLVideoElement | null>(null);
-  const shaderMatRef  = useRef<THREE.ShaderMaterial | null>(null);
-  const rafRef        = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textureRef   = useRef<THREE.Texture | null>(null);
+  const videoElRef   = useRef<HTMLVideoElement | null>(null);
+  const shaderMatRef = useRef<THREE.ShaderMaterial | null>(null);
 
   // ── Camera state refs (avoid stale closures in rAF) ─────────────────
   const yawRef        = useRef(0);
@@ -431,6 +427,21 @@ export default function PanoramaViewer({
   const onHotspotClickRef     = useRef(onHotspotClick);
   const onHotspotSelectRef    = useRef(onHotspotSelect);
   const onHotspotRepositionRef = useRef(onHotspotReposition);
+
+  // Stable store refs so VR/animation loop closures always see fresh values
+  const scenesRef             = useRef(scenes);
+  const setActiveSceneRef     = useRef(setActiveScene);
+  const floorPlansRef         = useRef(floorPlans);
+  const setActiveFloorPlanRef = useRef(setActiveFloorPlan);
+  useEffect(() => { scenesRef.current = scenes; },                        [scenes]);
+  useEffect(() => { setActiveSceneRef.current = setActiveScene; },        [setActiveScene]);
+  useEffect(() => { floorPlansRef.current = floorPlans; },                [floorPlans]);
+  useEffect(() => { setActiveFloorPlanRef.current = setActiveFloorPlan; },[setActiveFloorPlan]);
+
+  // Shared mutable refs for VR mute button and hotspot label sprites
+  const hotspotLabelSpritesRef = useRef<Map<string, THREE.Sprite>>(new Map());
+  const audioElemsRef          = useRef<HTMLAudioElement[]>([]);
+  const audioGainsRef          = useRef<GainNode[]>([]);
 
   useEffect(() => { sceneRef.current = scene; }, [scene]);
   useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
@@ -455,21 +466,18 @@ export default function PanoramaViewer({
     }
   }, []);
 
-  // ── Enter / exit immersive VR ─────────────────────────────────────────
-  const enterVR = async () => {
-    const renderer = rendererRef.current;
-    if (!renderer) return;
-    try {
-      const session = await (navigator as any).xr.requestSession('immersive-vr', {
-        optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
-      });
-      await renderer.xr.setSession(session);
-      setIsInVR(true);
-      session.addEventListener('end', () => setIsInVR(false));
-    } catch (err) {
-      console.warn('WebXR session failed:', err);
-    }
-  };
+  // ── Three.js init, XR controllers, animation loop ─────────────────────
+  const { rendererRef, cameraRef, threeSceneRef, sphereRef, enterVR } = useThreeScene({
+    containerRef,
+    yawRef, pitchRef, fovRef,
+    videoElRef, textureRef, shaderMatRef,
+    sceneRef, scenesRef, floorPlansRef,
+    hotspotContainersRef, mediaContainersRef, hotspotLabelSpritesRef,
+    draggingHotspotRef, onHotspotClickRef,
+    setActiveSceneRef, setActiveFloorPlanRef,
+    audioElemsRef, audioGainsRef,
+    setIsInVR, setMinimapYaw,
+  });
 
   // ── Expose fisheye yaw rotation helper (for real-time slider feedback) ──
   useEffect(() => {
@@ -499,115 +507,6 @@ export default function PanoramaViewer({
     return () => { delete (window as unknown as Record<string, unknown>)['__sphera_getCameraView']; };
   }, []);
 
-  // ── Three.js init (once) ──────────────────────────────────────────────
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    } catch (_e) {
-      console.error('WebGL not supported:', _e);
-      return;
-    }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(container.clientWidth || 800, container.clientHeight || 600);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.xr.enabled = true;
-    container.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-
-    const threeScene = new THREE.Scene();
-    threeSceneRef.current = threeScene;
-
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 2000);
-    camera.rotation.order = 'YXZ';
-    cameraRef.current = camera;
-
-    // Panorama sphere (inside surface)
-    const geo  = new THREE.SphereGeometry(500, 64, 32);
-    const mat  = new THREE.MeshBasicMaterial({ color: 0x111119, side: THREE.BackSide });
-    const mesh = new THREE.Mesh(geo, mat);
-    threeScene.add(mesh);
-    sphereRef.current = mesh;
-
-    // Animation loop (setAnimationLoop required for WebXR)
-    let frame = 0;
-    const animate = () => {
-      frame++;
-
-      const cam = cameraRef.current!;
-      cam.rotation.y = -yawRef.current;
-      cam.rotation.x = pitchRef.current;
-      cam.fov = fovRef.current;
-      cam.updateProjectionMatrix();
-
-      // Update video texture every frame
-      if (videoElRef.current && textureRef.current) {
-        (textureRef.current as THREE.VideoTexture).needsUpdate = true;
-      }
-
-      // Imperatively update hotspot/media overlay positions every frame
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      const sc = sceneRef.current;
-      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-      if (sc) {
-        for (const hs of (sc.hotspots ?? [])) {
-          const el = hotspotContainersRef.current.get(hs.id);
-          if (!el) continue;
-          // use dragging override position if active
-          const pos = draggingHotspotRef.current?.id === hs.id ? draggingHotspotRef.current : hs;
-          const wp = yawPitchToWorld(pos.yaw, pos.pitch);
-          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-          const proj = v.clone().project(cam);
-          const visible = forward.dot(v.normalize()) > 0.15;
-          const x = (proj.x + 1) / 2 * w;
-          const y = (1 - proj.y) / 2 * h;
-          el.style.transform = `translate3d(${x}px,${y}px,0)`;
-          el.style.opacity = visible ? '1' : '0';
-          el.style.pointerEvents = visible ? 'auto' : 'none';
-        }
-        for (const mp of (sc.mediaPoints ?? [])) {
-          const el = mediaContainersRef.current.get(mp.id);
-          if (!el) continue;
-          const wp = yawPitchToWorld(mp.yaw, mp.pitch);
-          const v = new THREE.Vector3(wp.x, wp.y, wp.z);
-          const proj = v.clone().project(cam);
-          const visible = forward.dot(v.normalize()) > 0.15;
-          const x = (proj.x + 1) / 2 * w;
-          const y = (1 - proj.y) / 2 * h;
-          el.style.transform = `translate3d(${x}px,${y}px,0)`;
-          el.style.opacity = visible ? '1' : '0';
-          el.style.pointerEvents = visible ? 'auto' : 'none';
-        }
-        if (frame % 10 === 0) setMinimapYaw(yawRef.current);
-      }
-
-      renderer.render(threeScene, cam);
-    };
-    renderer.setAnimationLoop(animate);
-
-    // Resize observer
-    const ro = new ResizeObserver(() => {
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      if (cameraRef.current) {
-        cameraRef.current.aspect = container.clientWidth / container.clientHeight;
-        cameraRef.current.updateProjectionMatrix();
-      }
-    });
-    ro.observe(container);
-
-    return () => {
-      renderer.setAnimationLoop(null);
-      ro.disconnect();
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
-    };
-  }, []);
 
   // ── Load texture when scene changes ───────────────────────────────────
   useEffect(() => {
