@@ -934,9 +934,15 @@ export default function PanoramaViewer({
                 }}
                 className="absolute"
                 style={{ top: 0, left: 0, transform: 'translate3d(-9999px,-9999px,0)', willChange: 'transform', opacity: 0, pointerEvents: 'none' }}
+                onMouseDown={e => e.stopPropagation()}
                 onPointerDown={e => handleHotspotPointerDown(e, hs.id)}
                 onPointerMove={e => handleHotspotPointerMove(e, hs.id)}
-                onClick={(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0) ? e => e.stopPropagation() : undefined}
+                onClick={e => {
+                  e.stopPropagation();
+                  if (!(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0)) return;
+                  setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
+                  if (!isPreviewModeRef.current) onHotspotSelectRef.current(hs.id);
+                }}
                 onPointerUp={e => {
                   const ds = dragStateRef.current;
                   dragStateRef.current = null;
@@ -950,10 +956,7 @@ export default function PanoramaViewer({
                     return;
                   }
                   draggingHotspotRef.current = null;
-                  if (hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0) {
-                    setOpenVariantHotspotId(id => id === hs.id ? null : hs.id);
-                    if (!isPreviewModeRef.current) onHotspotSelectRef.current(hs.id);
-                  } else {
+                  if (!(hs.type === 'variants' || (hs.variantSceneIds?.length ?? 0) > 0)) {
                     handleHotspotPointerUp(e, hs);
                   }
                 }}
